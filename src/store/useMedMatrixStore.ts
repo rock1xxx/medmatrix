@@ -163,11 +163,11 @@ export const useMedMatrixStore = create<MedMatrixState>()(
 
       lastModified: Date.now(),
       syncConfig: {
-        supabaseUrl: '',
-        supabaseAnonKey: '',
+        supabaseUrl: (import.meta.env.VITE_SUPABASE_URL as string) || '',
+        supabaseAnonKey: (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '',
         syncKey: 'dr-med-sync',
         autoSync: true,
-        isConnected: false,
+        isConnected: Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY),
       },
 
       timer: {
