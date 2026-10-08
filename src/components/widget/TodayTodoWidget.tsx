@@ -327,57 +327,30 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
       {/* COMPACT MODE (Small 2x2 Glanceable View) */}
       {/* ========================================================================= */}
       {size === 'compact' ? (
-        <div className="py-3 space-y-2.5">
-          {/* Quick Metrics Grid */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* MCQs Card: Real Chapter Names */}
-            <div className="p-2.5 rounded-2xl bg-zinc-900/80 border border-emerald-500/20 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-zinc-400">
-                <span className="text-[10px] font-bold flex items-center gap-1 text-emerald-400 uppercase tracking-tight">
-                  <CheckCircle2 size={11} /> Ward MCQs
-                </span>
-                <span className="text-[10px] font-mono font-bold text-zinc-400">
-                  {allMCQsToSolve.length}
-                </span>
+        <div className="py-2.5 space-y-2.5">
+          {/* Active Focus Hero Card */}
+          <div className="p-3 rounded-2xl bg-zinc-900/80 border border-emerald-500/20 flex flex-col justify-between min-h-[105px]">
+            <div className="text-[9px] font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+              <CheckCircle2 size={11} /> Current Ward MCQ
+            </div>
+            
+            <div className="my-1">
+              <div className="text-[13px] font-bold text-zinc-100 truncate" title={allMCQsToSolve[0]?.title || 'Sterilization & Disinfection'}>
+                {allMCQsToSolve[0]?.title || 'Sterilization & Disinfection'}
               </div>
-              <div className="mt-1.5 space-y-0.5">
-                {allMCQsToSolve.slice(0, 2).map((t) => (
-                  <div key={t.id} className="text-[11px] font-semibold text-zinc-200 truncate" title={t.title}>
-                    ○ {t.title}
-                  </div>
-                ))}
-                {allMCQsToSolve.length === 0 && (
-                  <div className="text-[11px] text-zinc-500 italic">All MCQs solved</div>
-                )}
-              </div>
-              <div className="text-[9px] text-zinc-500 mt-1 truncate">
-                {allMCQsToSolve.length > 2 ? `+${allMCQsToSolve.length - 2} more` : 'From last night'}
+              <div className="text-[11px] font-medium text-zinc-400 truncate mt-0.5" title={allMCQsToSolve[1]?.title || 'Bacterial Culture Media'}>
+                {allMCQsToSolve[1]?.title || 'Bacterial Culture Media'}
               </div>
             </div>
 
-            {/* Videos Card: Real Chapter Names */}
-            <div className="p-2.5 rounded-2xl bg-zinc-900/80 border border-cyan-500/20 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-zinc-400">
-                <span className="text-[10px] font-bold flex items-center gap-1 text-cyan-400 uppercase tracking-tight">
-                  <PlayCircle size={11} /> Tonight
-                </span>
-                <span className="text-[10px] font-mono font-bold text-zinc-400">
-                  {totalVideoMinutes}m
-                </span>
-              </div>
-              <div className="mt-1.5 space-y-0.5">
-                {allVideosToWatch.slice(0, 2).map((t) => (
-                  <div key={t.id} className="text-[11px] font-semibold text-zinc-200 truncate" title={t.title}>
-                    ▶ {t.title}
-                  </div>
-                ))}
-                {allVideosToWatch.length === 0 && (
-                  <div className="text-[11px] text-zinc-500 italic">No videos queued</div>
-                )}
-              </div>
-              <div className="text-[9px] text-zinc-500 mt-1 truncate">
-                {allVideosToWatch.length > 2 ? `+${allVideosToWatch.length - 2} more` : 'Tonight session'}
-              </div>
+            {/* Bottom Next Video Pill */}
+            <div className="mt-1 px-2.5 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-800/40 flex items-center justify-between text-[10px]">
+              <span className="font-semibold text-cyan-300 truncate max-w-[150px]">
+                🌙 Next: {allVideosToWatch[0]?.title || 'Bacterial Genetics'}
+              </span>
+              <span className="font-mono font-bold text-zinc-200 bg-white/10 px-1.5 py-0.5 rounded">
+                {allVideosToWatch[0]?.durationMinutes || 34}m
+              </span>
             </div>
           </div>
 
@@ -385,10 +358,10 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
           <button
             type="button"
             onClick={handleOpenFull}
-            className="w-full py-1.5 px-3 rounded-xl bg-zinc-800/70 hover:bg-zinc-800 text-zinc-300 text-[11px] font-semibold flex items-center justify-center gap-1 transition-all active:scale-98"
+            className="w-full py-1 px-3 rounded-xl bg-zinc-800/70 hover:bg-zinc-800 text-zinc-300 text-[10px] font-semibold flex items-center justify-center gap-1 transition-all active:scale-98"
           >
-            <span>Open MedMatrix Desk</span>
-            <ArrowUpRight size={12} />
+            <span>Open Study Desk</span>
+            <ArrowUpRight size={11} />
           </button>
         </div>
       ) : (

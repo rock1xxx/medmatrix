@@ -19,10 +19,19 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="TODAY"
-            android:textColor="#F1F5F9"
-            android:textSize="12sp"
+            android:textColor="#F8FAFC"
+            android:textSize="13sp"
             android:textStyle="bold"
-            android:letterSpacing="0.05" />
+            android:letterSpacing="0.04" />
+
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="• Oct 8"
+            android:textColor="#94A3B8"
+            android:textSize="11sp" />
 
         <View
             android:layout_width="0dp"
@@ -30,105 +39,119 @@
             android:layout_weight="1" />
 
         <TextView
+            android:id="@+id/widget_subject_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="● ACTIVE"
-            android:textColor="#10B981"
-            android:textSize="9sp"
+            android:background="@drawable/widget_card_bg"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="Microbiology"
+            android:textColor="#38BDF8"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Main Content Cards -->
+    <!-- Main Content Cards (4x2 Dual Desk / 2x2 Focus) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:baselineAligned="false"
         android:orientation="horizontal">
 
-        <!-- Card 1: Ward MCQs -->
+        <!-- Card 1: Ward MCQs (From Last Night) -->
         <LinearLayout
+            android:id="@+id/card_ward_mcqs"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginEnd="6dp"
             android:background="@drawable/widget_card_bg"
+            android:gravity="center_vertical"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="13dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🩺 Ward MCQs"
+                android:text="🩺 WARD MCQS"
                 android:textColor="#34D399"
                 android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.04" />
+
+            <TextView
+                android:id="@+id/widget_mcq_ch1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="Sterilization &amp; Disinfection"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_mcq_count"
-                android:layout_width="wrap_content"
+                android:id="@+id/widget_mcq_ch2"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Ready"
-                android:textColor="#F4F4F5"
-                android:textSize="16sp"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="Bacterial Culture Media"
+                android:textColor="#CBD5E1"
+                android:textSize="12sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Tap to solve"
-                android:textColor="#71717A"
-                android:textSize="10sp" />
         </LinearLayout>
 
         <!-- Card 2: Tonight Videos -->
         <LinearLayout
+            android:id="@+id/card_tonight_videos"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginStart="6dp"
             android:background="@drawable/widget_card_bg"
+            android:gravity="center_vertical"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="13dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🌙 Tonight"
-                android:textColor="#22D3EE"
+                android:text="🌙 TONIGHT'S VIDEOS"
+                android:textColor="#38BDF8"
                 android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.04" />
+
+            <TextView
+                android:id="@+id/widget_video_ch1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="Bacterial Genetics (34m)"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_video_count"
-                android:layout_width="wrap_content"
+                android:id="@+id/widget_video_ch2"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Queued"
-                android:textColor="#F4F4F5"
-                android:textSize="16sp"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="Drug Resistance (21m)"
+                android:textColor="#CBD5E1"
+                android:textSize="12sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Hostel session"
-                android:textColor="#71717A"
-                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
-
-    <!-- Bottom Footer -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Tap widget to open MedMatrix desk →"
-        android:textColor="#52525B"
-        android:textSize="10sp"
-        android:gravity="center" />
 </LinearLayout>
