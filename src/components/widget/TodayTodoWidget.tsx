@@ -15,6 +15,7 @@ import {
   Layers,
   Check,
   Smartphone,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -47,6 +48,10 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
 
   const [size, setSize] = useState<WidgetSize>(initialSize)
   const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'mcqs' | 'videos'>('all')
+  const [bgStyle, setBgStyle] = useState<'frosted' | 'transparent' | 'opaque'>('frosted')
+  const [cornerRadius, setCornerRadius] = useState<'rounded' | 'sharp' | 'pebble'>('rounded')
+  const [showBranding, setShowBranding] = useState<boolean>(false) // Default false: clean "Today" as requested
+  const [showAppearanceMenu, setShowAppearanceMenu] = useState<boolean>(false)
 
   const activeSubject = subjects.find((s) => s.id === activeSubjectId) || subjects[0]
 
@@ -133,9 +138,21 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
     )
   }
 
+  const bgClasses = {
+    frosted: 'bg-[#121216]/90 backdrop-blur-xl border border-zinc-800/80',
+    transparent: 'bg-black/30 backdrop-blur-sm border border-white/10 shadow-lg',
+    opaque: 'bg-black border border-zinc-800 shadow-2xl',
+  }[bgStyle]
+
+  const radiusClasses = {
+    sharp: 'rounded-xl',
+    rounded: 'rounded-3xl',
+    pebble: 'rounded-[36px]',
+  }[cornerRadius]
+
   return (
     <div
-      className={`relative flex flex-col bg-[#121216]/95 backdrop-blur-xl border border-zinc-800/80 rounded-3xl shadow-2xl overflow-hidden transition-all duration-200 select-none ${
+      className={`relative flex flex-col ${bgClasses} ${radiusClasses} shadow-2xl overflow-hidden transition-all duration-200 select-none ${
         isStandalone
           ? 'w-full max-w-md mx-auto my-auto p-4 sm:p-5 min-h-[500px]'
           : size === 'compact'
@@ -152,12 +169,12 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
       <div className="flex items-center justify-between pb-3 border-b border-zinc-800/70">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-            M
+            {showBranding ? 'M' : 'T'}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-xs text-zinc-100 tracking-tight">
-                MedMatrix Today
+                {showBranding ? 'MedMatrix Today' : 'Today'}
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
@@ -169,6 +186,20 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
 
         {/* Resizable Size Controls & Actions */}
         <div className="flex items-center gap-1">
+          {/* Appearance Menu Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAppearanceMenu(!showAppearanceMenu)}
+            className={`p-1 rounded-lg transition-colors ${
+              showAppearanceMenu
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+            }`}
+            title="Widget Appearance (Background, Corners, Header)"
+          >
+            <SlidersHorizontal size={13} />
+          </button>
+
           {/* S | M | L Size Segmented Control */}
           <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-[10px] font-semibold">
             {(['compact', 'medium', 'expanded'] as WidgetSize[]).map((s) => (
@@ -211,6 +242,86 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
           )}
         </div>
       </div>
+
+      {/* Widget Appearance Settings Drawer/Popover */}
+      {showAppearanceMenu && (
+        <div className="p-2.5 my-2 rounded-2xl bg-zinc-950/90 border border-zinc-800 text-[11px] space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-400 font-medium">Header Title:</span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setShowBranding(false)}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  !showBranding ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBranding(true)}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  showBranding ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
+                }`}
+              >
+                MedMatrix
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-400 font-medium">Background:</span>
+            <div className="flex gap-1">
+              {(['transparent', 'frosted', 'opaque'] as const).map((bg) => (
+                <button
+                  key={bg}
+                  type="button"
+                  onClick={() => setBgStyle(bg)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize ${
+                    bgStyle === bg ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
+                  }`}
+                >
+                  {bg}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-400 font-medium">Corners:</span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setCornerRadius('sharp')}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  cornerRadius === 'sharp' ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
+                }`}
+              >
+                12px
+              </button>
+              <button
+                type="button"
+                onClick={() => setCornerRadius('rounded')}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  cornerRadius === 'rounded' ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
+                }`}
+              >
+                24px (One UI)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCornerRadius('pebble')}
+                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  cornerRadius === 'pebble' ? 'bg-emerald-500 text-black font-bold' : 'bg-zinc-900 text-zinc-400'
+                }`}
+              >
+                36px
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* COMPACT MODE (Small 2x2 Glanceable View) */}
