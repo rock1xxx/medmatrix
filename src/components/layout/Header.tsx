@@ -15,13 +15,16 @@ import {
   Radio,
   Smartphone,
   Sliders,
+  AppWindow,
+  Layers,
 } from 'lucide-react'
 
 interface HeaderProps {
   onOpenShortcuts: () => void
+  onOpenWidgetGuide?: () => void
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetGuide }) => {
   const {
     stretchDrawerOpen,
     setStretchDrawerOpen,
@@ -108,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts }) => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Add Videos Button (Single clean plus icon) */}
+          {/* Add Videos Button */}
           <button
             type="button"
             onClick={() => setStretchDrawerOpen(!stretchDrawerOpen)}
@@ -117,6 +120,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts }) => {
           >
             <Plus className="w-3.5 h-3.5 text-emerald-400" />
             <span>Videos</span>
+          </button>
+
+          {/* Quick Resizable Widget Popout */}
+          <button
+            type="button"
+            onClick={() => {
+              window.open(
+                '/?view=widget',
+                'MedMatrixWidget',
+                'width=420,height=580,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+              )
+            }}
+            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-cyan-300 hover:border-cyan-500/40 transition-all active:scale-95 min-h-[36px]"
+            title="Open resizable Today's Tasks Widget"
+          >
+            <AppWindow className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Widget</span>
           </button>
 
           {/* More Menu (Backup, Restore, Reset, Shortcuts, PWA Install, Interval Settings) */}
@@ -139,6 +159,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts }) => {
                   onClick={() => setMenuOpen(false)}
                 />
                 <div className="absolute right-0 top-full mt-2 w-60 bg-[#18181b] border border-zinc-800 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenWidgetGuide) onOpenWidgetGuide()
+                      setMenuOpen(false)
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-cyan-300 hover:bg-zinc-800 flex items-center gap-2 font-medium"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Today Widget & Setup Guide</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
