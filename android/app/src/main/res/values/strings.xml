@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MedMatrix</string>
+    <string name="title_activity_main">MedMatrix</string>
+    <string name="package_name">com.medmatrix.app</string>
+    <string name="custom_url_scheme">com.medmatrix.app</string>
+    <string name="widget_name">MedMatrix Today</string>
+    <string name="widget_description">Shows today\'s pending Ward MCQs and Tonight\'s Videos</string>
+</resources>
