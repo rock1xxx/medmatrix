@@ -3,7 +3,6 @@ import { format } from 'date-fns'
 import type { Topic, Subject } from '../types'
 
 export type WidgetBackgroundStyle = 'frosted' | 'transparent' | 'opaque'
-export type WidgetCornerRadius = 16 | 24 | 32
 
 export interface WidgetPayload {
   todayDate: string
@@ -15,7 +14,19 @@ export interface WidgetPayload {
   revisionCh1: string
   revisionCh2: string
   bgStyle: WidgetBackgroundStyle
-  cornerRadius: WidgetCornerRadius
+  cornerRadius: number
+  opacity?: number
+  blur?: number
+  designVariant?: string
+}
+
+export interface WidgetSliderSettings {
+  opacity: number // 0 - 100
+  blur: number // 0 - 32px
+  cornerRadius: number // 0 - 40dp
+  design2x2: string
+  design4x2: string
+  design4x4: string
 }
 
 interface WidgetBridgePluginInterface {
@@ -39,7 +50,7 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
           try {
             return JSON.parse(saved)
           } catch {
-            // Ignore JSON parse error and use default
+            // Ignore error
           }
         }
       }
@@ -54,26 +65,71 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
         revisionCh2: 'Autonomic Pharmacology',
         bgStyle: 'frosted',
         cornerRadius: 24,
+        opacity: 85,
+        blur: 18,
       }
     },
   },
 })
 
-export const getSavedWidgetStyles = (): { bgStyle: WidgetBackgroundStyle; cornerRadius: WidgetCornerRadius } => {
-  if (typeof window === 'undefined') return { bgStyle: 'frosted', cornerRadius: 24 }
+export const getSavedSliderSettings = (): WidgetSliderSettings => {
+  if (typeof window === 'undefined') {
+    return {
+      opacity: 85,
+      blur: 18,
+      cornerRadius: 24,
+      design2x2: 'hero',
+      design4x2: 'desk',
+      design4x4: 'three-tier',
+    }
+  }
   try {
-    const bg = (localStorage.getItem('medmatrix_widget_bg_style') as WidgetBackgroundStyle) || 'frosted'
-    const radius = Number(localStorage.getItem('medmatrix_widget_corner_radius') || 24) as WidgetCornerRadius
-    return { bgStyle: bg, cornerRadius: radius }
+    const opacity = Number(localStorage.getItem('medmatrix_widget_opacity') ?? 85)
+    const blur = Number(localStorage.getItem('medmatrix_widget_blur') ?? 18)
+    const radius = Number(localStorage.getItem('medmatrix_widget_radius') ?? 24)
+    const design2x2 = localStorage.getItem('medmatrix_widget_design_2x2') || 'hero'
+    const design4x2 = localStorage.getItem('medmatrix_widget_design_4x2') || 'desk'
+    const design4x4 = localStorage.getItem('medmatrix_widget_design_4x4') || 'three-tier'
+    return {
+      opacity: isNaN(opacity) ? 85 : opacity,
+      blur: isNaN(blur) ? 18 : blur,
+      cornerRadius: isNaN(radius) ? 24 : radius,
+      design2x2,
+      design4x2,
+      design4x4,
+    }
   } catch {
-    return { bgStyle: 'frosted', cornerRadius: 24 }
+    return {
+      opacity: 85,
+      blur: 18,
+      cornerRadius: 24,
+      design2x2: 'hero',
+      design4x2: 'desk',
+      design4x4: 'three-tier',
+    }
   }
 }
 
-export const saveWidgetStyles = (bgStyle: WidgetBackgroundStyle, cornerRadius: WidgetCornerRadius) => {
+export const saveSliderSettings = (settings: Partial<WidgetSliderSettings>) => {
   if (typeof window === 'undefined') return
-  localStorage.setItem('medmatrix_widget_bg_style', bgStyle)
-  localStorage.setItem('medmatrix_widget_corner_radius', String(cornerRadius))
+  if (settings.opacity !== undefined) {
+    localStorage.setItem('medmatrix_widget_opacity', String(settings.opacity))
+  }
+  if (settings.blur !== undefined) {
+    localStorage.setItem('medmatrix_widget_blur', String(settings.blur))
+  }
+  if (settings.cornerRadius !== undefined) {
+    localStorage.setItem('medmatrix_widget_radius', String(settings.cornerRadius))
+  }
+  if (settings.design2x2) {
+    localStorage.setItem('medmatrix_widget_design_2x2', settings.design2x2)
+  }
+  if (settings.design4x2) {
+    localStorage.setItem('medmatrix_widget_design_4x2', settings.design4x2)
+  }
+  if (settings.design4x4) {
+    localStorage.setItem('medmatrix_widget_design_4x4', settings.design4x4)
+  }
 }
 
 /**
@@ -83,20 +139,20 @@ export async function syncActiveStudyDataToWidget(
   topics: Topic[],
   subjects: Subject[],
   activeSubjectId: string,
-  overrides?: { bgStyle?: WidgetBackgroundStyle; cornerRadius?: WidgetCornerRadius }
+  overrides?: Partial<WidgetSliderSettings>
 ): Promise<boolean> {
   try {
     const activeSubject = subjects.find((s) => s.id === activeSubjectId) || subjects[0]
     const subjectName = activeSubject ? activeSubject.name : 'Microbiology'
 
-    // 1. Ward MCQs for the active subject (chapters watched last night, ready to solve)
+    // 1. Ward MCQs for active subject (chapters watched last night)
     const wardTopics = topics.filter(
       (t) => t.status === 'STEP_2_WARD_MCQ' && t.subjectId === activeSubjectId
     )
     const mcqCh1 = wardTopics[0]?.title || 'Sterilization & Disinfection'
     const mcqCh2 = wardTopics[1]?.title || 'Bacterial Culture Media'
 
-    // 2. Tonight's video queue for the active subject
+    // 2. Tonight's video queue for active subject
     const videoTopics = topics.filter(
       (t) => t.status === 'STEP_1_WATCHING' && t.subjectId === activeSubjectId
     )
@@ -112,10 +168,19 @@ export async function syncActiveStudyDataToWidget(
     const revisionCh1 = srTopics[0]?.title || 'General Pathology (Anki)'
     const revisionCh2 = srTopics[1]?.title || 'Autonomic Pharmacology'
 
-    // Style preferences
-    const savedStyles = getSavedWidgetStyles()
-    const bgStyle = overrides?.bgStyle || savedStyles.bgStyle
-    const cornerRadius = overrides?.cornerRadius || savedStyles.cornerRadius
+    // Slider settings
+    const saved = getSavedSliderSettings()
+    const opacity = overrides?.opacity ?? saved.opacity
+    const blur = overrides?.blur ?? saved.blur
+    const cornerRadius = overrides?.cornerRadius ?? saved.cornerRadius
+
+    // Map opacity to category for Android drawables
+    let bgStyle: WidgetBackgroundStyle = 'frosted'
+    if (opacity <= 35) {
+      bgStyle = 'transparent'
+    } else if (opacity >= 95) {
+      bgStyle = 'opaque'
+    }
 
     const payload: WidgetPayload = {
       todayDate: format(new Date(), 'EEE, MMM d'),
@@ -128,6 +193,8 @@ export async function syncActiveStudyDataToWidget(
       revisionCh2,
       bgStyle,
       cornerRadius,
+      opacity,
+      blur,
     }
 
     await WidgetBridge.updateWidgetData(payload)
