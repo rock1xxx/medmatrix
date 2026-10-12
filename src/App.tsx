@@ -11,9 +11,9 @@ import { StretchQueueDrawer } from './components/modals/StretchQueueDrawer'
 import { TopicDetailsModal } from './components/modals/TopicDetailsModal'
 import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsModal'
 import { TodayTodoWidget } from './components/widget/TodayTodoWidget'
-import { FloatingWidgetDock } from './components/widget/FloatingWidgetDock'
-import { IosWidgetGuideModal } from './components/modals/IosWidgetGuideModal'
+import { WidgetSettingsModal } from './components/modals/WidgetSettingsModal'
 import { initSyncEngine } from './lib/syncEngine'
+import { syncActiveStudyDataToWidget } from './lib/widgetBridge'
 import { Toaster } from 'sonner'
 
 export function App() {
@@ -21,6 +21,9 @@ export function App() {
     initSyncEngine()
   }, [])
   const {
+    topics,
+    subjects,
+    activeSubjectId,
     activeTab,
     setActiveTab,
     stretchDrawerOpen,
@@ -29,7 +32,12 @@ export function App() {
   } = useMedMatrixStore()
 
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false)
-  const [iosGuideOpen, setIosGuideOpen] = useState(false)
+  const [widgetSettingsOpen, setWidgetSettingsOpen] = useState(false)
+
+  // Automatically keep Android home screen widget updated with real study queue
+  useEffect(() => {
+    syncActiveStudyDataToWidget(topics, subjects, activeSubjectId)
+  }, [topics, subjects, activeSubjectId])
   const [isWidgetView] = useState(() => {
     if (typeof window === 'undefined') return false
     const search = window.location.search
@@ -100,11 +108,11 @@ export function App() {
           onOpenFullApp={() => {
             window.location.href = '/'
           }}
-          onOpenIosGuide={() => setIosGuideOpen(true)}
+          onOpenIosGuide={() => setWidgetSettingsOpen(true)}
         />
-        <IosWidgetGuideModal
-          isOpen={iosGuideOpen}
-          onClose={() => setIosGuideOpen(false)}
+        <WidgetSettingsModal
+          isOpen={widgetSettingsOpen}
+          onClose={() => setWidgetSettingsOpen(false)}
         />
       </div>
     )
@@ -130,7 +138,7 @@ export function App() {
       {/* Minimal Top Header */}
       <Header
         onOpenShortcuts={() => setShortcutsModalOpen(true)}
-        onOpenWidgetGuide={() => setIosGuideOpen(true)}
+        onOpenWidgetSettings={() => setWidgetSettingsOpen(true)}
       />
 
       {/* Active View Container */}
@@ -145,9 +153,6 @@ export function App() {
       {/* Bottom Navigation */}
       <BottomNav />
 
-      {/* Floating Interactive Widget Dock */}
-      <FloatingWidgetDock onOpenIosGuide={() => setIosGuideOpen(true)} />
-
       {/* Modals & Drawers */}
       <StretchQueueDrawer />
       <TopicDetailsModal />
@@ -155,9 +160,9 @@ export function App() {
         isOpen={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
       />
-      <IosWidgetGuideModal
-        isOpen={iosGuideOpen}
-        onClose={() => setIosGuideOpen(false)}
+      <WidgetSettingsModal
+        isOpen={widgetSettingsOpen}
+        onClose={() => setWidgetSettingsOpen(false)}
       />
     </div>
   )

@@ -21,10 +21,10 @@ import {
 
 interface HeaderProps {
   onOpenShortcuts: () => void
-  onOpenWidgetGuide?: () => void
+  onOpenWidgetSettings: () => void
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetGuide }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSettings }) => {
   const {
     stretchDrawerOpen,
     setStretchDrawerOpen,
@@ -122,24 +122,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetGui
             <span>Videos</span>
           </button>
 
-          {/* Quick Resizable Widget Popout */}
-          <button
-            type="button"
-            onClick={() => {
-              window.open(
-                '/?view=widget',
-                'MedMatrixWidget',
-                'width=420,height=580,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
-              )
-            }}
-            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-cyan-300 hover:border-cyan-500/40 transition-all active:scale-95 min-h-[36px]"
-            title="Open resizable Today's Tasks Widget"
-          >
-            <AppWindow className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Widget</span>
-          </button>
-
-          {/* More Menu (Backup, Restore, Reset, Shortcuts, PWA Install, Interval Settings) */}
+          {/* More Menu (Backup, Restore, Reset, Shortcuts, PWA Install, Interval Settings, Widgets) */}
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -162,13 +145,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetGui
                   <button
                     type="button"
                     onClick={() => {
-                      if (onOpenWidgetGuide) onOpenWidgetGuide()
+                      onOpenWidgetSettings()
                       setMenuOpen(false)
                     }}
                     className="w-full text-left px-3 py-2 rounded-lg text-cyan-300 hover:bg-zinc-800 flex items-center gap-2 font-medium"
                   >
                     <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Today Widget & Setup Guide</span>
+                    <span>Widgets</span>
                   </button>
                   <button
                     type="button"
