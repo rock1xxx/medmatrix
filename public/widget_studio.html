@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedMatrix Widget Studio — Samsung S24 Ultra</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #08080a;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 24px;
+      line-height: 1.5;
+      user-select: none;
+    }
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .panel {
+      background-color: #121217;
+      border: 1px solid #22222d;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+    .flex-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .badge-cyan {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .badge-emerald {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+    .badge-amber {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .btn-group {
+      display: flex;
+      align-items: center;
+      background: #181820;
+      border: 1px solid #272733;
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .btn-size {
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: #a1a1aa;
+      transition: all 0.15s ease;
+    }
+    .btn-size:hover {
+      color: #ffffff;
+    }
+    .btn-size.active {
+      background: #06b6d4;
+      color: #000000;
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+    }
+    .btn-pill {
+      padding: 7px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #272733;
+      background: #171720;
+      color: #a1a1aa;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .btn-pill:hover {
+      color: #ffffff;
+      border-color: #3f3f4e;
+    }
+    .btn-pill.active {
+      background: rgba(6, 182, 212, 0.18);
+      color: #38bdf8;
+      border-color: rgba(6, 182, 212, 0.5);
+    }
+    .pills-scroll {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .pills-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .pills-scroll::-webkit-scrollbar-thumb {
+      background: #272733;
+      border-radius: 4px;
+    }
+    /* Sliders grid */
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .slider-card {
+      background: #171720;
+      border: 1px solid #262633;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .slider-val {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    input[type=range] {
+      width: 100%;
+      height: 6px;
+      background: #272733;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      accent-color: #06b6d4;
+    }
+    .slider-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #71717a;
+    }
+    .btn-preset {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid #272733;
+      background: #181822;
+      color: #d4d4d8;
+      cursor: pointer;
+    }
+    .btn-preset:hover {
+      background: #232330;
+      color: #ffffff;
+    }
+    /* Wallpaper Stage */
+    .stage {
+      background: radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.22) 0%, transparent 55%),
+                  radial-gradient(circle at 20% 80%, rgba(52, 211, 153, 0.18) 0%, transparent 60%),
+                  linear-gradient(180deg, #13131a 0%, #0a0a0e 100%);
+      border: 1px solid #262633;
+      border-radius: 28px;
+      padding: 50px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 420px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .stage-tag {
+      background: rgba(0, 0, 0, 0.65);
+      border: 1px solid #272733;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #e4e4e7;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #06b6d4;
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    /* Widget Box Styling dynamically generated via JS */
+    #widget-root {
+      transition: all 0.1s ease-out;
+      position: relative;
+      z-index: 2;
+    }
+    .truncate {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    /* Inputs drawer */
+    .inputs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .input-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+    }
+    .input-field label {
+      color: #a1a1aa;
+      font-weight: 600;
+    }
+    .input-field input {
+      background: #181822;
+      border: 1px solid #2c2c3b;
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: #ffffff;
+      font-size: 12px;
+      outline: none;
+    }
+    .input-field input:focus {
+      border-color: #06b6d4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Top Header -->
+    <div class="panel flex-row">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="badge badge-cyan" style="font-size: 13px; padding: 6px 12px;">One UI 6.1</span>
+        <div>
+          <h1 style="font-size: 18px; font-weight: 800; color: #ffffff;">MedMatrix Widget Studio</h1>
+          <p style="font-size: 12px; color: #a1a1aa;">Galaxy S24 Ultra Android Home Screen Widget Customizer</p>
+        </div>
+      </div>
+
+      <!-- Size Switcher -->
+      <div class="btn-group">
+        <button id="tab-2x2" class="btn-size" onclick="switchSize('2x2')">2x2 Square (5)</button>
+        <button id="tab-4x2" class="btn-size active" onclick="switchSize('4x2')">4x2 Desk (5)</button>
+        <button id="tab-4x4" class="btn-size" onclick="switchSize('4x4')">4x4 Full Page (4)</button>
+      </div>
+    </div>
+
+    <!-- Sliders Panel -->
+    <div class="panel">
+      <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 12px;">
+        <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
+          <span>🎚️</span> Appearance Sliders (Real-Time Adjustment)
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn-preset" onclick="setPreset('clear')">Clear (25%)</button>
+          <button class="btn-preset" onclick="setPreset('frosted')" style="border-color: #06b6d4; color: #38bdf8;">Frosted Acrylic (85%)</button>
+          <button class="btn-preset" onclick="setPreset('opaque')">AMOLED Pitch Black (100%)</button>
+        </div>
+      </div>
+
+      <div class="sliders-grid">
+        <!-- Slider 1: Opacity -->
+        <div class="slider-card">
+          <div class="slider-header">
+            <span style="color: #e4e4e7;">Background Opacity</span>
+            <span id="txt-opacity" class="slider-val">85%</span>
+          </div>
+          <input type="range" id="rng-opacity" min="0" max="100" value="85" oninput="updateSliders()">
+          <div class="slider-footer">
+            <span>0% (Clear Transparent)</span>
+            <span>100% (Solid Black)</span>
+          </div>
+        </div>
+
+        <!-- Slider 2: Frosted Blur -->
+        <div class="slider-card">
+          <div class="slider-header">
+            <span style="color: #e4e4e7;">Frosted Blur Effect</span>
+            <span id="txt-blur" class="slider-val">18px</span>
+          </div>
+          <input type="range" id="rng-blur" min="0" max="32" value="18" oninput="updateSliders()">
+          <div class="slider-footer">
+            <span>0px (Crisp Wallpaper)</span>
+            <span>32px (Deep Frosting)</span>
+          </div>
+        </div>
+
+        <!-- Slider 3: Corner Radius -->
+        <div class="slider-card">
+          <div class="slider-header">
+            <span style="color: #e4e4e7;">Corner Radius</span>
+            <span id="txt-radius" class="slider-val">24dp</span>
+          </div>
+          <input type="range" id="rng-radius" min="0" max="40" value="24" oninput="updateSliders()">
+          <div class="slider-footer">
+            <span>0dp (Square)</span>
+            <span>24dp (Samsung Standard)</span>
+            <span>40dp (Pill)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Design Variant Sub-Selector -->
+    <div class="panel" style="padding: 14px 18px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 12px; font-weight: 700; color: #a1a1aa; white-space: nowrap;">Design Variant:</span>
+        <div id="pills-box" class="pills-scroll"></div>
+      </div>
+    </div>
+
+    <!-- Live Stage Canvas -->
+    <div class="stage">
+      <div class="stage-tag">
+        <span class="pulse-dot"></span>
+        <span id="stage-badge" style="font-weight: 600;">4x2 &bull; Design 1: Dual Chapter Desk (Recommended)</span>
+      </div>
+
+      <!-- Widget Render Mount -->
+      <div id="widget-root"></div>
+    </div>
+
+    <!-- Chapter Names Customizer (Collapsible) -->
+    <div class="panel">
+      <div class="flex-row">
+        <span style="font-size: 13px; font-weight: 700; color: #e4e4e7;">✏️ Test Custom Chapter Names</span>
+        <button class="btn-preset" onclick="toggleInputs()">Toggle Input Fields</button>
+      </div>
+
+      <div id="inputs-box" class="inputs-grid" style="display: none;">
+        <div class="input-field">
+          <label>Subject</label>
+          <input type="text" id="in-subject" value="Microbiology" oninput="updateData()">
+        </div>
+        <div class="input-field">
+          <label>Date</label>
+          <input type="text" id="in-date" value="• Thursday, Oct 12" oninput="updateData()">
+        </div>
+        <div class="input-field">
+          <label style="color: #34d399;">Ward MCQ Ch 1 (Last Night)</label>
+          <input type="text" id="in-mcq1" value="Sterilization & Disinfection" oninput="updateData()">
+        </div>
+        <div class="input-field">
+          <label style="color: #34d399;">Ward MCQ Ch 2</label>
+          <input type="text" id="in-mcq2" value="Bacterial Culture Media" oninput="updateData()">
+        </div>
+        <div class="input-field">
+          <label style="color: #38bdf8;">Tonight Video 1 (Queue)</label>
+          <input type="text" id="in-vid1" value="Bacterial Genetics (34m)" oninput="updateData()">
+        </div>
+        <div class="input-field">
+          <label style="color: #38bdf8;">Tonight Video 2</label>
+          <input type="text" id="in-vid2" value="Drug Resistance (21m)" oninput="updateData()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Design Info Card -->
+    <div class="panel" style="display: flex; flex-direction: column; gap: 6px;">
+      <h3 id="info-title" style="font-size: 14px; font-weight: 700; color: #ffffff;">About This Design</h3>
+      <p id="info-desc" style="font-size: 12px; color: #a1a1aa; line-height: 1.6;"></p>
+    </div>
+
+  </div>
+
+  <script>
+    // State
+    let activeSize = '4x2';
+    let activeDesignIdx = 0;
+    let opacity = 85;
+    let blur = 18;
+    let radius = 24;
+
+    const store = {
+      subject: "Microbiology",
+      dateShort: "• Oct 12",
+      dateFull: "• Thursday, Oct 12",
+      mcq1: "Sterilization & Disinfection",
+      mcq2: "Bacterial Culture Media",
+      vid1: "Bacterial Genetics (34m)",
+      vid2: "Drug Resistance (21m)",
+      rev1: "General Pathology (Anki)",
+      rev2: "Autonomic Pharmacology"
+    };
+
+    const designs = {
+      '2x2': [
+        {
+          id: 'hero',
+          name: '1. Active Focus Hero',
+          badge: '2x2 &bull; Design 1: Active Focus Hero (Large Title)',
+          desc: 'Primary choice for morning ward rounds. Features a bold headline for your #1 priority MCQ chapter, secondary chapter in subtle gray, and a dark pill highlighting tonight’s next lecture runtime.',
+          render: () => `
+            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">TODAY</span>
+                <span class="badge badge-cyan" style="font-size: 9px; padding: 2px 6px;">${store.subject}</span>
+              </div>
+              <div class="card-item" style="padding: 10px; margin-top: 8px;">
+                <span style="font-size: 9px; font-weight: 700; color: #34d399; letter-spacing: 0.5px; display: block;">🩺 WARD MCQ</span>
+                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 10px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+              </div>
+              <div class="card-item" style="padding: 7px 10px; margin-top: 6px;">
+                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 NEXT TONIGHT</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'dual',
+          name: '2. Compact Dual Split',
+          badge: '2x2 &bull; Design 2: Compact Dual Split',
+          desc: 'Two equal-height boxes separating morning Ward MCQs from tonight’s video queue.',
+          render: () => `
+            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">TODAY</span>
+                <span class="badge badge-cyan" style="font-size: 9px; padding: 2px 6px;">${store.subject}</span>
+              </div>
+              <div class="card-item" style="padding: 9px; margin-top: 7px;">
+                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">• ${store.mcq1}</span>
+                <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">• ${store.mcq2}</span>
+              </div>
+              <div class="card-item" style="padding: 9px; margin-top: 6px;">
+                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">• ${store.vid1}</span>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'sequence',
+          name: '3. Numbered Sequence Flow',
+          badge: '2x2 &bull; Design 3: Numbered Step Flow',
+          desc: 'Sequential flow listing step 1, 2, and 3 today with numbered circular badges.',
+          render: () => `
+            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">TODAY'S FLOW</span>
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                <div class="card-item" style="padding: 6px 8px; display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: rgba(52,211,153,0.2); color: #34d399; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; shrink-0;">1</span>
+                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff;">${store.mcq1}</span>
+                </div>
+                <div class="card-item" style="padding: 6px 8px; display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: rgba(52,211,153,0.2); color: #34d399; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; shrink-0;">2</span>
+                  <span class="truncate" style="font-size: 10px; font-weight: 600; color: #cbd5e1;">${store.mcq2}</span>
+                </div>
+                <div class="card-item" style="padding: 6px 8px; display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 18px; height: 18px; border-radius: 50%; background: rgba(56,189,248,0.2); color: #38bdf8; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; shrink-0;">3</span>
+                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.vid1}</span>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'horizon',
+          name: '4. Split Shift Horizon',
+          badge: '2x2 &bull; Design 4: Split Shift Horizon (☀️ Ward vs 🌙 Hostel)',
+          desc: 'Clinical split with vertical accent lines separating Morning Shift (09:00) from Night Study (20:00).',
+          render: () => `
+            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">SHIFTS</span>
+                <span style="font-size: 10px; color: #a1a1aa;">${store.dateShort}</span>
+              </div>
+              <div class="card-item" style="padding: 9px; border-left: 3px solid #34d399; margin-top: 8px;">
+                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">☀️ 09:00 WARD ROUNDS</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+              </div>
+              <div class="card-item" style="padding: 9px; border-left: 3px solid #38bdf8; margin-top: 6px;">
+                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 20:00 HOSTEL DESK</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'rings',
+          name: '5. Dual Health Rings',
+          badge: '2x2 &bull; Design 5: Dual Completion Rings',
+          desc: 'Circular progress indicators inspired by Galaxy Health showing MCQ completion count and queued video minutes.',
+          render: () => `
+            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">METRICS</span>
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+              </div>
+              <div class="grid-2" style="margin: 8px 0;">
+                <div class="card-item" style="padding: 10px; display: flex; flex-direction: column; align-items: center;">
+                  <div style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #34d399; border-top-color: transparent; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #34d399;">2</div>
+                  <span style="font-size: 9px; font-weight: 700; color: #d4d4d8; margin-top: 4px;">MCQs</span>
+                </div>
+                <div class="card-item" style="padding: 10px; display: flex; flex-direction: column; align-items: center;">
+                  <div style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #38bdf8; border-left-color: transparent; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #38bdf8;">55m</div>
+                  <span style="font-size: 9px; font-weight: 700; color: #d4d4d8; margin-top: 4px;">Videos</span>
+                </div>
+              </div>
+              <div class="card-item" style="padding: 6px 8px;">
+                <span class="truncate" style="font-size: 10px; font-weight: 700; color: #ffffff; display: block;">Next: ${store.mcq1}</span>
+              </div>
+            </div>
+          `
+        }
+      ],
+      '4x2': [
+        {
+          id: 'desk',
+          name: '1. Dual Chapter Desk (Recommended)',
+          badge: '4x2 &bull; Design 1: Dual Chapter Desk (Zero Subtext Clutter)',
+          desc: 'The perfected layout you liked best. High contrast, large bold chapter fonts, yesterday’s watched lectures for morning Ward MCQs, and tonight’s video queue with clean duration badges.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 14px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">TODAY</span>
+                  <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">${store.dateShort}</span>
+                </div>
+                <span class="badge badge-cyan" style="font-size: 10px;">${store.subject}</span>
+              </div>
+              <div class="grid-2" style="margin-top: 10px;">
+                <div class="card-item" style="padding: 12px; display: flex; flex-direction: column; justify-content: center;">
+                  <span style="font-size: 11px; font-weight: 700; color: #34d399; letter-spacing: 0.5px; display: block;">🩺 WARD MCQS</span>
+                  <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 5px;">${store.mcq1}</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+                </div>
+                <div class="card-item" style="padding: 12px; display: flex; flex-direction: column; justify-content: center;">
+                  <span style="font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; display: block;">🌙 TONIGHT'S VIDEOS</span>
+                  <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 5px;">${store.vid1}</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'checkbox',
+          name: '2. Interactive Checkbox Desk',
+          badge: '4x2 &bull; Design 2: Interactive Checkbox Desk',
+          desc: 'Features crisp check rings on the left for Ward MCQs to mark completed chapters, and play icons on the right for tonight’s lectures.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 14px; font-weight: 800; color: #ffffff;">TODAY</span>
+                  <span style="font-size: 11px; color: #94a3b8;">${store.dateShort}</span>
+                </div>
+                <span class="badge badge-cyan" style="font-size: 10px;">${store.subject}</span>
+              </div>
+              <div class="grid-2" style="margin-top: 10px;">
+                <div class="card-item" style="padding: 12px;">
+                  <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block; margin-bottom: 4px;">🩺 WARD MCQS</span>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
+                    <span style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid #34d399; shrink-0;"></span>
+                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff;">${store.mcq1}</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
+                    <span style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid #71717a; shrink-0;"></span>
+                    <span class="truncate" style="font-size: 11px; color: #cbd5e1;">${store.mcq2}</span>
+                  </div>
+                </div>
+                <div class="card-item" style="padding: 12px;">
+                  <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block; margin-bottom: 4px;">🌙 TONIGHT QUEUE</span>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
+                    <span style="color: #38bdf8; font-size: 10px;">▶</span>
+                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff;">${store.vid1}</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
+                    <span style="color: #38bdf8; font-size: 10px;">▶</span>
+                    <span class="truncate" style="font-size: 11px; color: #cbd5e1;">${store.vid2}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'timeline',
+          name: '3. Shift Timeline Horizon',
+          badge: '4x2 &bull; Design 3: Shift Timeline Horizon',
+          desc: 'Horizontal timeline separating your clinical morning ward shift (09:00) from your evening hostel desk deep study session (20:00).',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">CLINICAL TIMELINE</span>
+                <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+              </div>
+              <div class="grid-2" style="margin-top: 10px;">
+                <div class="card-item" style="padding: 11px; border-top: 3px solid #34d399;">
+                  <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
+                    <span style="color: #34d399;">☀️ MORNING SHIFT</span>
+                    <span style="color: #71717a;">09:00 - 17:00</span>
+                  </div>
+                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 4px;">${store.mcq1}</span>
+                  <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+                </div>
+                <div class="card-item" style="padding: 11px; border-top: 3px solid #38bdf8;">
+                  <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
+                    <span style="color: #38bdf8;">🌙 HOSTEL SESSION</span>
+                    <span style="color: #71717a;">20:00 - 23:30</span>
+                  </div>
+                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 4px;">${store.vid1}</span>
+                  <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'progress',
+          name: '4. Target Progress Bars',
+          badge: '4x2 &bull; Design 4: Goal-Oriented Progress Bars',
+          desc: 'Progress-first design featuring horizontal completion fill bars for instant visual reassurance.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">TODAY &bull; ${store.subject}</span>
+                <span style="font-size: 11px; color: #a1a1aa;">${store.dateShort}</span>
+              </div>
+              <div class="grid-2" style="margin-top: 10px;">
+                <div class="card-item" style="padding: 11px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px;">
+                    <span style="font-weight: 700; color: #34d399;">WARD MCQS</span>
+                    <span style="font-weight: 700; color: #ffffff;">2/2 Ready</span>
+                  </div>
+                  <div style="width: 100%; height: 5px; background: #272733; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+                    <div style="width: 100%; height: 100%; background: #34d399;"></div>
+                  </div>
+                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block;">${store.mcq1}</span>
+                </div>
+                <div class="card-item" style="padding: 11px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px;">
+                    <span style="font-weight: 700; color: #38bdf8;">TONIGHT QUEUE</span>
+                    <span style="font-weight: 700; color: #ffffff;">55 Mins</span>
+                  </div>
+                  <div style="width: 100%; height: 5px; background: #272733; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+                    <div style="width: 70%; height: 100%; background: #38bdf8;"></div>
+                  </div>
+                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block;">${store.vid1}</span>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'triptych',
+          name: '5. Triple Triptych Desk',
+          badge: '4x2 &bull; Design 5: Triple Triptych Desk (MCQs | Videos | Revision)',
+          desc: 'High-density 3-column banner providing glanceable space to Ward MCQs, Tonight’s Lectures, and spaced revision.',
+          render: () => `
+            <div style="width: 100%; max-width: 440px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">THREE-STEP MATRIX</span>
+                <span class="badge badge-cyan" style="font-size: 9px;">${store.subject}</span>
+              </div>
+              <div class="grid-3">
+                <div class="card-item" style="padding: 10px; text-align: center;">
+                  <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block;">🩺 MCQS</span>
+                  <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">Sterilization</span>
+                  <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">Culture Media</span>
+                </div>
+                <div class="card-item" style="padding: 10px; text-align: center;">
+                  <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT</span>
+                  <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">Genetics 34m</span>
+                  <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">Resistance 21m</span>
+                </div>
+                <div class="card-item" style="padding: 10px; text-align: center;">
+                  <span style="font-size: 10px; font-weight: 700; color: #fbbf24; display: block;">⚡ REVISION</span>
+                  <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">Gen Path</span>
+                  <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">Autonomic</span>
+                </div>
+              </div>
+            </div>
+          `
+        }
+      ],
+      '4x4': [
+        {
+          id: 'three-tier',
+          name: '1. Three-Tier Master Desk',
+          badge: '4x4 &bull; Design 1: Three-Tier Master Deck',
+          desc: 'Full-page overview dividing your medical workflow into Ward MCQs, Tonight’s Lecture Queue, and 15-Minute Spaced Repetition.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 15px; font-weight: 800; color: #ffffff;">TODAY</span>
+                  <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">${store.dateFull}</span>
+                </div>
+                <span class="badge badge-cyan" style="font-size: 10px;">${store.subject}</span>
+              </div>
+              <div class="card-item" style="padding: 11px; margin-top: 8px;">
+                <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS (FROM LAST NIGHT)</span>
+                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+              </div>
+              <div class="card-item" style="padding: 11px; margin-top: 6px;">
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT'S VIDEO QUEUE</span>
+                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
+              </div>
+              <div class="card-item" style="padding: 11px; margin-top: 6px;">
+                <span style="font-size: 10px; font-weight: 700; color: #fbbf24; display: block;">⚡ 15-MIN SPACED REVISION</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 3px;">${store.rev1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.rev2}</span>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'tabbed',
+          name: '2. Tabbed Focus Deck',
+          badge: '4x4 &bull; Design 2: Tabbed Focus Deck',
+          desc: 'Interactive category filter tabs at the top for jumping between All Tasks, Ward MCQs, Tonight Videos, and Spaced Repetition.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 14px; font-weight: 800; color: #ffffff;">FOCUS DECK</span>
+                <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+              </div>
+              <div style="display: flex; gap: 6px; margin: 8px 0;">
+                <span style="padding: 3px 8px; border-radius: 6px; background: #06b6d4; color: #000; font-size: 10px; font-weight: 700;">ALL (5)</span>
+                <span style="padding: 3px 8px; border-radius: 6px; background: #1f1f2a; color: #d4d4d8; font-size: 10px;">MCQS (2)</span>
+                <span style="padding: 3px 8px; border-radius: 6px; background: #1f1f2a; color: #d4d4d8; font-size: 10px;">VIDEOS (2)</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div class="card-item" style="padding: 9px; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">WARD MCQ</span>
+                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block;">${store.mcq1}</span>
+                  </div>
+                  <span class="badge badge-emerald" style="font-size: 9px;">READY</span>
+                </div>
+                <div class="card-item" style="padding: 9px; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">WARD MCQ</span>
+                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block;">${store.mcq2}</span>
+                  </div>
+                  <span class="badge badge-emerald" style="font-size: 9px;">READY</span>
+                </div>
+                <div class="card-item" style="padding: 9px; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">TONIGHT VIDEO</span>
+                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block;">${store.vid1}</span>
+                  </div>
+                  <span class="badge badge-cyan" style="font-size: 9px;">34m</span>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'timeline-kanban',
+          name: '3. Full Shift Kanban Timeline',
+          badge: '4x4 &bull; Design 3: Full Shift Timeline Sequence',
+          desc: 'Chronological clinical timeline mapping 09:00 Ward Duty to 23:30 Midnight Locking.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 14px; font-weight: 800; color: #ffffff;">SCHEDULE</span>
+                <span style="font-size: 11px; color: #a1a1aa;">${store.dateShort}</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <div class="card-item" style="padding: 10px; border-left: 4px solid #34d399;">
+                  <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">09:00 - 17:00 &bull; WARD SPRINT</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+                </div>
+                <div class="card-item" style="padding: 10px; border-left: 4px solid #818cf8;">
+                  <span style="font-size: 9px; font-weight: 700; color: #818cf8; display: block;">19:30 - 20:30 &bull; MARGIN NOTES</span>
+                  <span class="truncate" style="font-size: 11px; color: #d4d4d8; display: block; margin-top: 2px;">First Aid Clinical Margin Notes</span>
+                </div>
+                <div class="card-item" style="padding: 10px; border-left: 4px solid #38bdf8;">
+                  <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">20:30 - 23:30 &bull; LECTURES</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
+                </div>
+              </div>
+            </div>
+          `
+        },
+        {
+          id: 'command',
+          name: '4. High-Yield Command Deck',
+          badge: '4x4 &bull; Design 4: High-Yield Command Deck',
+          desc: 'Includes 1.5x/2.0x playback speed calculations and Grand Test countdown indicator.',
+          render: () => `
+            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <span style="font-size: 14px; font-weight: 800; color: #ffffff;">COMMAND DECK</span>
+                  <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+                </div>
+                <span class="badge badge-amber" style="font-size: 10px;">GT in 4 Days</span>
+              </div>
+              <div class="grid-3" style="margin: 8px 0;">
+                <div class="card-item" style="padding: 6px; text-align: center;">
+                  <span style="font-size: 9px; color: #a1a1aa; display: block;">1.0x</span>
+                  <span style="font-size: 11px; font-weight: 700; color: #ffffff;">55 mins</span>
+                </div>
+                <div class="card-item" style="padding: 6px; text-align: center; border-color: #06b6d4;">
+                  <span style="font-size: 9px; color: #38bdf8; display: block;">1.5x</span>
+                  <span style="font-size: 11px; font-weight: 800; color: #38bdf8;">37 mins</span>
+                </div>
+                <div class="card-item" style="padding: 6px; text-align: center;">
+                  <span style="font-size: 9px; color: #a1a1aa; display: block;">2.0x</span>
+                  <span style="font-size: 11px; font-weight: 700; color: #ffffff;">28 mins</span>
+                </div>
+              </div>
+              <div class="card-item" style="padding: 10px;">
+                <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+              </div>
+              <div class="card-item" style="padding: 10px; margin-top: 6px;">
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT QUEUE</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
+              </div>
+            </div>
+          `
+        }
+      ]
+    };
+
+    function switchSize(size) {
+      activeSize = size;
+      activeDesignIdx = 0;
+      ['2x2', '4x2', '4x4'].forEach(s => {
+        const btn = document.getElementById('tab-' + s);
+        if (s === size) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      renderPills();
+      renderWidget();
+    }
+
+    function renderPills() {
+      const box = document.getElementById('pills-box');
+      box.innerHTML = '';
+      const list = designs[activeSize];
+      list.forEach((des, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-pill' + (idx === activeDesignIdx ? ' active' : '');
+        btn.innerText = des.name;
+        btn.onclick = () => {
+          activeDesignIdx = idx;
+          renderPills();
+          renderWidget();
+        };
+        box.appendChild(btn);
+      });
+    }
+
+    function renderWidget() {
+      const activeDesign = designs[activeSize][activeDesignIdx];
+      const root = document.getElementById('widget-root');
+      root.innerHTML = activeDesign.render();
+
+      document.getElementById('stage-badge').innerHTML = activeDesign.badge;
+      document.getElementById('info-title').innerText = activeDesign.name;
+      document.getElementById('info-desc').innerText = activeDesign.desc;
+
+      applyStyles();
+    }
+
+    function updateSliders() {
+      opacity = parseInt(document.getElementById('rng-opacity').value);
+      blur = parseInt(document.getElementById('rng-blur').value);
+      radius = parseInt(document.getElementById('rng-radius').value);
+
+      document.getElementById('txt-opacity').innerText = opacity + '%';
+      document.getElementById('txt-blur').innerText = blur + 'px';
+      document.getElementById('txt-radius').innerText = radius + 'dp';
+
+      applyStyles();
+    }
+
+    function setPreset(type) {
+      if (type === 'clear') {
+        opacity = 25;
+        blur = 4;
+        radius = 24;
+      } else if (type === 'frosted') {
+        opacity = 85;
+        blur = 18;
+        radius = 24;
+      } else { // opaque
+        opacity = 100;
+        blur = 0;
+        radius = 24;
+      }
+
+      document.getElementById('rng-opacity').value = opacity;
+      document.getElementById('rng-blur').value = blur;
+      document.getElementById('rng-radius').value = radius;
+
+      document.getElementById('txt-opacity').innerText = opacity + '%';
+      document.getElementById('txt-blur').innerText = blur + 'px';
+      document.getElementById('txt-radius').innerText = radius + 'dp';
+
+      applyStyles();
+    }
+
+    function applyStyles() {
+      const root = document.getElementById('widget-root');
+      if (!root) return;
+
+      const alpha = opacity / 100;
+      const bgRgba = `rgba(18, 18, 23, ${alpha})`;
+      const borderAlpha = Math.min(0.25, 0.08 + alpha * 0.15);
+      const borderRgba = `1px solid rgba(255, 255, 255, ${borderAlpha})`;
+
+      root.style.backgroundColor = bgRgba;
+      root.style.border = borderRgba;
+      root.style.borderRadius = radius + 'px';
+
+      if (blur > 0) {
+        root.style.backdropFilter = `blur(${blur}px)`;
+        root.style.webkitBackdropFilter = `blur(${blur}px)`;
+      } else {
+        root.style.backdropFilter = 'none';
+        root.style.webkitBackdropFilter = 'none';
+      }
+
+      const shadowAlpha = Math.min(0.85, 0.2 + alpha * 0.6);
+      root.style.boxShadow = `0 18px 38px -8px rgba(0, 0, 0, ${shadowAlpha}), 0 0 0 1px rgba(255, 255, 255, ${borderAlpha})`;
+
+      // Inner card elements
+      const cardAlpha = Math.min(0.65, 0.15 + alpha * 0.35);
+      const cardBg = `rgba(34, 34, 45, ${cardAlpha})`;
+      const cardBorder = `1px solid rgba(255, 255, 255, ${Math.min(0.18, 0.05 + alpha * 0.1)})`;
+      const innerRadius = Math.max(8, radius - 10) + 'px';
+
+      const cards = root.querySelectorAll('.card-item');
+      cards.forEach(c => {
+        c.style.backgroundColor = cardBg;
+        c.style.border = cardBorder;
+        c.style.borderRadius = innerRadius;
+      });
+    }
+
+    function toggleInputs() {
+      const el = document.getElementById('inputs-box');
+      el.style.display = (el.style.display === 'none') ? 'grid' : 'none';
+    }
+
+    function updateData() {
+      store.subject = document.getElementById('in-subject').value;
+      store.dateFull = document.getElementById('in-date').value;
+      store.mcq1 = document.getElementById('in-mcq1').value;
+      store.mcq2 = document.getElementById('in-mcq2').value;
+      store.vid1 = document.getElementById('in-vid1').value;
+      store.vid2 = document.getElementById('in-vid2').value;
+      renderWidget();
+    }
+
+    // Init
+    switchSize('4x2');
+  </script>
+</body>
+</html>
