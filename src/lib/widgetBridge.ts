@@ -32,6 +32,7 @@ export interface WidgetSliderSettings {
 interface WidgetBridgePluginInterface {
   updateWidgetData(options: WidgetPayload): Promise<{ success: boolean; widgetsUpdated: number }>
   getWidgetSettings(): Promise<WidgetPayload>
+  checkLaunchIntent(): Promise<{ isWidgetConfig: boolean }>
 }
 
 // Register Capacitor plugin (falls back gracefully in browser / web environments)
@@ -69,8 +70,26 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
         blur: 18,
       }
     },
+    checkLaunchIntent: async () => {
+      if (typeof window !== 'undefined') {
+        const search = window.location.search
+        const hash = window.location.hash
+        const isConfig = search.includes('widget') || hash.includes('widget')
+        return { isWidgetConfig: isConfig }
+      }
+      return { isWidgetConfig: false }
+    },
   },
 })
+
+export async function checkIsWidgetConfigLaunch(): Promise<boolean> {
+  try {
+    const res = await WidgetBridge.checkLaunchIntent()
+    return !!res?.isWidgetConfig
+  } catch {
+    return false
+  }
+}
 
 export const getSavedSliderSettings = (): WidgetSliderSettings => {
   if (typeof window === 'undefined') {

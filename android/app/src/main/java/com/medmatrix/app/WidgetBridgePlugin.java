@@ -88,4 +88,21 @@ public class WidgetBridgePlugin extends Plugin {
         ret.put("cornerRadius", prefs.getInt("cornerRadius", 24));
         call.resolve(ret);
     }
+
+    @PluginMethod
+    public void checkLaunchIntent(PluginCall call) {
+        Intent intent = getActivity().getIntent();
+        boolean isWidgetConfig = false;
+        if (intent != null) {
+            String action = intent.getAction();
+            if (AppWidgetManager.ACTION_APPWIDGET_CONFIGURE.equals(action) ||
+                intent.getBooleanExtra("open_widget_settings", false) ||
+                (intent.getData() != null && intent.getData().toString().contains("widget"))) {
+                isWidgetConfig = true;
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("isWidgetConfig", isWidgetConfig);
+        call.resolve(ret);
+    }
 }

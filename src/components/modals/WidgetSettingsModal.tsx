@@ -414,8 +414,12 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
 
             {/* LIVE WIDGET CONTAINER */}
             <div
-              className="z-10 transition-all duration-100"
+              className="z-10 transition-all duration-100 flex flex-col justify-between overflow-hidden box-border"
               style={{
+                width: activeSize === '2x2' ? '185px' : '380px',
+                height: activeSize === '2x2' ? '185px' : activeSize === '4x2' ? '155px' : '330px',
+                maxWidth: '100%',
+                padding: activeSize === '2x2' ? '11px 12px' : '12px 14px',
                 backgroundColor: bgStyleCss,
                 border: borderRgba,
                 borderRadius: `${radius}px`,
@@ -429,7 +433,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
             >
               {/* 2X2 VARIANTS */}
               {activeSize === '2x2' && (
-                <div className="w-[180px] min-h-[170px] p-3 flex flex-col justify-between">
+                <div className="w-full h-full flex flex-col justify-between overflow-hidden">
                   {/* Header */}
                   <div className="flex items-center justify-between w-full">
                     <span className="font-extrabold text-[12px] text-white tracking-wide">
@@ -650,32 +654,35 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
 
               {/* 4X2 VARIANTS */}
               {activeSize === '4x2' && (
-                <div className="w-full max-w-[390px] p-3.5 flex flex-col justify-between">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-[13px] text-white tracking-wide">
+                <div className="w-full h-full flex flex-col justify-between overflow-hidden">
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-extrabold text-[13px] text-white tracking-wide shrink-0">
                         TODAY
                       </span>
-                      <span className="text-[11px] text-[#94A3B8] font-medium">
+                      <span className="text-[11px] text-[#94A3B8] font-medium truncate">
                         • {format(new Date(), 'EEE, MMM d')}
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 truncate max-w-[120px] shrink-0">
                       {subjectName}
                     </span>
                   </div>
 
                   {currentDesign.id === 'desk' && (
-                    <div className="grid grid-cols-2 gap-2 mt-2.5">
+                    <div
+                      className="grid grid-cols-2 gap-2 my-auto"
+                      style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+                    >
                       <div
-                        className="p-2.5 flex flex-col justify-center"
+                        className="p-2 flex flex-col justify-center min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[10px] font-bold text-emerald-400 block tracking-wider">
+                        <span className="text-[10px] font-bold text-emerald-400 block tracking-wider truncate">
                           🩺 WARD MCQS
                         </span>
                         <span className="text-[11px] font-bold text-white block truncate mt-1">
@@ -686,14 +693,14 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                         </span>
                       </div>
                       <div
-                        className="p-2.5 flex flex-col justify-center"
+                        className="p-2 flex flex-col justify-center min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[10px] font-bold text-sky-400 block tracking-wider">
+                        <span className="text-[10px] font-bold text-sky-400 block tracking-wider truncate">
                           🌙 TONIGHT&apos;S VIDEOS
                         </span>
                         <span className="text-[11px] font-bold text-white block truncate mt-1">
@@ -707,51 +714,54 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                   )}
 
                   {currentDesign.id === 'checkbox' && (
-                    <div className="grid grid-cols-2 gap-2 mt-2.5">
+                    <div
+                      className="grid grid-cols-2 gap-2 my-auto"
+                      style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+                    >
                       <div
-                        className="p-2.5"
+                        className="p-2 min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[9px] font-bold text-emerald-400 block mb-1">
+                        <span className="text-[9px] font-bold text-emerald-400 block mb-1 truncate">
                           🩺 WARD MCQS
                         </span>
-                        <div className="flex items-center gap-1.5 py-0.5">
+                        <div className="flex items-center gap-1.5 py-0.5 min-w-0">
                           <span className="w-3 h-3 rounded-full border border-emerald-400 shrink-0" />
-                          <span className="text-[11px] font-bold text-white truncate">
+                          <span className="text-[11px] font-bold text-white truncate min-w-0">
                             {mcqCh1}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 py-0.5">
+                        <div className="flex items-center gap-1.5 py-0.5 min-w-0">
                           <span className="w-3 h-3 rounded-full border border-zinc-500 shrink-0" />
-                          <span className="text-[10px] text-zinc-300 truncate">
+                          <span className="text-[10px] text-zinc-300 truncate min-w-0">
                             {mcqCh2}
                           </span>
                         </div>
                       </div>
                       <div
-                        className="p-2.5"
+                        className="p-2 min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[9px] font-bold text-sky-400 block mb-1">
+                        <span className="text-[9px] font-bold text-sky-400 block mb-1 truncate">
                           🌙 TONIGHT QUEUE
                         </span>
-                        <div className="flex items-center gap-1.5 py-0.5">
-                          <span className="text-[9px] text-sky-400">▶</span>
-                          <span className="text-[11px] font-bold text-white truncate">
+                        <div className="flex items-center gap-1.5 py-0.5 min-w-0">
+                          <span className="text-[9px] text-sky-400 shrink-0">▶</span>
+                          <span className="text-[11px] font-bold text-white truncate min-w-0">
                             {vid1Title} ({vid1Duration})
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 py-0.5">
-                          <span className="text-[9px] text-sky-400">▶</span>
-                          <span className="text-[10px] text-zinc-300 truncate">
+                        <div className="flex items-center gap-1.5 py-0.5 min-w-0">
+                          <span className="text-[9px] text-sky-400 shrink-0">▶</span>
+                          <span className="text-[10px] text-zinc-300 truncate min-w-0">
                             {vid2Title} ({vid2Duration})
                           </span>
                         </div>
@@ -760,9 +770,12 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                   )}
 
                   {currentDesign.id === 'timeline' && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div
+                      className="grid grid-cols-2 gap-2 my-auto"
+                      style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+                    >
                       <div
-                        className="p-2 border-t-2 border-emerald-400"
+                        className="p-2 border-t-2 border-emerald-400 min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           borderRight: cardBorderCss,
@@ -773,7 +786,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                       >
                         <div className="flex justify-between text-[9px] font-bold text-emerald-400">
                           <span>☀️ MORNING</span>
-                          <span className="text-zinc-400">09:00 - 17:00</span>
+                          <span className="text-zinc-400">09:00</span>
                         </div>
                         <span className="text-[11px] font-bold text-white block truncate mt-1">
                           {mcqCh1}
@@ -783,7 +796,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                         </span>
                       </div>
                       <div
-                        className="p-2 border-t-2 border-sky-400"
+                        className="p-2 border-t-2 border-sky-400 min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           borderRight: cardBorderCss,
@@ -794,7 +807,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                       >
                         <div className="flex justify-between text-[9px] font-bold text-sky-400">
                           <span>🌙 HOSTEL</span>
-                          <span className="text-zinc-400">20:00 - 23:30</span>
+                          <span className="text-zinc-400">20:00</span>
                         </div>
                         <span className="text-[11px] font-bold text-white block truncate mt-1">
                           {vid1Title} ({vid1Duration})
@@ -807,9 +820,12 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                   )}
 
                   {currentDesign.id === 'progress' && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div
+                      className="grid grid-cols-2 gap-2 my-auto"
+                      style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+                    >
                       <div
-                        className="p-2"
+                        className="p-2 min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
@@ -828,7 +844,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                         </span>
                       </div>
                       <div
-                        className="p-2"
+                        className="p-2 min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
@@ -850,16 +866,19 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                   )}
 
                   {currentDesign.id === 'triptych' && (
-                    <div className="grid grid-cols-3 gap-1.5 mt-2">
+                    <div
+                      className="grid grid-cols-3 gap-1.5 my-auto"
+                      style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)' }}
+                    >
                       <div
-                        className="p-1.5 text-center"
+                        className="p-2 text-center min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[9px] font-bold text-emerald-400 block">
+                        <span className="text-[9px] font-bold text-emerald-400 block truncate">
                           🩺 MCQS
                         </span>
                         <span className="text-[10px] font-bold text-white block truncate mt-0.5">
@@ -867,14 +886,14 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                         </span>
                       </div>
                       <div
-                        className="p-1.5 text-center"
+                        className="p-2 text-center min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[9px] font-bold text-sky-400 block">
+                        <span className="text-[9px] font-bold text-sky-400 block truncate">
                           🌙 VIDEOS
                         </span>
                         <span className="text-[10px] font-bold text-white block truncate mt-0.5">
@@ -882,14 +901,14 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                         </span>
                       </div>
                       <div
-                        className="p-1.5 text-center"
+                        className="p-2 text-center min-w-0 overflow-hidden"
                         style={{
                           backgroundColor: cardBgCss,
                           border: cardBorderCss,
                           borderRadius: cardRadius,
                         }}
                       >
-                        <span className="text-[9px] font-bold text-amber-400 block">
+                        <span className="text-[9px] font-bold text-amber-400 block truncate">
                           ⚡ REVISION
                         </span>
                         <span className="text-[10px] font-bold text-white block truncate mt-0.5">
@@ -903,17 +922,17 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
 
               {/* 4X4 VARIANTS */}
               {activeSize === '4x4' && (
-                <div className="w-full max-w-[390px] min-h-[280px] p-3.5 flex flex-col justify-between">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-[14px] text-white tracking-wide">
+                <div className="w-full h-full flex flex-col justify-between overflow-hidden">
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-extrabold text-[14px] text-white tracking-wide shrink-0">
                         TODAY
                       </span>
-                      <span className="text-[11px] text-[#94A3B8]">
+                      <span className="text-[11px] text-[#94A3B8] truncate">
                         • {format(new Date(), 'EEEE, MMM d')}
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 truncate max-w-[120px] shrink-0">
                       {subjectName}
                     </span>
                   </div>

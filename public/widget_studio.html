@@ -43,11 +43,12 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.5px;
+      flex-shrink: 0;
     }
     .badge-cyan {
       background: rgba(56, 189, 248, 0.15);
@@ -192,12 +193,12 @@
                   linear-gradient(180deg, #13131a 0%, #0a0a0e 100%);
       border: 1px solid #262633;
       border-radius: 28px;
-      padding: 50px 24px;
+      padding: 40px 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 420px;
+      min-height: 400px;
       position: relative;
       overflow: hidden;
       box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
@@ -209,7 +210,7 @@
       padding: 6px 14px;
       font-size: 12px;
       color: #e4e4e7;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
@@ -227,26 +228,45 @@
       50% { opacity: 0.4; transform: scale(0.85); }
       100% { opacity: 1; transform: scale(1); }
     }
-    /* Widget Box Styling dynamically generated via JS */
+    /* Fixed Grid Frame for the Home Screen Widget */
+    #widget-frame-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     #widget-root {
-      transition: all 0.1s ease-out;
+      transition: background-color 0.1s ease-out, border 0.1s ease-out, border-radius 0.1s ease-out, backdrop-filter 0.1s ease-out;
       position: relative;
       z-index: 2;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     .truncate {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0;
+      width: 100%;
     }
     .grid-2 {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
     }
     .grid-3 {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+      gap: 6px;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
     }
     /* Inputs drawer */
     .inputs-grid {
@@ -289,7 +309,7 @@
         <span class="badge badge-cyan" style="font-size: 13px; padding: 6px 12px;">One UI 6.1</span>
         <div>
           <h1 style="font-size: 18px; font-weight: 800; color: #ffffff;">MedMatrix Widget Studio</h1>
-          <p style="font-size: 12px; color: #a1a1aa;">Galaxy S24 Ultra Android Home Screen Widget Customizer</p>
+          <p style="font-size: 12px; color: #a1a1aa;">Galaxy S24 Ultra &bull; Fixed-Boundary Grid Formats</p>
         </div>
       </div>
 
@@ -305,7 +325,7 @@
     <div class="panel">
       <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 12px;">
         <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
-          <span>🎚️</span> Appearance Sliders (Real-Time Adjustment)
+          <span>🎚️</span> Appearance Sliders (Continuous Real-Time Adjustment)
         </div>
         <div style="display: flex; gap: 6px;">
           <button class="btn-preset" onclick="setPreset('clear')">Clear (25%)</button>
@@ -369,11 +389,13 @@
     <div class="stage">
       <div class="stage-tag">
         <span class="pulse-dot"></span>
-        <span id="stage-badge" style="font-weight: 600;">4x2 &bull; Design 1: Dual Chapter Desk (Recommended)</span>
+        <span id="stage-badge" style="font-weight: 600;">Fixed 4x2 Home Screen Bounds: 380px &times; 155px</span>
       </div>
 
-      <!-- Widget Render Mount -->
-      <div id="widget-root"></div>
+      <!-- Widget Render Mount inside Fixed Frame -->
+      <div id="widget-frame-wrapper">
+        <div id="widget-root"></div>
+      </div>
     </div>
 
     <!-- Chapter Names Customizer (Collapsible) -->
@@ -444,73 +466,67 @@
         {
           id: 'hero',
           name: '1. Active Focus Hero',
-          badge: '2x2 &bull; Design 1: Active Focus Hero (Large Title)',
+          badge: '2x2 Square (Fixed 185px &times; 185px) &bull; Design 1: Active Focus Hero',
           desc: 'Primary choice for morning ward rounds. Features a bold headline for your #1 priority MCQ chapter, secondary chapter in subtle gray, and a dark pill highlighting tonight’s next lecture runtime.',
           render: () => `
-            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 12px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">TODAY</span>
-                <span class="badge badge-cyan" style="font-size: 9px; padding: 2px 6px;">${store.subject}</span>
-              </div>
-              <div class="card-item" style="padding: 10px; margin-top: 8px;">
-                <span style="font-size: 9px; font-weight: 700; color: #34d399; letter-spacing: 0.5px; display: block;">🩺 WARD MCQ</span>
-                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.mcq1}</span>
-                <span class="truncate" style="font-size: 10px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
-              </div>
-              <div class="card-item" style="padding: 7px 10px; margin-top: 6px;">
-                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 NEXT TONIGHT</span>
-                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
-              </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">TODAY</span>
+              <span class="badge badge-cyan" style="font-size: 9px; padding: 2px 6px; max-width: 90px;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="card-item" style="padding: 9px; margin-top: 6px; min-width: 0; overflow: hidden;">
+              <span style="font-size: 9px; font-weight: 700; color: #34d399; letter-spacing: 0.5px; display: block;">🩺 WARD MCQ</span>
+              <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+              <span class="truncate" style="font-size: 10px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px;">${store.mcq2}</span>
+            </div>
+            <div class="card-item" style="padding: 6px 9px; margin-top: 6px; min-width: 0; overflow: hidden;">
+              <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 NEXT TONIGHT</span>
+              <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 1px;">${store.vid1}</span>
             </div>
           `
         },
         {
           id: 'dual',
           name: '2. Compact Dual Split',
-          badge: '2x2 &bull; Design 2: Compact Dual Split',
+          badge: '2x2 Square (Fixed 185px &times; 185px) &bull; Design 2: Compact Dual Split',
           desc: 'Two equal-height boxes separating morning Ward MCQs from tonight’s video queue.',
           render: () => `
-            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">TODAY</span>
-                <span class="badge badge-cyan" style="font-size: 9px; padding: 2px 6px;">${store.subject}</span>
-              </div>
-              <div class="card-item" style="padding: 9px; margin-top: 7px;">
-                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS</span>
-                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">• ${store.mcq1}</span>
-                <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">• ${store.mcq2}</span>
-              </div>
-              <div class="card-item" style="padding: 9px; margin-top: 6px;">
-                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT</span>
-                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">• ${store.vid1}</span>
-              </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff;">TODAY</span>
+              <span class="badge badge-cyan" style="font-size: 9px; padding: 2px 6px; max-width: 90px;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="card-item" style="padding: 8px; margin-top: 6px; min-width: 0; overflow: hidden;">
+              <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS</span>
+              <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">• ${store.mcq1}</span>
+              <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 1px;">• ${store.mcq2}</span>
+            </div>
+            <div class="card-item" style="padding: 8px; margin-top: 6px; min-width: 0; overflow: hidden;">
+              <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT</span>
+              <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">• ${store.vid1}</span>
             </div>
           `
         },
         {
           id: 'sequence',
           name: '3. Numbered Sequence Flow',
-          badge: '2x2 &bull; Design 3: Numbered Step Flow',
+          badge: '2x2 Square (Fixed 185px &times; 185px) &bull; Design 3: Numbered Step Flow',
           desc: 'Sequential flow listing step 1, 2, and 3 today with numbered circular badges.',
           render: () => `
-            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">TODAY'S FLOW</span>
-                <span style="font-size: 10px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff;">TODAY'S FLOW</span>
+              <span style="font-size: 10px; font-weight: 700; color: #38bdf8;" class="truncate">${store.subject}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px; flex: 1;">
+              <div class="card-item" style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; min-width: 0;">
+                <span style="width: 16px; height: 16px; border-radius: 50%; background: rgba(52,211,153,0.2); color: #34d399; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff;">${store.mcq1}</span>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
-                <div class="card-item" style="padding: 6px 8px; display: flex; align-items: center; gap: 8px;">
-                  <span style="width: 18px; height: 18px; border-radius: 50%; background: rgba(52,211,153,0.2); color: #34d399; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; shrink-0;">1</span>
-                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff;">${store.mcq1}</span>
-                </div>
-                <div class="card-item" style="padding: 6px 8px; display: flex; align-items: center; gap: 8px;">
-                  <span style="width: 18px; height: 18px; border-radius: 50%; background: rgba(52,211,153,0.2); color: #34d399; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; shrink-0;">2</span>
-                  <span class="truncate" style="font-size: 10px; font-weight: 600; color: #cbd5e1;">${store.mcq2}</span>
-                </div>
-                <div class="card-item" style="padding: 6px 8px; display: flex; align-items: center; gap: 8px;">
-                  <span style="width: 18px; height: 18px; border-radius: 50%; background: rgba(56,189,248,0.2); color: #38bdf8; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; shrink-0;">3</span>
-                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.vid1}</span>
-                </div>
+              <div class="card-item" style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; min-width: 0;">
+                <span style="width: 16px; height: 16px; border-radius: 50%; background: rgba(52,211,153,0.2); color: #34d399; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
+                <span class="truncate" style="font-size: 10px; font-weight: 600; color: #cbd5e1;">${store.mcq2}</span>
+              </div>
+              <div class="card-item" style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; min-width: 0;">
+                <span style="width: 16px; height: 16px; border-radius: 50%; background: rgba(56,189,248,0.2); color: #38bdf8; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.vid1}</span>
               </div>
             </div>
           `
@@ -518,49 +534,45 @@
         {
           id: 'horizon',
           name: '4. Split Shift Horizon',
-          badge: '2x2 &bull; Design 4: Split Shift Horizon (☀️ Ward vs 🌙 Hostel)',
+          badge: '2x2 Square (Fixed 185px &times; 185px) &bull; Design 4: Split Shift Horizon',
           desc: 'Clinical split with vertical accent lines separating Morning Shift (09:00) from Night Study (20:00).',
           render: () => `
-            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">SHIFTS</span>
-                <span style="font-size: 10px; color: #a1a1aa;">${store.dateShort}</span>
-              </div>
-              <div class="card-item" style="padding: 9px; border-left: 3px solid #34d399; margin-top: 8px;">
-                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">☀️ 09:00 WARD ROUNDS</span>
-                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
-              </div>
-              <div class="card-item" style="padding: 9px; border-left: 3px solid #38bdf8; margin-top: 6px;">
-                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 20:00 HOSTEL DESK</span>
-                <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
-              </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff;">SHIFTS</span>
+              <span style="font-size: 10px; color: #a1a1aa;">${store.dateShort}</span>
+            </div>
+            <div class="card-item" style="padding: 8px; border-left: 3px solid #34d399; margin-top: 6px; min-width: 0;">
+              <span style="font-size: 8px; font-weight: 700; color: #34d399; display: block;">☀️ 09:00 WARD ROUNDS</span>
+              <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+            </div>
+            <div class="card-item" style="padding: 8px; border-left: 3px solid #38bdf8; margin-top: 6px; min-width: 0;">
+              <span style="font-size: 8px; font-weight: 700; color: #38bdf8; display: block;">🌙 20:00 HOSTEL DESK</span>
+              <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
             </div>
           `
         },
         {
           id: 'rings',
           name: '5. Dual Health Rings',
-          badge: '2x2 &bull; Design 5: Dual Completion Rings',
+          badge: '2x2 Square (Fixed 185px &times; 185px) &bull; Design 5: Dual Completion Rings',
           desc: 'Circular progress indicators inspired by Galaxy Health showing MCQ completion count and queued video minutes.',
           render: () => `
-            <div style="width: 190px; min-height: 180px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between; text-align: center;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 12px; font-weight: 800; color: #ffffff;">METRICS</span>
-                <span style="font-size: 10px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff;">METRICS</span>
+              <span style="font-size: 10px; font-weight: 700; color: #38bdf8;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="grid-2" style="margin: 6px 0; flex: 1;">
+              <div class="card-item" style="padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; border: 3px solid #34d399; border-top-color: transparent; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #34d399;">2</div>
+                <span style="font-size: 9px; font-weight: 700; color: #d4d4d8; margin-top: 3px;">MCQs</span>
               </div>
-              <div class="grid-2" style="margin: 8px 0;">
-                <div class="card-item" style="padding: 10px; display: flex; flex-direction: column; align-items: center;">
-                  <div style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #34d399; border-top-color: transparent; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #34d399;">2</div>
-                  <span style="font-size: 9px; font-weight: 700; color: #d4d4d8; margin-top: 4px;">MCQs</span>
-                </div>
-                <div class="card-item" style="padding: 10px; display: flex; flex-direction: column; align-items: center;">
-                  <div style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #38bdf8; border-left-color: transparent; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #38bdf8;">55m</div>
-                  <span style="font-size: 9px; font-weight: 700; color: #d4d4d8; margin-top: 4px;">Videos</span>
-                </div>
+              <div class="card-item" style="padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; border: 3px solid #38bdf8; border-left-color: transparent; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #38bdf8;">55m</div>
+                <span style="font-size: 9px; font-weight: 700; color: #d4d4d8; margin-top: 3px;">Videos</span>
               </div>
-              <div class="card-item" style="padding: 6px 8px;">
-                <span class="truncate" style="font-size: 10px; font-weight: 700; color: #ffffff; display: block;">Next: ${store.mcq1}</span>
-              </div>
+            </div>
+            <div class="card-item" style="padding: 5px 8px; min-width: 0;">
+              <span class="truncate" style="font-size: 10px; font-weight: 700; color: #ffffff; display: block; text-align: center;">Next: ${store.mcq1}</span>
             </div>
           `
         }
@@ -569,28 +581,26 @@
         {
           id: 'desk',
           name: '1. Dual Chapter Desk (Recommended)',
-          badge: '4x2 &bull; Design 1: Dual Chapter Desk (Zero Subtext Clutter)',
+          badge: '4x2 Wide (Fixed 380px &times; 155px) &bull; Design 1: Dual Chapter Desk',
           desc: 'The perfected layout you liked best. High contrast, large bold chapter fonts, yesterday’s watched lectures for morning Ward MCQs, and tonight’s video queue with clean duration badges.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-size: 14px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">TODAY</span>
-                  <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">${store.dateShort}</span>
-                </div>
-                <span class="badge badge-cyan" style="font-size: 10px;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; height: 22px;">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <span style="font-size: 13px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; flex-shrink: 0;">TODAY</span>
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600;" class="truncate">${store.dateShort}</span>
               </div>
-              <div class="grid-2" style="margin-top: 10px;">
-                <div class="card-item" style="padding: 12px; display: flex; flex-direction: column; justify-content: center;">
-                  <span style="font-size: 11px; font-weight: 700; color: #34d399; letter-spacing: 0.5px; display: block;">🩺 WARD MCQS</span>
-                  <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 5px;">${store.mcq1}</span>
-                  <span class="truncate" style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
-                </div>
-                <div class="card-item" style="padding: 12px; display: flex; flex-direction: column; justify-content: center;">
-                  <span style="font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; display: block;">🌙 TONIGHT'S VIDEOS</span>
-                  <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 5px;">${store.vid1}</span>
-                  <span class="truncate" style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
-                </div>
+              <span class="badge badge-cyan" style="font-size: 10px; max-width: 120px;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="grid-2" style="margin-top: 8px;">
+              <div class="card-item" style="padding: 10px 11px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 10px; font-weight: 700; color: #34d399; letter-spacing: 0.5px; display: block;">🩺 WARD MCQS</span>
+                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+              </div>
+              <div class="card-item" style="padding: 10px 11px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; display: block;">🌙 TONIGHT'S VIDEOS</span>
+                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
               </div>
             </div>
           `
@@ -598,39 +608,37 @@
         {
           id: 'checkbox',
           name: '2. Interactive Checkbox Desk',
-          badge: '4x2 &bull; Design 2: Interactive Checkbox Desk',
+          badge: '4x2 Wide (Fixed 380px &times; 155px) &bull; Design 2: Interactive Checkbox Desk',
           desc: 'Features crisp check rings on the left for Ward MCQs to mark completed chapters, and play icons on the right for tonight’s lectures.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-size: 14px; font-weight: 800; color: #ffffff;">TODAY</span>
-                  <span style="font-size: 11px; color: #94a3b8;">${store.dateShort}</span>
-                </div>
-                <span class="badge badge-cyan" style="font-size: 10px;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; height: 22px;">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <span style="font-size: 13px; font-weight: 800; color: #ffffff; flex-shrink: 0;">TODAY</span>
+                <span style="font-size: 11px; color: #94a3b8;" class="truncate">${store.dateShort}</span>
               </div>
-              <div class="grid-2" style="margin-top: 10px;">
-                <div class="card-item" style="padding: 12px;">
-                  <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block; margin-bottom: 4px;">🩺 WARD MCQS</span>
-                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
-                    <span style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid #34d399; shrink-0;"></span>
-                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff;">${store.mcq1}</span>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
-                    <span style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid #71717a; shrink-0;"></span>
-                    <span class="truncate" style="font-size: 11px; color: #cbd5e1;">${store.mcq2}</span>
-                  </div>
+              <span class="badge badge-cyan" style="font-size: 10px; max-width: 120px;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="grid-2" style="margin-top: 8px;">
+              <div class="card-item" style="padding: 10px 11px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block; margin-bottom: 2px;">🩺 WARD MCQS</span>
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px;">
+                  <span style="width: 13px; height: 13px; border-radius: 50%; border: 2px solid #34d399; flex-shrink: 0;"></span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff;">${store.mcq1}</span>
                 </div>
-                <div class="card-item" style="padding: 12px;">
-                  <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block; margin-bottom: 4px;">🌙 TONIGHT QUEUE</span>
-                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
-                    <span style="color: #38bdf8; font-size: 10px;">▶</span>
-                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff;">${store.vid1}</span>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
-                    <span style="color: #38bdf8; font-size: 10px;">▶</span>
-                    <span class="truncate" style="font-size: 11px; color: #cbd5e1;">${store.vid2}</span>
-                  </div>
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px;">
+                  <span style="width: 13px; height: 13px; border-radius: 50%; border: 2px solid #71717a; flex-shrink: 0;"></span>
+                  <span class="truncate" style="font-size: 11px; color: #cbd5e1;">${store.mcq2}</span>
+                </div>
+              </div>
+              <div class="card-item" style="padding: 10px 11px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block; margin-bottom: 2px;">🌙 TONIGHT QUEUE</span>
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px;">
+                  <span style="color: #38bdf8; font-size: 10px; flex-shrink: 0;">▶</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff;">${store.vid1}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px;">
+                  <span style="color: #38bdf8; font-size: 10px; flex-shrink: 0;">▶</span>
+                  <span class="truncate" style="font-size: 11px; color: #cbd5e1;">${store.vid2}</span>
                 </div>
               </div>
             </div>
@@ -639,31 +647,29 @@
         {
           id: 'timeline',
           name: '3. Shift Timeline Horizon',
-          badge: '4x2 &bull; Design 3: Shift Timeline Horizon',
+          badge: '4x2 Wide (Fixed 380px &times; 155px) &bull; Design 3: Shift Timeline Horizon',
           desc: 'Horizontal timeline separating your clinical morning ward shift (09:00) from your evening hostel desk deep study session (20:00).',
           render: () => `
-            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">CLINICAL TIMELINE</span>
-                <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; height: 22px;">
+              <span style="font-size: 13px; font-weight: 800; color: #ffffff; flex-shrink: 0;">CLINICAL TIMELINE</span>
+              <span class="badge badge-cyan" style="font-size: 10px; max-width: 120px;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="grid-2" style="margin-top: 8px;">
+              <div class="card-item" style="padding: 10px 11px; border-top: 3px solid #34d399; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; min-width: 0;">
+                  <span style="color: #34d399; flex-shrink: 0;">☀️ MORNING</span>
+                  <span style="color: #71717a; flex-shrink: 0;">09:00 - 17:00</span>
+                </div>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 1px;">${store.mcq2}</span>
               </div>
-              <div class="grid-2" style="margin-top: 10px;">
-                <div class="card-item" style="padding: 11px; border-top: 3px solid #34d399;">
-                  <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
-                    <span style="color: #34d399;">☀️ MORNING SHIFT</span>
-                    <span style="color: #71717a;">09:00 - 17:00</span>
-                  </div>
-                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 4px;">${store.mcq1}</span>
-                  <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+              <div class="card-item" style="padding: 10px 11px; border-top: 3px solid #38bdf8; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; min-width: 0;">
+                  <span style="color: #38bdf8; flex-shrink: 0;">🌙 HOSTEL</span>
+                  <span style="color: #71717a; flex-shrink: 0;">20:00 - 23:30</span>
                 </div>
-                <div class="card-item" style="padding: 11px; border-top: 3px solid #38bdf8;">
-                  <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
-                    <span style="color: #38bdf8;">🌙 HOSTEL SESSION</span>
-                    <span style="color: #71717a;">20:00 - 23:30</span>
-                  </div>
-                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 4px;">${store.vid1}</span>
-                  <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
-                </div>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 1px;">${store.vid2}</span>
               </div>
             </div>
           `
@@ -671,35 +677,33 @@
         {
           id: 'progress',
           name: '4. Target Progress Bars',
-          badge: '4x2 &bull; Design 4: Goal-Oriented Progress Bars',
+          badge: '4x2 Wide (Fixed 380px &times; 155px) &bull; Design 4: Goal-Oriented Progress Bars',
           desc: 'Progress-first design featuring horizontal completion fill bars for instant visual reassurance.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">TODAY &bull; ${store.subject}</span>
-                <span style="font-size: 11px; color: #a1a1aa;">${store.dateShort}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; height: 22px;">
+              <span style="font-size: 13px; font-weight: 800; color: #ffffff; flex-shrink: 0;">TODAY &bull; ${store.subject}</span>
+              <span style="font-size: 11px; color: #a1a1aa;" class="truncate">${store.dateShort}</span>
+            </div>
+            <div class="grid-2" style="margin-top: 8px;">
+              <div class="card-item" style="padding: 10px 11px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 3px; min-width: 0;">
+                  <span style="font-weight: 700; color: #34d399; flex-shrink: 0;">WARD MCQS</span>
+                  <span style="font-weight: 700; color: #ffffff; flex-shrink: 0;">2/2 Ready</span>
+                </div>
+                <div style="width: 100%; height: 5px; background: #272733; border-radius: 5px; overflow: hidden; margin-bottom: 6px;">
+                  <div style="width: 100%; height: 100%; background: #34d399;"></div>
+                </div>
+                <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block;">${store.mcq1}</span>
               </div>
-              <div class="grid-2" style="margin-top: 10px;">
-                <div class="card-item" style="padding: 11px;">
-                  <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px;">
-                    <span style="font-weight: 700; color: #34d399;">WARD MCQS</span>
-                    <span style="font-weight: 700; color: #ffffff;">2/2 Ready</span>
-                  </div>
-                  <div style="width: 100%; height: 5px; background: #272733; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
-                    <div style="width: 100%; height: 100%; background: #34d399;"></div>
-                  </div>
-                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block;">${store.mcq1}</span>
+              <div class="card-item" style="padding: 10px 11px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 3px; min-width: 0;">
+                  <span style="font-weight: 700; color: #38bdf8; flex-shrink: 0;">TONIGHT QUEUE</span>
+                  <span style="font-weight: 700; color: #ffffff; flex-shrink: 0;">55 Mins</span>
                 </div>
-                <div class="card-item" style="padding: 11px;">
-                  <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px;">
-                    <span style="font-weight: 700; color: #38bdf8;">TONIGHT QUEUE</span>
-                    <span style="font-weight: 700; color: #ffffff;">55 Mins</span>
-                  </div>
-                  <div style="width: 100%; height: 5px; background: #272733; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
-                    <div style="width: 70%; height: 100%; background: #38bdf8;"></div>
-                  </div>
-                  <span class="truncate" style="font-size: 11px; font-weight: 700; color: #ffffff; display: block;">${store.vid1}</span>
+                <div style="width: 100%; height: 5px; background: #272733; border-radius: 5px; overflow: hidden; margin-bottom: 6px;">
+                  <div style="width: 70%; height: 100%; background: #38bdf8;"></div>
                 </div>
+                <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block;">${store.vid1}</span>
               </div>
             </div>
           `
@@ -707,30 +711,28 @@
         {
           id: 'triptych',
           name: '5. Triple Triptych Desk',
-          badge: '4x2 &bull; Design 5: Triple Triptych Desk (MCQs | Videos | Revision)',
+          badge: '4x2 Wide (Fixed 380px &times; 155px) &bull; Design 5: Triple Triptych Desk',
           desc: 'High-density 3-column banner providing glanceable space to Ward MCQs, Tonight’s Lectures, and spaced revision.',
           render: () => `
-            <div style="width: 100%; max-width: 440px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">THREE-STEP MATRIX</span>
-                <span class="badge badge-cyan" style="font-size: 9px;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; height: 22px;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff; flex-shrink: 0;">THREE-STEP MATRIX</span>
+              <span class="badge badge-cyan" style="font-size: 9px; max-width: 100px;" class="truncate">${store.subject}</span>
+            </div>
+            <div class="grid-3" style="margin-top: 8px;">
+              <div class="card-item" style="padding: 8px; text-align: center; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">🩺 MCQS</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">Sterilization</span>
+                <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 1px;">Culture Media</span>
               </div>
-              <div class="grid-3">
-                <div class="card-item" style="padding: 10px; text-align: center;">
-                  <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block;">🩺 MCQS</span>
-                  <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">Sterilization</span>
-                  <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">Culture Media</span>
-                </div>
-                <div class="card-item" style="padding: 10px; text-align: center;">
-                  <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT</span>
-                  <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">Genetics 34m</span>
-                  <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">Resistance 21m</span>
-                </div>
-                <div class="card-item" style="padding: 10px; text-align: center;">
-                  <span style="font-size: 10px; font-weight: 700; color: #fbbf24; display: block;">⚡ REVISION</span>
-                  <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 4px;">Gen Path</span>
-                  <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 2px;">Autonomic</span>
-                </div>
+              <div class="card-item" style="padding: 8px; text-align: center; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">Genetics 34m</span>
+                <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 1px;">Resistance 21m</span>
+              </div>
+              <div class="card-item" style="padding: 8px; text-align: center; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <span style="font-size: 9px; font-weight: 700; color: #fbbf24; display: block;">⚡ REVISION</span>
+                <span class="truncate" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">Gen Path</span>
+                <span class="truncate" style="font-size: 10px; color: #cbd5e1; display: block; margin-top: 1px;">Autonomic</span>
               </div>
             </div>
           `
@@ -740,31 +742,31 @@
         {
           id: 'three-tier',
           name: '1. Three-Tier Master Desk',
-          badge: '4x4 &bull; Design 1: Three-Tier Master Deck',
+          badge: '4x4 Full Page (Fixed 380px &times; 330px) &bull; Design 1: Three-Tier Master Deck',
           desc: 'Full-page overview dividing your medical workflow into Ward MCQs, Tonight’s Lecture Queue, and 15-Minute Spaced Repetition.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-size: 15px; font-weight: 800; color: #ffffff;">TODAY</span>
-                  <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">${store.dateFull}</span>
-                </div>
-                <span class="badge badge-cyan" style="font-size: 10px;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; height: 24px;">
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                <span style="font-size: 14px; font-weight: 800; color: #ffffff; flex-shrink: 0;">TODAY</span>
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600;" class="truncate">${store.dateFull}</span>
               </div>
-              <div class="card-item" style="padding: 11px; margin-top: 8px;">
+              <span class="badge badge-cyan" style="font-size: 10px; max-width: 120px;" class="truncate">${store.subject}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 8px; flex: 1;">
+              <div class="card-item" style="padding: 9px 11px; min-width: 0; overflow: hidden; flex: 1; display: flex; flex-direction: column; justify-content: center;">
                 <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS (FROM LAST NIGHT)</span>
-                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.mcq1}</span>
-                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.mcq2}</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 1px;">${store.mcq2}</span>
               </div>
-              <div class="card-item" style="padding: 11px; margin-top: 6px;">
+              <div class="card-item" style="padding: 9px 11px; min-width: 0; overflow: hidden; flex: 1; display: flex; flex-direction: column; justify-content: center;">
                 <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT'S VIDEO QUEUE</span>
-                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; display: block; margin-top: 3px;">${store.vid1}</span>
-                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.vid2}</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 1px;">${store.vid2}</span>
               </div>
-              <div class="card-item" style="padding: 11px; margin-top: 6px;">
+              <div class="card-item" style="padding: 9px 11px; min-width: 0; overflow: hidden; flex: 1; display: flex; flex-direction: column; justify-content: center;">
                 <span style="font-size: 10px; font-weight: 700; color: #fbbf24; display: block;">⚡ 15-MIN SPACED REVISION</span>
-                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 3px;">${store.rev1}</span>
-                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 2px;">${store.rev2}</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.rev1}</span>
+                <span class="truncate" style="font-size: 11px; color: #cbd5e1; display: block; margin-top: 1px;">${store.rev2}</span>
               </div>
             </div>
           `
@@ -772,41 +774,39 @@
         {
           id: 'tabbed',
           name: '2. Tabbed Focus Deck',
-          badge: '4x4 &bull; Design 2: Tabbed Focus Deck',
+          badge: '4x4 Full Page (Fixed 380px &times; 330px) &bull; Design 2: Tabbed Focus Deck',
           desc: 'Interactive category filter tabs at the top for jumping between All Tasks, Ward MCQs, Tonight Videos, and Spaced Repetition.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 14px; font-weight: 800; color: #ffffff;">FOCUS DECK</span>
-                <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 14px; font-weight: 800; color: #ffffff;">FOCUS DECK</span>
+              <span style="font-size: 11px; font-weight: 700; color: #38bdf8;" class="truncate">${store.subject}</span>
+            </div>
+            <div style="display: flex; gap: 6px; margin: 6px 0;">
+              <span style="padding: 3px 8px; border-radius: 6px; background: #06b6d4; color: #000; font-size: 10px; font-weight: 700;">ALL (5)</span>
+              <span style="padding: 3px 8px; border-radius: 6px; background: #1f1f2a; color: #d4d4d8; font-size: 10px;">MCQS (2)</span>
+              <span style="padding: 3px 8px; border-radius: 6px; background: #1f1f2a; color: #d4d4d8; font-size: 10px;">VIDEOS (2)</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+              <div class="card-item" style="padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; min-width: 0;">
+                <div style="min-width: 0; overflow: hidden; flex: 1;">
+                  <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">WARD MCQ</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block;">${store.mcq1}</span>
+                </div>
+                <span class="badge badge-emerald" style="font-size: 9px; margin-left: 8px;">READY</span>
               </div>
-              <div style="display: flex; gap: 6px; margin: 8px 0;">
-                <span style="padding: 3px 8px; border-radius: 6px; background: #06b6d4; color: #000; font-size: 10px; font-weight: 700;">ALL (5)</span>
-                <span style="padding: 3px 8px; border-radius: 6px; background: #1f1f2a; color: #d4d4d8; font-size: 10px;">MCQS (2)</span>
-                <span style="padding: 3px 8px; border-radius: 6px; background: #1f1f2a; color: #d4d4d8; font-size: 10px;">VIDEOS (2)</span>
+              <div class="card-item" style="padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; min-width: 0;">
+                <div style="min-width: 0; overflow: hidden; flex: 1;">
+                  <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">WARD MCQ</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block;">${store.mcq2}</span>
+                </div>
+                <span class="badge badge-emerald" style="font-size: 9px; margin-left: 8px;">READY</span>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <div class="card-item" style="padding: 9px; display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">WARD MCQ</span>
-                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block;">${store.mcq1}</span>
-                  </div>
-                  <span class="badge badge-emerald" style="font-size: 9px;">READY</span>
+              <div class="card-item" style="padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; min-width: 0;">
+                <div style="min-width: 0; overflow: hidden; flex: 1;">
+                  <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">TONIGHT VIDEO</span>
+                  <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block;">${store.vid1}</span>
                 </div>
-                <div class="card-item" style="padding: 9px; display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">WARD MCQ</span>
-                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block;">${store.mcq2}</span>
-                  </div>
-                  <span class="badge badge-emerald" style="font-size: 9px;">READY</span>
-                </div>
-                <div class="card-item" style="padding: 9px; display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">TONIGHT VIDEO</span>
-                    <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block;">${store.vid1}</span>
-                  </div>
-                  <span class="badge badge-cyan" style="font-size: 9px;">34m</span>
-                </div>
+                <span class="badge badge-cyan" style="font-size: 9px; margin-left: 8px;">34m</span>
               </div>
             </div>
           `
@@ -814,27 +814,25 @@
         {
           id: 'timeline-kanban',
           name: '3. Full Shift Kanban Timeline',
-          badge: '4x4 &bull; Design 3: Full Shift Timeline Sequence',
+          badge: '4x4 Full Page (Fixed 380px &times; 330px) &bull; Design 3: Full Shift Timeline Sequence',
           desc: 'Chronological clinical timeline mapping 09:00 Ward Duty to 23:30 Midnight Locking.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 14px; font-weight: 800; color: #ffffff;">SCHEDULE</span>
-                <span style="font-size: 11px; color: #a1a1aa;">${store.dateShort}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <span style="font-size: 14px; font-weight: 800; color: #ffffff;">SCHEDULE</span>
+              <span style="font-size: 11px; color: #a1a1aa;">${store.dateShort}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 8px; flex: 1;">
+              <div class="card-item" style="padding: 9px 11px; border-left: 4px solid #34d399; min-width: 0; overflow: hidden; flex: 1;">
+                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">09:00 - 17:00 &bull; WARD SPRINT</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-                <div class="card-item" style="padding: 10px; border-left: 4px solid #34d399;">
-                  <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">09:00 - 17:00 &bull; WARD SPRINT</span>
-                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
-                </div>
-                <div class="card-item" style="padding: 10px; border-left: 4px solid #818cf8;">
-                  <span style="font-size: 9px; font-weight: 700; color: #818cf8; display: block;">19:30 - 20:30 &bull; MARGIN NOTES</span>
-                  <span class="truncate" style="font-size: 11px; color: #d4d4d8; display: block; margin-top: 2px;">First Aid Clinical Margin Notes</span>
-                </div>
-                <div class="card-item" style="padding: 10px; border-left: 4px solid #38bdf8;">
-                  <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">20:30 - 23:30 &bull; LECTURES</span>
-                  <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
-                </div>
+              <div class="card-item" style="padding: 9px 11px; border-left: 4px solid #818cf8; min-width: 0; overflow: hidden; flex: 1;">
+                <span style="font-size: 9px; font-weight: 700; color: #818cf8; display: block;">19:30 - 20:30 &bull; MARGIN NOTES</span>
+                <span class="truncate" style="font-size: 11px; color: #d4d4d8; display: block; margin-top: 2px;">First Aid Clinical Margin Notes</span>
+              </div>
+              <div class="card-item" style="padding: 9px 11px; border-left: 4px solid #38bdf8; min-width: 0; overflow: hidden; flex: 1;">
+                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">20:30 - 23:30 &bull; LECTURES</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
               </div>
             </div>
           `
@@ -842,38 +840,38 @@
         {
           id: 'command',
           name: '4. High-Yield Command Deck',
-          badge: '4x4 &bull; Design 4: High-Yield Command Deck',
+          badge: '4x4 Full Page (Fixed 380px &times; 330px) &bull; Design 4: High-Yield Command Deck',
           desc: 'Includes 1.5x/2.0x playback speed calculations and Grand Test countdown indicator.',
           render: () => `
-            <div style="width: 100%; max-width: 420px; min-height: 310px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                  <span style="font-size: 14px; font-weight: 800; color: #ffffff;">COMMAND DECK</span>
-                  <span style="font-size: 11px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
-                </div>
-                <span class="badge badge-amber" style="font-size: 10px;">GT in 4 Days</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0;">
+              <div>
+                <span style="font-size: 13px; font-weight: 800; color: #ffffff;">COMMAND DECK</span>
+                <span style="font-size: 10px; font-weight: 700; color: #38bdf8;">${store.subject}</span>
               </div>
-              <div class="grid-3" style="margin: 8px 0;">
-                <div class="card-item" style="padding: 6px; text-align: center;">
-                  <span style="font-size: 9px; color: #a1a1aa; display: block;">1.0x</span>
-                  <span style="font-size: 11px; font-weight: 700; color: #ffffff;">55 mins</span>
-                </div>
-                <div class="card-item" style="padding: 6px; text-align: center; border-color: #06b6d4;">
-                  <span style="font-size: 9px; color: #38bdf8; display: block;">1.5x</span>
-                  <span style="font-size: 11px; font-weight: 800; color: #38bdf8;">37 mins</span>
-                </div>
-                <div class="card-item" style="padding: 6px; text-align: center;">
-                  <span style="font-size: 9px; color: #a1a1aa; display: block;">2.0x</span>
-                  <span style="font-size: 11px; font-weight: 700; color: #ffffff;">28 mins</span>
-                </div>
+              <span class="badge badge-amber" style="font-size: 10px;">GT in 4 Days</span>
+            </div>
+            <div class="grid-3" style="margin: 6px 0; max-height: 44px;">
+              <div class="card-item" style="padding: 5px; text-align: center; min-width: 0;">
+                <span style="font-size: 8px; color: #a1a1aa; display: block;">1.0x</span>
+                <span style="font-size: 10px; font-weight: 700; color: #ffffff;">55m</span>
               </div>
-              <div class="card-item" style="padding: 10px;">
-                <span style="font-size: 10px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS</span>
-                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+              <div class="card-item" style="padding: 5px; text-align: center; border-color: #06b6d4; min-width: 0;">
+                <span style="font-size: 8px; color: #38bdf8; display: block;">1.5x</span>
+                <span style="font-size: 10px; font-weight: 800; color: #38bdf8;">37m</span>
               </div>
-              <div class="card-item" style="padding: 10px; margin-top: 6px;">
-                <span style="font-size: 10px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT QUEUE</span>
-                <span class="truncate" style="font-size: 12px; font-weight: 700; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
+              <div class="card-item" style="padding: 5px; text-align: center; min-width: 0;">
+                <span style="font-size: 8px; color: #a1a1aa; display: block;">2.0x</span>
+                <span style="font-size: 10px; font-weight: 700; color: #ffffff;">28m</span>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+              <div class="card-item" style="padding: 8px 10px; min-width: 0; overflow: hidden; flex: 1;">
+                <span style="font-size: 9px; font-weight: 700; color: #34d399; display: block;">🩺 WARD MCQS</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.mcq1}</span>
+              </div>
+              <div class="card-item" style="padding: 8px 10px; min-width: 0; overflow: hidden; flex: 1;">
+                <span style="font-size: 9px; font-weight: 700; color: #38bdf8; display: block;">🌙 TONIGHT QUEUE</span>
+                <span class="truncate" style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">${store.vid1}</span>
               </div>
             </div>
           `
@@ -966,6 +964,25 @@
     function applyStyles() {
       const root = document.getElementById('widget-root');
       if (!root) return;
+
+      // Lock STRICT Samsung One UI grid cell dimensions across ALL variants
+      if (activeSize === '2x2') {
+        root.style.width = '185px';
+        root.style.height = '185px';
+      } else if (activeSize === '4x2') {
+        root.style.width = '380px';
+        root.style.height = '155px';
+      } else { // 4x4
+        root.style.width = '380px';
+        root.style.height = '330px';
+      }
+
+      root.style.padding = '12px 14px';
+      root.style.display = 'flex';
+      root.style.flexDirection = 'column';
+      root.style.justifyContent = 'space-between';
+      root.style.overflow = 'hidden';
+      root.style.boxSizing = 'border-box';
 
       const alpha = opacity / 100;
       const bgRgba = `rgba(18, 18, 23, ${alpha})`;

@@ -13,7 +13,7 @@ import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsMod
 import { TodayTodoWidget } from './components/widget/TodayTodoWidget'
 import { WidgetSettingsModal } from './components/modals/WidgetSettingsModal'
 import { initSyncEngine } from './lib/syncEngine'
-import { syncActiveStudyDataToWidget } from './lib/widgetBridge'
+import { syncActiveStudyDataToWidget, checkIsWidgetConfigLaunch } from './lib/widgetBridge'
 import { Toaster } from 'sonner'
 
 export function App() {
@@ -32,7 +32,34 @@ export function App() {
   } = useMedMatrixStore()
 
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false)
-  const [widgetSettingsOpen, setWidgetSettingsOpen] = useState(false)
+  const [widgetSettingsOpen, setWidgetSettingsOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const search = window.location.search
+    const hash = window.location.hash
+    return (
+      search.includes('settings=widget') ||
+      search.includes('view=widgets') ||
+      hash.includes('widget-settings')
+    )
+  })
+
+  // Detect Android widget configuration intent (from long-press ⚙️ on Home Screen)
+  useEffect(() => {
+    checkIsWidgetConfigLaunch().then((isConfig) => {
+      if (isConfig) {
+        setWidgetSettingsOpen(true)
+      }
+    })
+
+    const handleOpenWidgetSettings = () => {
+      setWidgetSettingsOpen(true)
+    }
+
+    window.addEventListener('medmatrix:openWidgetSettings', handleOpenWidgetSettings)
+    return () => {
+      window.removeEventListener('medmatrix:openWidgetSettings', handleOpenWidgetSettings)
+    }
+  }, [])
 
   // Automatically keep Android home screen widget updated with real study queue
   useEffect(() => {
