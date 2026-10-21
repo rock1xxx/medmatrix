@@ -33,6 +33,8 @@ interface WidgetBridgePluginInterface {
   updateWidgetData(options: WidgetPayload): Promise<{ success: boolean; widgetsUpdated: number }>
   getWidgetSettings(): Promise<WidgetPayload>
   checkLaunchIntent(): Promise<{ isWidgetConfig: boolean }>
+  getAppVersion(): Promise<{ versionName: string; versionCode: number }>
+  downloadAndInstallApk(options?: { apkUrl?: string }): Promise<{ success: boolean; downloadId?: number; fallback?: boolean }>
 }
 
 // Register Capacitor plugin (falls back gracefully in browser / web environments)
@@ -79,14 +81,112 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
       }
       return { isWidgetConfig: false }
     },
+    getAppVersion: async () => {
+      return { versionName: '1.0', versionCode: 1 }
+    },
+    downloadAndInstallApk: async (options?: { apkUrl?: string }) => {
+      const url = options?.apkUrl || 'https://github.com/rock1xxx/medmatrix/releases/download/android-latest/MedMatrix.apk'
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank')
+      }
+      return { success: true, fallback: true }
+    },
   },
 })
+
+export interface AppUpdateInfo {
+  currentVersion: string
+  currentVersionCode?: number
+  latestVersion: string
+  publishedAt: string
+  releaseNotes: string
+  apkUrl: string
+  apkSizeMb: number
+  isUpdateAvailable: boolean
+}
 
 export async function checkIsWidgetConfigLaunch(): Promise<boolean> {
   try {
     const res = await WidgetBridge.checkLaunchIntent()
     return !!res?.isWidgetConfig
   } catch {
+    return false
+  }
+}
+
+export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
+  try {
+    let currentVersion = '1.0'
+    let currentVersionCode = 1
+    try {
+      const ver = await WidgetBridge.getAppVersion()
+      if (ver?.versionName) currentVersion = ver.versionName
+      if (ver?.versionCode) currentVersionCode = ver.versionCode
+    } catch {
+      // web fallback
+    }
+
+    const res = await fetch(
+      'https://api.github.com/repos/rock1xxx/medmatrix/releases/tags/android-latest',
+      {
+        headers: { Accept: 'application/vnd.github.v3+json' },
+      }
+    )
+
+    let data: any
+    if (res.ok) {
+      data = await res.json()
+    } else {
+      const fallbackRes = await fetch(
+        'https://api.github.com/repos/rock1xxx/medmatrix/releases/latest'
+      )
+      if (!fallbackRes.ok) return null
+      data = await fallbackRes.json()
+    }
+
+    const apkAsset = data.assets?.find((a: any) =>
+      a.name.toLowerCase().endsWith('.apk')
+    )
+    const apkUrl =
+      apkAsset?.browser_download_url ||
+      'https://github.com/rock1xxx/medmatrix/releases/download/android-latest/MedMatrix.apk'
+    const apkSizeMb = apkAsset?.size
+      ? Math.round((apkAsset.size / (1024 * 1024)) * 10) / 10
+      : 15.5
+
+    const publishedAt = data.published_at || new Date().toISOString()
+    const latestVersion = data.name || data.tag_name || 'Latest'
+    const releaseNotes = data.body || 'Performance improvements and widget enhancements.'
+
+    const lastKnownRelease = localStorage.getItem('medmatrix_installed_release_date')
+    const isNewer = !lastKnownRelease || new Date(publishedAt).getTime() > new Date(lastKnownRelease).getTime()
+
+    return {
+      currentVersion,
+      currentVersionCode,
+      latestVersion,
+      publishedAt,
+      releaseNotes,
+      apkUrl,
+      apkSizeMb,
+      isUpdateAvailable: isNewer,
+    }
+  } catch (err) {
+    console.warn('[WidgetBridge] Failed to fetch update info:', err)
+    return null
+  }
+}
+
+export async function triggerInAppApkUpdate(apkUrl?: string): Promise<boolean> {
+  try {
+    const url = apkUrl || 'https://github.com/rock1xxx/medmatrix/releases/download/android-latest/MedMatrix.apk'
+    const res = await WidgetBridge.downloadAndInstallApk({ apkUrl: url })
+    return !!res.success
+  } catch (err) {
+    console.warn('[WidgetBridge] Failed to trigger update:', err)
+    if (typeof window !== 'undefined') {
+      window.open(apkUrl || 'https://github.com/rock1xxx/medmatrix/releases/download/android-latest/MedMatrix.apk', '_blank')
+    }
     return false
   }
 }

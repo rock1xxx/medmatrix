@@ -7,8 +7,8 @@ android {
         applicationId "com.medmatrix.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode (int)(System.currentTimeMillis() / 1000)
+        versionName "1.0." + (int)(System.currentTimeMillis() / 100000)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +16,20 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        appSign {
+            storeFile file('medmatrix.keystore')
+            storePassword 'medmatrix123'
+            keyAlias 'medmatrix'
+            keyPassword 'medmatrix123'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.appSign
+        }
         release {
+            signingConfig signingConfigs.appSign
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

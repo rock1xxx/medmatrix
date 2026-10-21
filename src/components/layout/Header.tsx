@@ -5,6 +5,7 @@ import { subscribeSyncStatus, SyncStatus } from '../../lib/syncEngine'
 import { SyncModal } from '../modals/SyncModal'
 import { InstallPwaModal } from '../modals/InstallPwaModal'
 import { IntervalSettingsModal } from '../modals/IntervalSettingsModal'
+import { UpdateModal } from '../modals/UpdateModal'
 import {
   Download,
   Upload,
@@ -17,6 +18,7 @@ import {
   Sliders,
   AppWindow,
   Layers,
+  RefreshCw,
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -38,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
   const [syncModalOpen, setSyncModalOpen] = useState(false)
   const [installModalOpen, setInstallModalOpen] = useState(false)
   const [intervalModalOpen, setIntervalModalOpen] = useState(false)
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -156,6 +159,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
                   <button
                     type="button"
                     onClick={() => {
+                      setUpdateModalOpen(true)
+                      setMenuOpen(false)
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-emerald-300 hover:bg-zinc-800 flex items-center justify-between font-medium"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Check for Updates</span>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                      GitHub
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setIntervalModalOpen(true)
                       setMenuOpen(false)
                     }}
@@ -251,6 +270,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
 
     {/* PWA Install Modal */}
     <InstallPwaModal isOpen={installModalOpen} onClose={() => setInstallModalOpen(false)} />
+
+    {/* In-App GitHub Update Modal */}
+    <UpdateModal isOpen={updateModalOpen} onClose={() => setUpdateModalOpen(false)} />
   </>
   )
 }

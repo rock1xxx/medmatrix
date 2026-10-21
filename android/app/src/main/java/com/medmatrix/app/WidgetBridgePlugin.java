@@ -1,10 +1,18 @@
 package com.medmatrix.app;
 
+import android.app.DownloadManager;
 import android.appwidget.AppWidgetManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import java.io.File;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -132,5 +140,101 @@ public class WidgetBridgePlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("isWidgetConfig", isWidgetConfig);
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void getAppVersion(PluginCall call) {
+        Context context = getContext();
+        try {
+            PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            long longVersionCode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                ? pInfo.getLongVersionCode()
+                : pInfo.versionCode;
+            JSObject ret = new JSObject();
+            ret.put("versionName", pInfo.versionName != null ? pInfo.versionName : "1.0");
+            ret.put("versionCode", longVersionCode);
+            call.resolve(ret);
+        } catch (Exception e) {
+            JSObject ret = new JSObject();
+            ret.put("versionName", "1.0");
+            ret.put("versionCode", 1);
+            call.resolve(ret);
+        }
+    }
+
+    @PluginMethod
+    public void downloadAndInstallApk(PluginCall call) {
+        String apkUrl = call.getString("apkUrl", "https://github.com/rock1xxx/medmatrix/releases/download/android-latest/MedMatrix.apk");
+        Context context = getContext();
+        try {
+            DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+            Uri uri = Uri.parse(apkUrl);
+            DownloadManager.Request request = new DownloadManager.Request(uri);
+            request.setTitle("MedMatrix Update");
+            request.setDescription("Downloading latest version...");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "MedMatrix.apk");
+            request.setMimeType("application/vnd.android.package-archive");
+
+            // Clean up old file if present
+            File dest = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "MedMatrix.apk");
+            if (dest.exists()) {
+                dest.delete();
+            }
+
+            long downloadId = downloadManager.enqueue(request);
+
+            BroadcastReceiver onComplete = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context c, Intent intent) {
+                    long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                    if (id == downloadId) {
+                        try {
+                            File downloadedApk = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "MedMatrix.apk");
+                            if (downloadedApk.exists()) {
+                                Uri apkUri = androidx.core.content.FileProvider.getUriForFile(
+                                    context,
+                                    context.getPackageName() + ".fileprovider",
+                                    downloadedApk
+                                );
+                                Intent installIntent = new Intent(Intent.ACTION_VIEW);
+                                installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                                installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                context.startActivity(installIntent);
+                            }
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        } finally {
+                            try {
+                                context.unregisterReceiver(this);
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            };
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED);
+            } else {
+                context.registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("success", true);
+            ret.put("downloadId", downloadId);
+            call.resolve(ret);
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(fallback);
+                JSObject ret = new JSObject();
+                ret.put("success", true);
+                ret.put("fallback", true);
+                call.resolve(ret);
+            } catch (Exception ex) {
+                call.reject("Could not download APK", ex);
+            }
+        }
     }
 }

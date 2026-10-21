@@ -13,8 +13,12 @@ import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsMod
 import { TodayTodoWidget } from './components/widget/TodayTodoWidget'
 import { WidgetSettingsModal } from './components/modals/WidgetSettingsModal'
 import { initSyncEngine } from './lib/syncEngine'
-import { syncActiveStudyDataToWidget, checkIsWidgetConfigLaunch } from './lib/widgetBridge'
-import { Toaster } from 'sonner'
+import {
+  syncActiveStudyDataToWidget,
+  checkIsWidgetConfigLaunch,
+  fetchLatestAppUpdate,
+} from './lib/widgetBridge'
+import { Toaster, toast } from 'sonner'
 
 export function App() {
   useEffect(() => {
@@ -65,6 +69,24 @@ export function App() {
   useEffect(() => {
     syncActiveStudyDataToWidget(topics, subjects, activeSubjectId)
   }, [topics, subjects, activeSubjectId])
+
+  // Non-intrusive background check for new GitHub APK updates on startup
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const update = await fetchLatestAppUpdate()
+        if (update && update.isUpdateAvailable) {
+          toast.info(`MedMatrix Update Available (${update.latestVersion})`, {
+            description: 'Tap Check for Updates in the menu to install.',
+            duration: 8000,
+          })
+        }
+      } catch {
+        // Silently ignore network failures on startup
+      }
+    }, 4000)
+    return () => clearTimeout(timer)
+  }, [])
   const [isWidgetView] = useState(() => {
     if (typeof window === 'undefined') return false
     const search = window.location.search
