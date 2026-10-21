@@ -7,8 +7,8 @@ android {
         applicationId "com.medmatrix.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (int)(System.currentTimeMillis() / 1000)
-        versionName "1.0." + (int)(System.currentTimeMillis() / 100000)
+        versionCode ((System.currentTimeMillis() / 1000) as Integer)
+        versionName "1.0." + ((System.currentTimeMillis() / 100000) as Integer)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -18,7 +18,7 @@ android {
     }
     signingConfigs {
         appSign {
-            storeFile file('medmatrix.keystore')
+            storeFile file("${projectDir}/medmatrix.keystore")
             storePassword 'medmatrix123'
             keyAlias 'medmatrix'
             keyPassword 'medmatrix123'
