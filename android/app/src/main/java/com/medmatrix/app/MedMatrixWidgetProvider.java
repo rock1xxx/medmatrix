@@ -34,32 +34,32 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
     }
 
-    public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-
+    public static PendingIntent getAppPendingIntent(Context context) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
+        return PendingIntent.getActivity(
                 context,
                 0,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+    }
+
+    public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        PendingIntent pendingIntent = getAppPendingIntent(context);
 
         RemoteViews views;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Map<SizeF, RemoteViews> viewMapping = new HashMap<>();
-            // 2x2: Active Focus Hero (starting from 110dp width x 100dp height)
             viewMapping.put(new SizeF(110f, 100f), build2x2Views(context, prefs, pendingIntent));
-            // 4x2: Dual Chapter Desk Banner (starting from 240dp width x 100dp height)
             viewMapping.put(new SizeF(240f, 100f), build4x2Views(context, prefs, pendingIntent));
-            // 4x4: Full Day Overview & Revision (starting from 240dp width x 180dp height)
             viewMapping.put(new SizeF(240f, 180f), build4x4Views(context, prefs, pendingIntent));
             views = new RemoteViews(viewMapping);
         } else {
             Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
-            int minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 260);
-            int minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110);
+            int minWidth = options != null ? options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 260) : 260;
+            int minHeight = options != null ? options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110) : 110;
             if (minWidth < 220) {
                 views = build2x2Views(context, prefs, pendingIntent);
             } else if (minHeight >= 180) {
@@ -72,7 +72,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
-    private static String getTodayDateFormatted(SharedPreferences prefs) {
+    public static String getTodayDateFormatted(SharedPreferences prefs) {
         String saved = prefs.getString("todayDate", "");
         if (saved != null && !saved.trim().isEmpty()) {
             return saved;
@@ -80,7 +80,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         return new SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(new Date());
     }
 
-    private static int getBgDrawableRes(String bgStyle, int radius) {
+    public static int getBgDrawableRes(String bgStyle, int radius) {
         if ("transparent".equalsIgnoreCase(bgStyle)) {
             if (radius <= 16) return R.drawable.widget_bg_transparent_16;
             if (radius >= 32) return R.drawable.widget_bg_transparent_32;
@@ -97,7 +97,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private static int getCardDrawableRes(String bgStyle) {
+    public static int getCardDrawableRes(String bgStyle) {
         if ("transparent".equalsIgnoreCase(bgStyle)) {
             return R.drawable.widget_card_transparent;
         } else if ("opaque".equalsIgnoreCase(bgStyle)) {
@@ -107,7 +107,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private static RemoteViews build2x2Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
+    public static RemoteViews build2x2Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_2x2_layout);
 
         String bgStyle = prefs.getString("bgStyle", "frosted");
@@ -130,7 +130,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         return views;
     }
 
-    private static RemoteViews build4x2Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
+    public static RemoteViews build4x2Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_4x2_layout);
 
         String bgStyle = prefs.getString("bgStyle", "frosted");
@@ -154,7 +154,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         return views;
     }
 
-    private static RemoteViews build4x4Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
+    public static RemoteViews build4x4Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_4x4_layout);
 
         String bgStyle = prefs.getString("bgStyle", "frosted");

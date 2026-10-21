@@ -22,10 +22,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-            </intent-filter>
-
         </activity>
 
         <provider
@@ -38,7 +34,46 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- Native Home Screen Widget Receiver -->
+        <!-- 2x2 Compact Square Widget Provider -->
+        <receiver
+            android:name=".MedMatrixWidget2x2Provider"
+            android:label="@string/widget_name_2x2"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_2x2_info" />
+        </receiver>
+
+        <!-- 4x2 Desk Banner Widget Provider -->
+        <receiver
+            android:name=".MedMatrixWidget4x2Provider"
+            android:label="@string/widget_name_4x2"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_4x2_info" />
+        </receiver>
+
+        <!-- 4x4 Full Day Deck Widget Provider -->
+        <receiver
+            android:name=".MedMatrixWidget4x4Provider"
+            android:label="@string/widget_name_4x4"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_4x4_info" />
+        </receiver>
+
+        <!-- Default / Legacy Widget Provider -->
         <receiver
             android:name=".MedMatrixWidgetProvider"
             android:label="@string/widget_name"

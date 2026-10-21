@@ -48,25 +48,53 @@ public class WidgetBridgePlugin extends Plugin {
         editor.putInt("cornerRadius", cornerRadius);
         editor.apply();
 
-        // Broadcast update to all active home screen widgets
+        // Broadcast update to all active home screen widgets across all registered sizes
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-        ComponentName componentName = new ComponentName(context, MedMatrixWidgetProvider.class);
-        int[] appWidgetIds = appWidgetManager.getAppWidgetIds(componentName);
+        int totalWidgetsUpdated = 0;
 
-        if (appWidgetIds != null && appWidgetIds.length > 0) {
-            Intent updateIntent = new Intent(context, MedMatrixWidgetProvider.class);
-            updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
-            context.sendBroadcast(updateIntent);
+        // 1. 2x2 widgets
+        ComponentName comp2x2 = new ComponentName(context, MedMatrixWidget2x2Provider.class);
+        int[] ids2x2 = appWidgetManager.getAppWidgetIds(comp2x2);
+        if (ids2x2 != null && ids2x2.length > 0) {
+            totalWidgetsUpdated += ids2x2.length;
+            for (int id : ids2x2) {
+                MedMatrixWidget2x2Provider.updateAppWidget(context, appWidgetManager, id);
+            }
+        }
 
-            for (int appWidgetId : appWidgetIds) {
-                MedMatrixWidgetProvider.updateAppWidget(context, appWidgetManager, appWidgetId);
+        // 2. 4x2 widgets
+        ComponentName comp4x2 = new ComponentName(context, MedMatrixWidget4x2Provider.class);
+        int[] ids4x2 = appWidgetManager.getAppWidgetIds(comp4x2);
+        if (ids4x2 != null && ids4x2.length > 0) {
+            totalWidgetsUpdated += ids4x2.length;
+            for (int id : ids4x2) {
+                MedMatrixWidget4x2Provider.updateAppWidget(context, appWidgetManager, id);
+            }
+        }
+
+        // 3. 4x4 widgets
+        ComponentName comp4x4 = new ComponentName(context, MedMatrixWidget4x4Provider.class);
+        int[] ids4x4 = appWidgetManager.getAppWidgetIds(comp4x4);
+        if (ids4x4 != null && ids4x4.length > 0) {
+            totalWidgetsUpdated += ids4x4.length;
+            for (int id : ids4x4) {
+                MedMatrixWidget4x4Provider.updateAppWidget(context, appWidgetManager, id);
+            }
+        }
+
+        // 4. Default widget provider
+        ComponentName compDefault = new ComponentName(context, MedMatrixWidgetProvider.class);
+        int[] idsDefault = appWidgetManager.getAppWidgetIds(compDefault);
+        if (idsDefault != null && idsDefault.length > 0) {
+            totalWidgetsUpdated += idsDefault.length;
+            for (int id : idsDefault) {
+                MedMatrixWidgetProvider.updateAppWidget(context, appWidgetManager, id);
             }
         }
 
         JSObject ret = new JSObject();
         ret.put("success", true);
-        ret.put("widgetsUpdated", appWidgetIds != null ? appWidgetIds.length : 0);
+        ret.put("widgetsUpdated", totalWidgetsUpdated);
         call.resolve(ret);
     }
 

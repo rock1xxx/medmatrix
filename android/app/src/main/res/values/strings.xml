@@ -4,6 +4,12 @@
     <string name="title_activity_main">MedMatrix</string>
     <string name="package_name">com.medmatrix.app</string>
     <string name="custom_url_scheme">com.medmatrix.app</string>
-    <string name="widget_name">MedMatrix Today</string>
+    <string name="widget_name">MedMatrix Today (4x2)</string>
     <string name="widget_description">Shows today\'s pending Ward MCQs and Tonight\'s Videos</string>
+    <string name="widget_name_2x2">MedMatrix Today (2x2)</string>
+    <string name="widget_desc_2x2">Compact square view with top Ward MCQ and tonight\'s lecture</string>
+    <string name="widget_name_4x2">MedMatrix Desk Banner (4x2)</string>
+    <string name="widget_desc_4x2">Wide banner with Ward MCQs and Tonight\'s Videos side-by-side</string>
+    <string name="widget_name_4x4">MedMatrix Full Day (4x4)</string>
+    <string name="widget_desc_4x4">Full-page view with Ward MCQs, video lectures, and spaced revision</string>
 </resources>
