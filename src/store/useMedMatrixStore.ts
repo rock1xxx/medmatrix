@@ -771,17 +771,32 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       name: 'medmatrix-storage-v2',
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
-        if (state && Array.isArray(state.topics)) {
-          // Clean up dummy seed cards (lec-14, lec-16, lec-24) from previous seed
-          state.topics = state.topics.map((t) => {
-            if (
-              (t.id === 'lec-14' || t.id === 'lec-16' || t.id === 'lec-24') &&
-              (!t.srData?.history || t.srData.history.length <= 1)
-            ) {
-              return { ...t, status: 'QUEUED' as TopicStatus, srData: undefined }
+        if (state) {
+          if (state.syncConfig) {
+            const envUrl = (import.meta.env.VITE_SUPABASE_URL as string) || ''
+            const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || ''
+            if (!state.syncConfig.supabaseUrl && envUrl) {
+              state.syncConfig.supabaseUrl = envUrl
             }
-            return t
-          })
+            if (!state.syncConfig.supabaseAnonKey && envKey) {
+              state.syncConfig.supabaseAnonKey = envKey
+            }
+            state.syncConfig.isConnected = Boolean(
+              state.syncConfig.supabaseUrl && state.syncConfig.supabaseAnonKey
+            )
+          }
+          if (Array.isArray(state.topics)) {
+            // Clean up dummy seed cards (lec-14, lec-16, lec-24) from previous seed
+            state.topics = state.topics.map((t) => {
+              if (
+                (t.id === 'lec-14' || t.id === 'lec-16' || t.id === 'lec-24') &&
+                (!t.srData?.history || t.srData.history.length <= 1)
+              ) {
+                return { ...t, status: 'QUEUED' as TopicStatus, srData: undefined }
+              }
+              return t
+            })
+          }
         }
       },
     }

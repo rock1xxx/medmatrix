@@ -39,7 +39,9 @@ create table if not exists medmatrix_sync (
 alter table medmatrix_sync enable row level security;
 
 create policy "Anon full access" on medmatrix_sync
-  for all using (true) with check (true);`
+  for all using (true) with check (true);
+
+alter publication supabase_realtime add table medmatrix_sync;`
 
 export const SyncModal: React.FC<SyncModalProps> = ({ isOpen, onClose }) => {
   const {
