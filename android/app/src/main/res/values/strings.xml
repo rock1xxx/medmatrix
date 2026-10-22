@@ -8,6 +8,8 @@
     <string name="widget_description">Shows today\'s pending Ward MCQs and Tonight\'s Videos</string>
     <string name="widget_name_2x2">MedMatrix Today (2x2)</string>
     <string name="widget_desc_2x2">Compact square view with top Ward MCQ and tonight\'s lecture</string>
+    <string name="widget_name_4x1">MedMatrix Slim Ribbon (4x1)</string>
+    <string name="widget_desc_4x1">Ultra-slim banner with top Ward MCQ and tonight\'s lecture</string>
     <string name="widget_name_4x2">MedMatrix Desk Banner (4x2)</string>
     <string name="widget_desc_4x2">Wide banner with Ward MCQs and Tonight\'s Videos side-by-side</string>
     <string name="widget_name_4x4">MedMatrix Full Day (4x4)</string>

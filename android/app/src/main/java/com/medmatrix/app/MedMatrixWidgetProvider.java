@@ -53,6 +53,7 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Map<SizeF, RemoteViews> viewMapping = new HashMap<>();
             viewMapping.put(new SizeF(110f, 100f), build2x2Views(context, prefs, pendingIntent));
+            viewMapping.put(new SizeF(240f, 50f), build4x1Views(context, prefs, pendingIntent));
             viewMapping.put(new SizeF(240f, 100f), build4x2Views(context, prefs, pendingIntent));
             viewMapping.put(new SizeF(240f, 180f), build4x4Views(context, prefs, pendingIntent));
             views = new RemoteViews(viewMapping);
@@ -124,6 +125,28 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_subject_badge, prefs.getString("subject", "Microbiology"));
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
+        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
+
+        views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
+        return views;
+    }
+
+    public static RemoteViews build4x1Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_4x1_layout);
+
+        String bgStyle = prefs.getString("bgStyle", "frosted");
+        int cornerRadius = prefs.getInt("cornerRadius", 24);
+        int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
+        int cardRes = getCardDrawableRes(bgStyle);
+
+        views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        views.setInt(R.id.card_ward_mcqs, "setBackgroundResource", cardRes);
+        views.setInt(R.id.card_tonight_videos, "setBackgroundResource", cardRes);
+
+        views.setTextViewText(R.id.widget_title, "TODAY");
+        views.setTextViewText(R.id.widget_date, "• " + getTodayDateFormatted(prefs));
+        views.setTextViewText(R.id.widget_subject_badge, prefs.getString("subject", "Microbiology"));
+        views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);

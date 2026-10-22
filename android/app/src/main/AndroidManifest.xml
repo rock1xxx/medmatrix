@@ -47,6 +47,19 @@
                 android:resource="@xml/widget_2x2_info" />
         </receiver>
 
+        <!-- 4x1 Slim Ribbon Widget Provider -->
+        <receiver
+            android:name=".MedMatrixWidget4x1Provider"
+            android:label="@string/widget_name_4x1"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_4x1_info" />
+        </receiver>
+
         <!-- 4x2 Desk Banner Widget Provider -->
         <receiver
             android:name=".MedMatrixWidget4x2Provider"

@@ -23,7 +23,7 @@ interface WidgetSettingsModalProps {
   onClose: () => void
 }
 
-type SizeCategory = '2x2' | '4x2' | '4x4'
+type SizeCategory = '2x2' | '4x1' | '4x2' | '4x4'
 
 export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   isOpen,
@@ -107,6 +107,33 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
         id: 'rings',
         name: '5. Dual Health Rings',
         desc: 'Samsung Health / Galaxy Watch inspired circular completion metrics.',
+      },
+    ],
+    '4x1': [
+      {
+        id: 'dual-pill',
+        name: '1. Dual Pill Ribbon (Recommended)',
+        desc: 'Ultra-clean, single-row high efficiency ribbon. Displays the active subject, today\'s #1 Ward MCQ chapter, and tonight\'s lecture in two side-by-side pill cards.',
+      },
+      {
+        id: 'single-ticker',
+        name: '2. Glanceable Horizon Ticker',
+        desc: 'High-contrast single-card ticker showing your morning Ward MCQ chapter on the left and tonight\'s lecture on the right separated by a subtle vertical border.',
+      },
+      {
+        id: 'focus-pill',
+        name: '3. Focus Hero & Next Up',
+        desc: 'Prioritizes the #1 immediate priority Ward MCQ in bold headline text with an embedded capsule pill on the right showing what’s next tonight.',
+      },
+      {
+        id: 'checkbox-strip',
+        name: '4. Quick Check Strip',
+        desc: 'Interactive feel with two circular tap targets: one for morning Ward MCQs and one for tonight’s lecture queue.',
+      },
+      {
+        id: 'shift-horizon',
+        name: '5. Dual Shift Accent Ribbon',
+        desc: 'Clinical split with green and cyan vertical accent stripes separating morning duty rounds from tonight’s hostel study desk.',
       },
     ],
     '4x2': [
@@ -280,7 +307,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="font-semibold text-zinc-300">Widget Grid Size:</span>
               <div className="flex items-center gap-1 bg-[#181820] p-1 rounded-xl border border-zinc-800">
-                {(['2x2', '4x2', '4x4'] as SizeCategory[]).map((size) => (
+                {(['2x2', '4x1', '4x2', '4x4'] as SizeCategory[]).map((size) => (
                   <button
                     key={size}
                     type="button"
@@ -417,9 +444,21 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
               className="z-10 transition-all duration-100 flex flex-col justify-between overflow-hidden box-border"
               style={{
                 width: activeSize === '2x2' ? '185px' : '380px',
-                height: activeSize === '2x2' ? '185px' : activeSize === '4x2' ? '155px' : '330px',
+                height:
+                  activeSize === '2x2'
+                    ? '185px'
+                    : activeSize === '4x1'
+                    ? '78px'
+                    : activeSize === '4x2'
+                    ? '155px'
+                    : '330px',
                 maxWidth: '100%',
-                padding: activeSize === '2x2' ? '11px 12px' : '12px 14px',
+                padding:
+                  activeSize === '4x1'
+                    ? '8px 12px'
+                    : activeSize === '2x2'
+                    ? '11px 12px'
+                    : '12px 14px',
                 backgroundColor: bgStyleCss,
                 border: borderRgba,
                 borderRadius: `${radius}px`,
@@ -647,6 +686,205 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                       <span className="text-[9px] font-bold text-white truncate block mt-1">
                         Next: {mcqCh1}
                       </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 4X1 SLIM VARIANTS */}
+              {activeSize === '4x1' && (
+                <div className="w-full h-full flex flex-col justify-between overflow-hidden">
+                  {currentDesign.id === 'dual-pill' && (
+                    <>
+                      <div className="flex items-center justify-between w-full min-w-0 mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-extrabold text-[11px] text-white tracking-wide shrink-0">
+                            TODAY
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-semibold truncate">
+                            • {format(new Date(), 'MMM d')}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 truncate max-w-[100px]">
+                          {subjectName}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0">
+                        <div
+                          className="px-2 py-1 flex flex-col justify-center min-w-0"
+                          style={{
+                            backgroundColor: cardBgCss,
+                            border: cardBorderCss,
+                            borderRadius: cardRadius,
+                          }}
+                        >
+                          <span className="text-[8px] font-bold text-emerald-400 tracking-wider block">
+                            🩺 WARD MCQ
+                          </span>
+                          <span className="text-[11px] font-extrabold text-white truncate block">
+                            {mcqCh1}
+                          </span>
+                        </div>
+                        <div
+                          className="px-2 py-1 flex flex-col justify-center min-w-0"
+                          style={{
+                            backgroundColor: cardBgCss,
+                            border: cardBorderCss,
+                            borderRadius: cardRadius,
+                          }}
+                        >
+                          <span className="text-[8px] font-bold text-sky-400 tracking-wider block">
+                            🌙 TONIGHT
+                          </span>
+                          <span className="text-[11px] font-extrabold text-white truncate block">
+                            {vid1Title} ({vid1Duration})
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {currentDesign.id === 'single-ticker' && (
+                    <div
+                      className="w-full h-full p-2 flex items-center justify-between gap-2.5 min-w-0"
+                      style={{
+                        backgroundColor: cardBgCss,
+                        border: cardBorderCss,
+                        borderRadius: cardRadius,
+                      }}
+                    >
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          <span className="text-[8px] font-extrabold text-emerald-400 tracking-wider">
+                            WARD MCQ
+                          </span>
+                          <span className="text-[9px] text-zinc-400 truncate">• {subjectName}</span>
+                        </div>
+                        <span className="text-[11px] font-extrabold text-white truncate mt-0.5 block">
+                          {mcqCh1}
+                        </span>
+                      </div>
+                      <div className="w-[1px] h-7 bg-white/10 shrink-0" />
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />
+                          <span className="text-[8px] font-extrabold text-sky-400 tracking-wider">
+                            TONIGHT
+                          </span>
+                          <span className="text-[9px] text-zinc-400 truncate">• {vid1Duration}</span>
+                        </div>
+                        <span className="text-[11px] font-extrabold text-white truncate mt-0.5 block">
+                          {vid1Title}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentDesign.id === 'focus-pill' && (
+                    <div className="w-full h-full flex items-center justify-between gap-2 min-w-0">
+                      <div className="flex-[1.3] min-w-0 flex flex-col justify-center">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            WARD MCQ
+                          </span>
+                          <span className="text-[10px] font-bold text-zinc-400 truncate">
+                            {subjectName}
+                          </span>
+                        </div>
+                        <span className="text-[12px] font-extrabold text-white truncate mt-1 block">
+                          {mcqCh1}
+                        </span>
+                      </div>
+                      <div
+                        className="flex-1 p-1.5 min-w-0 overflow-hidden flex flex-col justify-center"
+                        style={{
+                          backgroundColor: cardBgCss,
+                          border: cardBorderCss,
+                          borderRadius: cardRadius,
+                        }}
+                      >
+                        <span className="text-[8px] font-bold text-sky-400 tracking-wider block">
+                          🌙 UP NEXT
+                        </span>
+                        <span className="text-[10px] font-bold text-zinc-200 truncate mt-0.5 block">
+                          {vid1Title} ({vid1Duration})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentDesign.id === 'checkbox-strip' && (
+                    <>
+                      <div className="flex items-center justify-between w-full min-w-0 mb-1">
+                        <span className="text-[9px] font-extrabold text-zinc-400 tracking-wider truncate">
+                          TODAY • {subjectName.toUpperCase()}
+                        </span>
+                        <span className="text-[8px] font-bold text-emerald-400">2 PENDING</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0">
+                        <div
+                          className="px-2 py-1 flex items-center gap-1.5 min-w-0"
+                          style={{
+                            backgroundColor: cardBgCss,
+                            border: cardBorderCss,
+                            borderRadius: cardRadius,
+                          }}
+                        >
+                          <span className="w-3.5 h-3.5 rounded-full border border-emerald-400 shrink-0" />
+                          <span className="text-[10px] font-extrabold text-white truncate">
+                            {mcqCh1}
+                          </span>
+                        </div>
+                        <div
+                          className="px-2 py-1 flex items-center gap-1.5 min-w-0"
+                          style={{
+                            backgroundColor: cardBgCss,
+                            border: cardBorderCss,
+                            borderRadius: cardRadius,
+                          }}
+                        >
+                          <span className="w-3.5 h-3.5 rounded-full border border-sky-400 text-sky-400 text-[8px] flex items-center justify-center font-bold shrink-0">
+                            ▶
+                          </span>
+                          <span className="text-[10px] font-extrabold text-white truncate">
+                            {vid1Title}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {currentDesign.id === 'shift-horizon' && (
+                    <div className="grid grid-cols-2 gap-1.5 w-full h-full min-h-0">
+                      <div
+                        className="px-2.5 py-1.5 flex flex-col justify-center min-w-0 border-l-[3px] border-l-emerald-400"
+                        style={{
+                          backgroundColor: cardBgCss,
+                          borderRadius: cardRadius,
+                        }}
+                      >
+                        <span className="text-[8px] font-extrabold text-emerald-400 block">
+                          ☀️ 09:00 WARD MCQ
+                        </span>
+                        <span className="text-[11px] font-extrabold text-white truncate mt-0.5 block">
+                          {mcqCh1}
+                        </span>
+                      </div>
+                      <div
+                        className="px-2.5 py-1.5 flex flex-col justify-center min-w-0 border-l-[3px] border-l-sky-400"
+                        style={{
+                          backgroundColor: cardBgCss,
+                          borderRadius: cardRadius,
+                        }}
+                      >
+                        <span className="text-[8px] font-extrabold text-sky-400 block">
+                          🌙 20:00 TONIGHT
+                        </span>
+                        <span className="text-[11px] font-extrabold text-white truncate mt-0.5 block">
+                          {vid1Title} ({vid1Duration})
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

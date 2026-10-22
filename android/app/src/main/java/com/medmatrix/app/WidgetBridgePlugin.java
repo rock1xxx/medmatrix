@@ -70,7 +70,17 @@ public class WidgetBridgePlugin extends Plugin {
             }
         }
 
-        // 2. 4x2 widgets
+        // 2. 4x1 widgets
+        ComponentName comp4x1 = new ComponentName(context, MedMatrixWidget4x1Provider.class);
+        int[] ids4x1 = appWidgetManager.getAppWidgetIds(comp4x1);
+        if (ids4x1 != null && ids4x1.length > 0) {
+            totalWidgetsUpdated += ids4x1.length;
+            for (int id : ids4x1) {
+                MedMatrixWidget4x1Provider.updateAppWidget(context, appWidgetManager, id);
+            }
+        }
+
+        // 3. 4x2 widgets
         ComponentName comp4x2 = new ComponentName(context, MedMatrixWidget4x2Provider.class);
         int[] ids4x2 = appWidgetManager.getAppWidgetIds(comp4x2);
         if (ids4x2 != null && ids4x2.length > 0) {
