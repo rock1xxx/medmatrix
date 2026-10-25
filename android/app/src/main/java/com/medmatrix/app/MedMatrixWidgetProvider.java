@@ -137,17 +137,23 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         String bgStyle = prefs.getString("bgStyle", "frosted");
         int cornerRadius = prefs.getInt("cornerRadius", 24);
         int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
-        int cardRes = getCardDrawableRes(bgStyle);
 
         views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
-        views.setInt(R.id.card_ward_mcqs, "setBackgroundResource", cardRes);
-        views.setInt(R.id.card_tonight_videos, "setBackgroundResource", cardRes);
+        // Note: Zero inner card boxes for 4x1 per user design specification (clean single center line divider)
 
-        views.setTextViewText(R.id.widget_title, "TODAY");
-        views.setTextViewText(R.id.widget_date, "• " + getTodayDateFormatted(prefs));
-        views.setTextViewText(R.id.widget_subject_badge, prefs.getString("subject", "Microbiology"));
+        String subject = prefs.getString("subject", "Microbiology");
+        views.setTextViewText(R.id.widget_subject_badge, "• " + subject);
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
-        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
+
+        String videoCh1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
+        String duration = "• 34m";
+        int startParen = videoCh1.lastIndexOf('(');
+        int endParen = videoCh1.lastIndexOf(')');
+        if (startParen != -1 && endParen > startParen) {
+            duration = "• " + videoCh1.substring(startParen + 1, endParen);
+        }
+        views.setTextViewText(R.id.widget_date, duration);
+        views.setTextViewText(R.id.widget_video_ch1, videoCh1);
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;
