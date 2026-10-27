@@ -64,6 +64,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   )
   const mcqCh1 = wardTopics[0]?.title || 'Sterilization & Disinfection'
   const mcqCh2 = wardTopics[1]?.title || 'Bacterial Culture Media'
+  const mcqCh3 = wardTopics[2]?.title || 'Staphylococci & Streptococci'
 
   const videoTopics = topics.filter(
     (t) => t.status === 'STEP_1_WATCHING' && t.subjectId === activeSubjectId
@@ -72,12 +73,14 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   const vid1Duration = videoTopics[0] ? `${videoTopics[0].durationMinutes}m` : '34m'
   const vid2Title = videoTopics[1]?.title || 'Drug Resistance'
   const vid2Duration = videoTopics[1] ? `${videoTopics[1].durationMinutes}m` : '21m'
+  const vid3Title = videoTopics[2]?.title || 'Antimicrobial Therapy'
+  const vid3Duration = videoTopics[2] ? `${videoTopics[2].durationMinutes}m` : '18m'
 
   const srTopics = topics.filter((t) => t.status === 'LOCKED_IN_SR')
   const sr1 = srTopics[0]?.title || 'General Pathology (Anki)'
   const sr2 = srTopics[1]?.title || 'Autonomic Pharmacology'
 
-  // 14 Designs
+  // 12 Refined Designs
   const designOptions: Record<
     SizeCategory,
     Array<{ id: string; name: string; desc: string }>
@@ -111,29 +114,19 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
     ],
     '4x1': [
       {
-        id: 'horizon-ticker',
-        name: '1. Glanceable Horizon (Recommended)',
-        desc: 'Single unified frosted container with zero inner boxes, a clean 1px center dividing line, emerald & sky status dots, and bold glanceable chapter titles.',
+        id: 'pill-multi',
+        name: '1. Pill Badge Multi-Queue (User Favorite)',
+        desc: 'Compact rounded pill tags pushed tight to the top edges with zero subject clutter and 1px center divider. Sized to fit 2 full chapters per side.',
       },
       {
-        id: 'shift-horizon',
-        name: '2. Dual Shift Line Horizon',
-        desc: 'Morning 09:00 ward rounds on the left and 20:00 night study on the right, separated by a crisp center line with zero boxed compartments.',
+        id: 'max-typo-multi',
+        name: '2. Max-Typography Multi-Row (User Favorite)',
+        desc: 'Clean uppercase category labels pushed flush against edge, with bold numbered rows fitting 2 full chapter queues cleanly per half.',
       },
       {
-        id: 'accent-edge-horizon',
-        name: '3. Dual Accent Ribbon Horizon',
-        desc: 'Vertical emerald and sky accent ribbons on outer edges with a 1px center dividing line. No inner boxes, allowing chapter typography to stretch wide.',
-      },
-      {
-        id: 'badge-pill-horizon',
-        name: '4. Pill Badge Split',
-        desc: 'Compact pill badges for category tags, separated by a crisp 1px center divider without boxed compartments.',
-      },
-      {
-        id: 'max-typography',
-        name: '5. Max-Typography Horizon',
-        desc: 'Pure typography focus. High-impact 14px bold chapter text with a clean 1px vertical line divider and zero unnecessary decoration.',
+        id: 'dense-3tier',
+        name: '3. Dense 3-Topic Horizon (Max Capacity)',
+        desc: 'Engineered for maximum task capacity. Fits 3 full topics per half (6 total in a 4x1 banner) using compact micro-typography.',
       },
     ],
     '4x2': [
@@ -455,7 +448,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                 maxWidth: '100%',
                 padding:
                   activeSize === '4x1'
-                    ? '10px 14px'
+                    ? '6px 12px'
                     : activeSize === '2x2'
                     ? '11px 12px'
                     : '12px 14px',
@@ -694,145 +687,105 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
               {/* 4X1 SLIM VARIANTS */}
               {activeSize === '4x1' && (
                 <div className="w-full h-full flex flex-col justify-center overflow-hidden">
-                  {currentDesign.id === 'horizon-ticker' && (
-                    <div className="flex items-center justify-between gap-3.5 w-full h-full min-w-0">
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                          <span className="text-[9.5px] font-extrabold text-emerald-400 tracking-wider">
-                            WARD MCQ
-                          </span>
-                          <span className="text-[9.5px] text-zinc-400 font-semibold truncate">
-                            • {subjectName}
-                          </span>
-                        </div>
-                        <span className="text-[13.5px] font-extrabold text-white truncate mt-0.5 block tracking-tight">
-                          {mcqCh1}
-                        </span>
-                      </div>
-                      <div className="w-[1px] h-9 bg-white/15 shrink-0" />
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />
-                          <span className="text-[9.5px] font-extrabold text-sky-400 tracking-wider">
-                            TONIGHT
-                          </span>
-                          <span className="text-[9.5px] text-zinc-400 font-semibold truncate">
-                            • {vid1Duration}
-                          </span>
-                        </div>
-                        <span className="text-[13.5px] font-extrabold text-white truncate mt-0.5 block tracking-tight">
-                          {vid1Title}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentDesign.id === 'shift-horizon' && (
-                    <div className="flex items-center justify-between gap-3.5 w-full h-full min-w-0">
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9.5px] font-extrabold text-emerald-400 tracking-wide">
-                            ☀️ 09:00 WARD ROUNDS
-                          </span>
-                          <span className="text-[9.5px] text-zinc-500 truncate">• {subjectName}</span>
-                        </div>
-                        <span className="text-[13.5px] font-extrabold text-white truncate mt-0.5 block tracking-tight">
-                          {mcqCh1}
-                        </span>
-                      </div>
-                      <div className="w-[1px] h-9 bg-white/15 shrink-0" />
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9.5px] font-extrabold text-sky-400 tracking-wide">
-                            🌙 20:00 HOSTEL DESK
-                          </span>
-                          <span className="text-[9.5px] text-zinc-500 truncate">• {vid1Duration}</span>
-                        </div>
-                        <span className="text-[13.5px] font-extrabold text-white truncate mt-0.5 block tracking-tight">
-                          {vid1Title}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentDesign.id === 'accent-edge-horizon' && (
-                    <div className="flex items-center justify-between gap-3.5 w-full h-full min-w-0">
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <div className="w-[3px] h-8 rounded-sm bg-emerald-400 shrink-0" />
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <span className="text-[9px] font-extrabold text-emerald-400 tracking-wider">
-                            WARD MCQ • {subjectName.toUpperCase()}
-                          </span>
-                          <span className="text-[13px] font-extrabold text-white truncate mt-0.5 block">
-                            {mcqCh1}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-[1px] h-9 bg-white/15 shrink-0" />
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <div className="w-[3px] h-8 rounded-sm bg-sky-400 shrink-0" />
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <span className="text-[9px] font-extrabold text-sky-400 tracking-wider">
-                            TONIGHT • LECTURE QUEUE
-                          </span>
-                          <span className="text-[13px] font-extrabold text-white truncate mt-0.5 block">
-                            {vid1Title}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentDesign.id === 'badge-pill-horizon' && (
-                    <div className="flex items-center justify-between gap-3.5 w-full h-full min-w-0">
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  {currentDesign.id === 'pill-multi' && (
+                    <div className="flex items-center justify-between gap-3 w-full h-full min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                        <div className="flex items-center mb-1">
+                          <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 tracking-wider">
                             🩺 WARD MCQ
                           </span>
-                          <span className="text-[9.5px] text-zinc-400 font-semibold truncate">
-                            {subjectName}
-                          </span>
                         </div>
-                        <span className="text-[13px] font-extrabold text-white truncate mt-1 block">
+                        <span className="text-[11.5px] font-bold text-white truncate block leading-tight">
                           {mcqCh1}
                         </span>
+                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                          {mcqCh2}
+                        </span>
                       </div>
-                      <div className="w-[1px] h-9 bg-white/15 shrink-0" />
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                      <div className="w-[1px] h-11 bg-white/15 shrink-0" />
+                      <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                        <div className="flex items-center mb-1">
+                          <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 tracking-wider">
                             🌙 TONIGHT
                           </span>
-                          <span className="text-[9.5px] text-zinc-400 font-semibold truncate">
-                            {vid1Duration}
-                          </span>
                         </div>
-                        <span className="text-[13px] font-extrabold text-white truncate mt-1 block">
-                          {vid1Title}
+                        <span className="text-[11.5px] font-bold text-white truncate block leading-tight">
+                          {vid1Title} ({vid1Duration})
+                        </span>
+                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                          {vid2Title} ({vid2Duration})
                         </span>
                       </div>
                     </div>
                   )}
 
-                  {currentDesign.id === 'max-typography' && (
-                    <div className="flex items-center justify-between gap-3.5 w-full h-full min-w-0">
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <span className="text-[9px] font-extrabold text-emerald-400 tracking-wider uppercase">
-                          MCQ • {subjectName}
+                  {currentDesign.id === 'max-typo-multi' && (
+                    <div className="flex items-center justify-between gap-3 w-full h-full min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                        <span className="text-[8.5px] font-extrabold text-emerald-400 tracking-wider uppercase mb-0.5">
+                          WARD MCQS
                         </span>
-                        <span className="text-[14px] font-extrabold text-white truncate mt-0.5 block">
-                          {mcqCh1}
+                        <span className="text-[11.5px] font-extrabold text-white truncate block leading-tight">
+                          1. {mcqCh1}
+                        </span>
+                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                          2. {mcqCh2}
                         </span>
                       </div>
-                      <div className="w-[1px] h-10 bg-white/15 shrink-0" />
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <span className="text-[9px] font-extrabold text-sky-400 tracking-wider uppercase">
-                          VIDEO • TONIGHT
+                      <div className="w-[1px] h-11 bg-white/15 shrink-0" />
+                      <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                        <span className="text-[8.5px] font-extrabold text-sky-400 tracking-wider uppercase mb-0.5">
+                          TONIGHT'S VIDEOS
                         </span>
-                        <span className="text-[14px] font-extrabold text-white truncate mt-0.5 block">
-                          {vid1Title}
+                        <span className="text-[11.5px] font-extrabold text-white truncate block leading-tight">
+                          1. {vid1Title} ({vid1Duration})
+                        </span>
+                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                          2. {vid2Title} ({vid2Duration})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentDesign.id === 'dense-3tier' && (
+                    <div className="flex items-center justify-between gap-2.5 w-full h-full min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-[8px] font-extrabold text-emerald-400 tracking-wider">
+                            🩺 WARD MCQS
+                          </span>
+                          <span className="text-[7.5px] font-bold text-emerald-400 bg-emerald-500/15 px-1 rounded">
+                            3 QUEUED
+                          </span>
+                        </div>
+                        <span className="text-[10.5px] font-bold text-white truncate block leading-tight">
+                          • {mcqCh1}
+                        </span>
+                        <span className="text-[9.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                          • {mcqCh2}
+                        </span>
+                        <span className="text-[9px] font-medium text-zinc-400 truncate block mt-0.5 leading-tight">
+                          • {mcqCh3}
+                        </span>
+                      </div>
+                      <div className="w-[1px] h-12 bg-white/15 shrink-0" />
+                      <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-[8px] font-extrabold text-sky-400 tracking-wider">
+                            🌙 TONIGHT
+                          </span>
+                          <span className="text-[7.5px] font-bold text-sky-400 bg-sky-500/15 px-1 rounded">
+                            55m
+                          </span>
+                        </div>
+                        <span className="text-[10.5px] font-bold text-white truncate block leading-tight">
+                          • {vid1Title} ({vid1Duration})
+                        </span>
+                        <span className="text-[9.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                          • {vid2Title} ({vid2Duration})
+                        </span>
+                        <span className="text-[9px] font-medium text-zinc-400 truncate block mt-0.5 leading-tight">
+                          • {vid3Title} ({vid3Duration})
                         </span>
                       </div>
                     </div>

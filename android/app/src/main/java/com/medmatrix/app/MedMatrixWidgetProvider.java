@@ -141,19 +141,11 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
         // Note: Zero inner card boxes for 4x1 per user design specification (clean single center line divider)
 
-        String subject = prefs.getString("subject", "Microbiology");
-        views.setTextViewText(R.id.widget_subject_badge, "• " + subject);
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
+        views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
 
-        String videoCh1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
-        String duration = "• 34m";
-        int startParen = videoCh1.lastIndexOf('(');
-        int endParen = videoCh1.lastIndexOf(')');
-        if (startParen != -1 && endParen > startParen) {
-            duration = "• " + videoCh1.substring(startParen + 1, endParen);
-        }
-        views.setTextViewText(R.id.widget_date, duration);
-        views.setTextViewText(R.id.widget_video_ch1, videoCh1);
+        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
+        views.setTextViewText(R.id.widget_video_ch2, prefs.getString("videoCh2", "Drug Resistance (21m)"));
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;

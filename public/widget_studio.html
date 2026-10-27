@@ -424,12 +424,20 @@
           <input type="text" id="in-mcq2" value="Bacterial Culture Media" oninput="updateData()">
         </div>
         <div class="input-field">
+          <label style="color: #34d399;">Ward MCQ Ch 3 (For 3-Topic)</label>
+          <input type="text" id="in-mcq3" value="Staphylococci & Streptococci" oninput="updateData()">
+        </div>
+        <div class="input-field">
           <label style="color: #38bdf8;">Tonight Video 1 (Queue)</label>
           <input type="text" id="in-vid1" value="Bacterial Genetics (34m)" oninput="updateData()">
         </div>
         <div class="input-field">
           <label style="color: #38bdf8;">Tonight Video 2</label>
           <input type="text" id="in-vid2" value="Drug Resistance (21m)" oninput="updateData()">
+        </div>
+        <div class="input-field">
+          <label style="color: #38bdf8;">Tonight Video 3 (For 3-Topic)</label>
+          <input type="text" id="in-vid3" value="Antimicrobial Therapy (18m)" oninput="updateData()">
         </div>
       </div>
     </div>
@@ -456,8 +464,10 @@
       dateFull: "• Thursday, Oct 12",
       mcq1: "Sterilization & Disinfection",
       mcq2: "Bacterial Culture Media",
+      mcq3: "Staphylococci & Streptococci",
       vid1: "Bacterial Genetics (34m)",
       vid2: "Drug Resistance (21m)",
+      vid3: "Antimicrobial Therapy (18m)",
       rev1: "General Pathology (Anki)",
       rev2: "Autonomic Pharmacology"
     };
@@ -580,122 +590,76 @@
       ],
       '4x1': [
         {
-          id: 'horizon-ticker',
-          name: '1. Glanceable Horizon (Recommended)',
-          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 1: Glanceable Horizon',
-          desc: 'Directly tailored from your feedback. Single unified frosted container with zero inner boxes, a clean 1px center dividing line, emerald & sky status dots, and bold glanceable chapter titles.',
+          id: 'pill-multi',
+          name: '1. Pill Badge Multi-Queue (User Favorite)',
+          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 1: Pill Badge Multi-Queue',
+          desc: 'Directly perfected from your feedback. Compact rounded pill tags pushed tight to the top-left edges, zero subject clutter, and a crisp 1px center divider. Sized to fit 2 full chapters per side with zero wasted space.',
           render: () => `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; height: 100%; min-width: 0;">
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="width: 6px; height: 6px; border-radius: 50%; background: #34d399; flex-shrink: 0;"></span>
-                  <span style="font-size: 9.5px; font-weight: 800; color: #34d399; letter-spacing: 0.5px;">WARD MCQ</span>
-                  <span style="font-size: 9.5px; color: #94a3b8; font-weight: 600;" class="truncate">• ${store.subject}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 100%; min-width: 0;">
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                  <span class="badge badge-emerald" style="font-size: 8px; font-weight: 800; padding: 1.5px 6px; letter-spacing: 0.5px;">🩺 WARD MCQ</span>
                 </div>
-                <span class="truncate" style="font-size: 13.5px; font-weight: 800; color: #ffffff; margin-top: 3px; letter-spacing: -0.2px;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 11.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.25;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">${store.mcq2}</span>
               </div>
-              <div style="width: 1px; height: 38px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; flex-shrink: 0;"></span>
-                  <span style="font-size: 9.5px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px;">TONIGHT</span>
-                  <span style="font-size: 9.5px; color: #94a3b8; font-weight: 600;" class="truncate">• 34m</span>
+              <div style="width: 1px; height: 46px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                  <span class="badge badge-cyan" style="font-size: 8px; font-weight: 800; padding: 1.5px 6px; letter-spacing: 0.5px;">🌙 TONIGHT</span>
                 </div>
-                <span class="truncate" style="font-size: 13.5px; font-weight: 800; color: #ffffff; margin-top: 3px; letter-spacing: -0.2px;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 11.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.25;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">${store.vid2}</span>
               </div>
             </div>
           `
         },
         {
-          id: 'shift-horizon',
-          name: '2. Dual Shift Line Horizon',
-          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 2: Dual Shift Line Horizon',
-          desc: 'Your second favorite style. Shows ☀️ 09:00 Ward Rounds on the left and 🌙 20:00 Hostel Desk on the right, separated by a crisp center line with zero boxed compartments.',
+          id: 'max-typo-multi',
+          name: '2. Max-Typography Multi-Row (User Favorite)',
+          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 2: Max-Typography Multi-Row',
+          desc: 'High-contrast typography focus. Clean uppercase category labels pushed flush against the edge, with bold numbered rows fitting 2 full chapter queues cleanly per half.',
           render: () => `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; height: 100%; min-width: 0;">
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                  <span style="font-size: 9.5px; font-weight: 800; color: #34d399; letter-spacing: 0.4px;">☀️ 09:00 WARD ROUNDS</span>
-                  <span style="font-size: 9.5px; color: #71717a;" class="truncate">• ${store.subject}</span>
-                </div>
-                <span class="truncate" style="font-size: 13.5px; font-weight: 800; color: #ffffff; margin-top: 3px; letter-spacing: -0.2px;">${store.mcq1}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 100%; min-width: 0;">
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <span style="font-size: 8.5px; font-weight: 800; color: #34d399; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 2px;">WARD MCQS</span>
+                <span class="truncate" style="font-size: 11.5px; font-weight: 800; color: #ffffff; display: block; line-height: 1.25;">1. ${store.mcq1}</span>
+                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">2. ${store.mcq2}</span>
               </div>
-              <div style="width: 1px; height: 38px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                  <span style="font-size: 9.5px; font-weight: 800; color: #38bdf8; letter-spacing: 0.4px;">🌙 20:00 HOSTEL DESK</span>
-                  <span style="font-size: 9.5px; color: #71717a;" class="truncate">• 34m</span>
-                </div>
-                <span class="truncate" style="font-size: 13.5px; font-weight: 800; color: #ffffff; margin-top: 3px; letter-spacing: -0.2px;">${store.vid1}</span>
+              <div style="width: 1px; height: 46px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <span style="font-size: 8.5px; font-weight: 800; color: #38bdf8; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 2px;">TONIGHT'S VIDEOS</span>
+                <span class="truncate" style="font-size: 11.5px; font-weight: 800; color: #ffffff; display: block; line-height: 1.25;">1. ${store.vid1}</span>
+                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">2. ${store.vid2}</span>
               </div>
             </div>
           `
         },
         {
-          id: 'accent-edge-horizon',
-          name: '3. Dual Accent Ribbon Horizon',
-          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 3: Dual Accent Ribbon Horizon',
-          desc: 'Vertical emerald and sky accent ribbons on outer edges with a 1px center dividing line. No inner boxes, allowing chapter typography to stretch wide.',
+          id: 'dense-3tier',
+          name: '3. Dense 3-Topic Horizon (Max Capacity)',
+          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 3: Dense 3-Topic Horizon',
+          desc: 'Engineered for maximum task capacity. Fits 3 full topics per half (6 total in a 4x1 banner) using compact micro-typography and streamlined bullet layout.',
           render: () => `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; height: 100%; min-width: 0;">
-              <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px;">
-                <div style="width: 3px; height: 34px; border-radius: 2px; background: #34d399; flex-shrink: 0;"></div>
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                  <span style="font-size: 9px; font-weight: 800; color: #34d399; letter-spacing: 0.5px;">WARD MCQ • ${store.subject.toUpperCase()}</span>
-                  <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 2px;">${store.mcq1}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 100%; min-width: 0;">
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                  <span style="font-size: 8px; font-weight: 800; color: #34d399; letter-spacing: 0.5px;">🩺 WARD MCQS</span>
+                  <span style="font-size: 7.5px; font-weight: 700; color: #34d399; background: rgba(52,211,153,0.15); padding: 0.5px 4px; border-radius: 4px;">3 QUEUED</span>
                 </div>
+                <span class="truncate" style="font-size: 10.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.2;">• ${store.mcq1}</span>
+                <span class="truncate" style="font-size: 9.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px; line-height: 1.15;">• ${store.mcq2}</span>
+                <span class="truncate" style="font-size: 9px; font-weight: 500; color: #94a3b8; display: block; margin-top: 1px; line-height: 1.1;">• ${store.mcq3 || 'Staphylococci & Streptococci'}</span>
               </div>
-              <div style="width: 1px; height: 38px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
-              <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px;">
-                <div style="width: 3px; height: 34px; border-radius: 2px; background: #38bdf8; flex-shrink: 0;"></div>
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                  <span style="font-size: 9px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px;">TONIGHT • LECTURE QUEUE</span>
-                  <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 2px;">${store.vid1}</span>
+              <div style="width: 1px; height: 50px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                  <span style="font-size: 8px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px;">🌙 TONIGHT</span>
+                  <span style="font-size: 7.5px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 0.5px 4px; border-radius: 4px;">55m</span>
                 </div>
-              </div>
-            </div>
-          `
-        },
-        {
-          id: 'badge-pill-horizon',
-          name: '4. Pill Badge Split',
-          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 4: Pill Badge Split',
-          desc: 'Compact pill badges for category tags, separated by a crisp 1px center divider without boxed compartments.',
-          render: () => `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; height: 100%; min-width: 0;">
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span class="badge badge-emerald" style="font-size: 8.5px; padding: 1.5px 6px;">🩺 WARD MCQ</span>
-                  <span style="font-size: 9.5px; color: #94a3b8; font-weight: 600;" class="truncate">${store.subject}</span>
-                </div>
-                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 3px;">${store.mcq1}</span>
-              </div>
-              <div style="width: 1px; height: 38px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span class="badge badge-cyan" style="font-size: 8.5px; padding: 1.5px 6px;">🌙 TONIGHT</span>
-                  <span style="font-size: 9.5px; color: #94a3b8; font-weight: 600;" class="truncate">34m</span>
-                </div>
-                <span class="truncate" style="font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 3px;">${store.vid1}</span>
-              </div>
-            </div>
-          `
-        },
-        {
-          id: 'max-typography',
-          name: '5. Max-Typography Horizon',
-          badge: '4x1 Slim Banner (Fixed 380px &times; 78px) &bull; Design 5: Max-Typography Horizon',
-          desc: 'Pure typography focus. High-impact 14px bold chapter text with a clean 1px vertical line divider and zero unnecessary decoration.',
-          render: () => `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; height: 100%; min-width: 0;">
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <span style="font-size: 9px; font-weight: 800; color: #34d399; letter-spacing: 0.6px; text-transform: uppercase;">MCQ • ${store.subject}</span>
-                <span class="truncate" style="font-size: 14px; font-weight: 800; color: #ffffff; margin-top: 2px;">${store.mcq1}</span>
-              </div>
-              <div style="width: 1px; height: 40px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
-              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                <span style="font-size: 9px; font-weight: 800; color: #38bdf8; letter-spacing: 0.6px; text-transform: uppercase;">VIDEO • TONIGHT</span>
-                <span class="truncate" style="font-size: 14px; font-weight: 800; color: #ffffff; margin-top: 2px;">${store.vid1}</span>
+                <span class="truncate" style="font-size: 10.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.2;">• ${store.vid1}</span>
+                <span class="truncate" style="font-size: 9.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px; line-height: 1.15;">• ${store.vid2}</span>
+                <span class="truncate" style="font-size: 9px; font-weight: 500; color: #94a3b8; display: block; margin-top: 1px; line-height: 1.1;">• ${store.vid3 || 'Antimicrobial Therapy (18m)'}</span>
               </div>
             </div>
           `
@@ -1097,7 +1061,7 @@
       } else if (activeSize === '4x1') {
         root.style.width = '380px';
         root.style.height = '78px';
-        root.style.padding = '10px 14px';
+        root.style.padding = '6px 12px';
       } else if (activeSize === '4x2') {
         root.style.width = '380px';
         root.style.height = '155px';
@@ -1157,8 +1121,10 @@
       store.dateFull = document.getElementById('in-date').value;
       store.mcq1 = document.getElementById('in-mcq1').value;
       store.mcq2 = document.getElementById('in-mcq2').value;
+      store.mcq3 = document.getElementById('in-mcq3').value;
       store.vid1 = document.getElementById('in-vid1').value;
       store.vid2 = document.getElementById('in-vid2').value;
+      store.vid3 = document.getElementById('in-vid3').value;
       renderWidget();
     }
 
