@@ -1,5 +1,6 @@
 package com.medmatrix.app;
 
+import android.app.Activity;
 import android.app.DownloadManager;
 import android.appwidget.AppWidgetManager;
 import android.content.BroadcastReceiver;
@@ -12,7 +13,13 @@ import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.Settings;
+import androidx.core.content.FileProvider;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -190,76 +197,107 @@ public class WidgetBridgePlugin extends Plugin {
     @PluginMethod
     public void downloadAndInstallApk(PluginCall call) {
         String apkUrl = call.getString("apkUrl", "https://github.com/rock1xxx/medmatrix/releases/download/android-latest/MedMatrix.apk");
-        Context context = getContext();
-        try {
-            DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-            Uri uri = Uri.parse(apkUrl);
-            DownloadManager.Request request = new DownloadManager.Request(uri);
-            request.setTitle("MedMatrix Update");
-            request.setDescription("Downloading latest version...");
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "MedMatrix.apk");
-            request.setMimeType("application/vnd.android.package-archive");
+        Activity activity = getActivity();
+        if (activity == null) {
+            call.reject("Activity is not available");
+            return;
+        }
 
-            // Clean up old file if present
-            File dest = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "MedMatrix.apk");
-            if (dest.exists()) {
-                dest.delete();
-            }
-
-            long downloadId = downloadManager.enqueue(request);
-
-            BroadcastReceiver onComplete = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context c, Intent intent) {
-                    long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                    if (id == downloadId) {
-                        try {
-                            File downloadedApk = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "MedMatrix.apk");
-                            if (downloadedApk.exists()) {
-                                Uri apkUri = androidx.core.content.FileProvider.getUriForFile(
-                                    context,
-                                    context.getPackageName() + ".fileprovider",
-                                    downloadedApk
-                                );
-                                Intent installIntent = new Intent(Intent.ACTION_VIEW);
-                                installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                                installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                context.startActivity(installIntent);
-                            }
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        } finally {
-                            try {
-                                context.unregisterReceiver(this);
-                            } catch (Exception ignored) {}
-                        }
-                    }
-                }
-            };
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED);
-            } else {
-                context.registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
-            }
-
-            JSObject ret = new JSObject();
-            ret.put("success", true);
-            ret.put("downloadId", downloadId);
-            call.resolve(ret);
-        } catch (Exception e) {
-            try {
-                Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl));
-                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(fallback);
+        // Check unknown app install permission on Android 8+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!activity.getPackageManager().canRequestPackageInstalls()) {
+                Intent permIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName()));
+                activity.startActivity(permIntent);
                 JSObject ret = new JSObject();
-                ret.put("success", true);
-                ret.put("fallback", true);
+                ret.put("needsPermission", true);
+                ret.put("message", "Permission needed: Please enable 'Allow from this source' for MedMatrix, then tap Update again.");
                 call.resolve(ret);
-            } catch (Exception ex) {
-                call.reject("Could not download APK", ex);
+                return;
             }
         }
+
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(apkUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setInstanceFollowRedirects(true);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 MedMatrix-Android");
+                conn.connect();
+
+                int code = conn.getResponseCode();
+                if (code == HttpURLConnection.HTTP_MOVED_TEMP || code == HttpURLConnection.HTTP_MOVED_PERM || code == 307 || code == 308) {
+                    String redirectUrl = conn.getHeaderField("Location");
+                    conn.disconnect();
+                    url = new URL(redirectUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 MedMatrix-Android");
+                    conn.connect();
+                }
+
+                File downloadDir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (downloadDir != null && !downloadDir.exists()) {
+                    downloadDir.mkdirs();
+                }
+                File destFile = new File(downloadDir, "MedMatrix.apk");
+                if (destFile.exists()) {
+                    destFile.delete();
+                }
+
+                try (InputStream in = conn.getInputStream();
+                     FileOutputStream out = new FileOutputStream(destFile)) {
+                    byte[] buffer = new byte[16384];
+                    int len;
+                    while ((len = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, len);
+                    }
+                    out.flush();
+                }
+
+                activity.runOnUiThread(() -> {
+                    try {
+                        Uri apkUri = FileProvider.getUriForFile(
+                                activity,
+                                activity.getPackageName() + ".fileprovider",
+                                destFile
+                        );
+                        Intent installIntent = new Intent(Intent.ACTION_VIEW);
+                        installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                        installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(installIntent);
+
+                        JSObject ret = new JSObject();
+                        ret.put("success", true);
+                        call.resolve(ret);
+                    } catch (Exception ex) {
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl));
+                        browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(browserIntent);
+                        JSObject ret = new JSObject();
+                        ret.put("success", true);
+                        ret.put("fallback", true);
+                        call.resolve(ret);
+                    }
+                });
+            } catch (Exception e) {
+                activity.runOnUiThread(() -> {
+                    try {
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl));
+                        browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(browserIntent);
+                        JSObject ret = new JSObject();
+                        ret.put("success", true);
+                        ret.put("fallback", true);
+                        call.resolve(ret);
+                    } catch (Exception ex) {
+                        call.reject("Download error: " + e.getMessage(), e);
+                    }
+                });
+            } finally {
+                if (conn != null) {
+                    try { conn.disconnect(); } catch (Exception ignored) {}
+                }
+            }
+        }).start();
     }
 }

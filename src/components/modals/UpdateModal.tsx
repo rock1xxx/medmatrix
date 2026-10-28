@@ -66,21 +66,21 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose }) => 
   const handleInstall = async () => {
     if (!updateInfo) return
     setDownloading(true)
-    toast.loading('Starting update download...', { id: 'app-update' })
+    toast.loading('Downloading APK update...', { id: 'app-update' })
 
     try {
       const success = await triggerInAppApkUpdate(updateInfo.apkUrl)
       if (success) {
         localStorage.setItem('medmatrix_installed_release_date', updateInfo.publishedAt)
-        toast.success('Download complete! Please tap "Update" on the system prompt.', {
+        toast.success('Prompt opened! Tap "Update" on the system dialog.', {
           id: 'app-update',
           duration: 6000,
         })
       } else {
-        toast.info('Opening direct APK download...', { id: 'app-update' })
+        toast.info('Starting direct APK download in your browser...', { id: 'app-update' })
       }
     } catch {
-      toast.error('Failed to trigger in-app installer.', { id: 'app-update' })
+      toast.error('Download issue. Tap "Download APK via Browser" below.', { id: 'app-update' })
     } finally {
       setDownloading(false)
     }
@@ -272,21 +272,31 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose }) => 
                   {downloading ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                      <span>Downloading &amp; Preparing Installer...</span>
+                      <span>Downloading &amp; Opening Installer...</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
                       <span>
                         {updateInfo.isUpdateAvailable
-                          ? 'Download & Install Update'
-                          : 'Re-download Latest APK'}
+                          ? '1-Tap Update (In-App Installer)'
+                          : 'Re-install Latest APK'}
                       </span>
                     </>
                   )}
                 </button>
 
-                <div className="flex items-center justify-between px-1">
+                <a
+                  href={updateInfo.apkUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2 px-3 rounded-xl font-semibold text-xs bg-zinc-800/90 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 border border-zinc-700/80 transition-all flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Download APK via Browser</span>
+                </a>
+
+                <div className="flex items-center justify-between px-1 pt-1">
                   <a
                     href="https://github.com/rock1xxx/medmatrix/releases"
                     target="_blank"

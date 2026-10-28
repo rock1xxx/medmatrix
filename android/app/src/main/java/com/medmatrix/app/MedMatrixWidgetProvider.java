@@ -152,20 +152,12 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
 
         boolean showBorder = prefs.getBoolean("showBorder", true);
         boolean showDuration = prefs.getBoolean("showDuration", true);
-        boolean edgeToEdge = prefs.getBoolean("edgeToEdge", false);
-        int fontScale = prefs.getInt("fontScale", 100);
 
         if (!showBorder) {
             views.setInt(R.id.widget_container, "setBackgroundColor", Color.TRANSPARENT);
         } else {
             views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
         }
-
-        // Apply dynamic padding for edge-to-edge expansion
-        float density = context.getResources().getDisplayMetrics().density;
-        int padH = (int) ((edgeToEdge ? 4 : 12) * density);
-        int padV = (int) ((edgeToEdge ? 4 : 6) * density);
-        views.setViewPadding(R.id.widget_container, padH, padV, padH, padV);
 
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
@@ -178,15 +170,6 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         }
         views.setTextViewText(R.id.widget_video_ch1, vid1);
         views.setTextViewText(R.id.widget_video_ch2, vid2);
-
-        // Continuous font scaling if customized
-        if (fontScale != 100) {
-            float mult = fontScale / 100.0f;
-            views.setTextViewTextSize(R.id.widget_mcq_ch1, TypedValue.COMPLEX_UNIT_SP, 11f * mult);
-            views.setTextViewTextSize(R.id.widget_mcq_ch2, TypedValue.COMPLEX_UNIT_SP, 10f * mult);
-            views.setTextViewTextSize(R.id.widget_video_ch1, TypedValue.COMPLEX_UNIT_SP, 11f * mult);
-            views.setTextViewTextSize(R.id.widget_video_ch2, TypedValue.COMPLEX_UNIT_SP, 10f * mult);
-        }
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;
