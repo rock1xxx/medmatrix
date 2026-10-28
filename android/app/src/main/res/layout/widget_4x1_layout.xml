@@ -63,11 +63,12 @@
     </LinearLayout>
 
     <!-- Center Line Divider (1dp, subtle translucent white line) -->
-    <View
+    <ImageView
         android:id="@+id/widget_center_divider"
         android:layout_width="1dp"
         android:layout_height="46dp"
-        android:background="#2EFFFFFF" />
+        android:background="#2EFFFFFF"
+        android:contentDescription="@null" />
 
     <!-- Right Half: Tonight's Videos (Multi-Item Queue, Pushed to Edge, No Inner Box) -->
     <LinearLayout
