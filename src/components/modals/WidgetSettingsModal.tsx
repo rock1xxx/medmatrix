@@ -39,6 +39,14 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   const [blur, setBlur] = useState(18)
   const [radius, setRadius] = useState(24)
 
+  // Toolbox state
+  const [showBorder, setShowBorder] = useState(true)
+  const [showDuration, setShowDuration] = useState(true)
+  const [edgeToEdge, setEdgeToEdge] = useState(false)
+  const [fontScale, setFontScale] = useState(100)
+
+  const fs = (basePx: number) => `${Math.round(basePx * (fontScale / 100) * 10) / 10}px`
+
   const [isSyncing, setIsSyncing] = useState(false)
   const [showHowTo, setShowHowTo] = useState(false)
 
@@ -49,6 +57,10 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
       setOpacity(saved.opacity)
       setBlur(saved.blur)
       setRadius(saved.cornerRadius)
+      setShowBorder(saved.showBorder)
+      setShowDuration(saved.showDuration)
+      setEdgeToEdge(saved.edgeToEdge)
+      setFontScale(saved.fontScale)
     }
   }, [isOpen])
 
@@ -189,18 +201,22 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
       opacity,
       blur,
       cornerRadius: radius,
+      showBorder,
+      showDuration,
+      edgeToEdge,
+      fontScale,
       [`design${activeSize}` as const]: currentDesign.id,
     })
     const success = await syncActiveStudyDataToWidget(
       topics,
       subjects,
       activeSubjectId,
-      { opacity, blur, cornerRadius: radius }
+      { opacity, blur, cornerRadius: radius, showBorder, showDuration, edgeToEdge, fontScale }
     )
     setIsSyncing(false)
     if (success) {
       toast.success('Widget settings saved & synced!', {
-        description: `Applied ${currentDesign.name} (${opacity}% opacity, ${radius}dp radius) to home screen.`,
+        description: `Applied ${currentDesign.name} (${opacity}% opacity, ${showBorder ? 'Framed' : 'Frameless'}) to home screen.`,
       })
     } else {
       toast.success('Preferences saved locally.', {
@@ -225,14 +241,14 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
     }
   }
 
-  // Dynamic CSS computed from sliders
+  // Dynamic CSS computed from sliders & toolbox
   const alpha = opacity / 100
-  const bgStyleCss = `rgba(18, 18, 23, ${alpha})`
+  const bgStyleCss = showBorder ? `rgba(18, 18, 23, ${alpha})` : 'transparent'
   const borderAlpha = Math.min(0.25, 0.08 + alpha * 0.15)
-  const borderRgba = `1px solid rgba(255, 255, 255, ${borderAlpha})`
+  const borderRgba = showBorder ? `1px solid rgba(255, 255, 255, ${borderAlpha})` : 'none'
   const cardAlpha = Math.min(0.65, 0.15 + alpha * 0.35)
-  const cardBgCss = `rgba(34, 34, 45, ${cardAlpha})`
-  const cardBorderCss = `1px solid rgba(255, 255, 255, ${Math.min(0.18, 0.05 + alpha * 0.1)})`
+  const cardBgCss = showBorder ? `rgba(34, 34, 45, ${cardAlpha})` : 'rgba(24, 24, 30, 0.55)'
+  const cardBorderCss = showBorder ? `1px solid rgba(255, 255, 255, ${Math.min(0.18, 0.05 + alpha * 0.1)})` : '1px solid rgba(255, 255, 255, 0.08)'
   const cardRadius = Math.max(8, radius - 10) + 'px'
 
   return (
@@ -421,6 +437,101 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Display & Typography Toolbox */}
+          <div className="p-3.5 rounded-2xl bg-[#14141b] border border-[#23232c] space-y-3">
+            <div className="flex items-center justify-between border-b border-[#20202a] pb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🧰</span>
+                <span className="font-bold text-zinc-100 text-xs">
+                  Display &amp; Typography Toolbox
+                </span>
+              </div>
+              <span className="text-[10px] text-zinc-400">
+                Frameless &bull; Font Scale &bull; Clean Titles
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Outer Box / Border Toggle */}
+              <div className="bg-[#1b1b24] p-2.5 rounded-xl border border-zinc-800/60 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-bold text-zinc-200">Outer Box</div>
+                  <div className="text-[9px] text-zinc-400">Frameless mode</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBorder(!showBorder)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                    showBorder
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/40'
+                  }`}
+                >
+                  {showBorder ? 'Box: ON' : 'Box: OFF'}
+                </button>
+              </div>
+
+              {/* Video Minutes Toggle */}
+              <div className="bg-[#1b1b24] p-2.5 rounded-xl border border-zinc-800/60 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-bold text-zinc-200">Video Minutes</div>
+                  <div className="text-[9px] text-zinc-400">Hide (34m) duration</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDuration(!showDuration)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                    showDuration
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                  }`}
+                >
+                  {showDuration ? 'Minutes: SHOW' : 'Minutes: HIDE'}
+                </button>
+              </div>
+
+              {/* Edge Stretch Toggle */}
+              <div className="bg-[#1b1b24] p-2.5 rounded-xl border border-zinc-800/60 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-bold text-zinc-200">Edge Stretch</div>
+                  <div className="text-[9px] text-zinc-400">Expand text width</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEdgeToEdge(!edgeToEdge)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                    edgeToEdge
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-zinc-800 text-zinc-400 border border-zinc-700/60'
+                  }`}
+                >
+                  {edgeToEdge ? 'Stretch: ON' : 'Stretch: OFF'}
+                </button>
+              </div>
+            </div>
+
+            {/* Font Scale Slider */}
+            <div className="bg-[#1b1b24] p-2.5 rounded-xl border border-zinc-800/60 space-y-1">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-zinc-300 font-bold">Font Size Scale</span>
+                <span className="font-mono text-cyan-400 font-bold">{fontScale}%</span>
+              </div>
+              <input
+                type="range"
+                min="80"
+                max="135"
+                value={fontScale}
+                onChange={(e) => setFontScale(Number(e.target.value))}
+                className="w-full h-1 bg-zinc-800 rounded-lg cursor-pointer accent-cyan-400"
+              />
+              <div className="flex justify-between text-[9px] text-zinc-500">
+                <span>80% (Compact)</span>
+                <span>100% (Default)</span>
+                <span>135% (Large)</span>
+              </div>
+            </div>
+          </div>
+
           {/* Live Rendered Canvas */}
           <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-[#121217] via-[#0d0d12] to-[#07070a] border border-[#262630] flex flex-col items-center justify-center min-h-[190px] relative overflow-hidden">
             {/* Wallpaper glow */}
@@ -448,19 +559,22 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                 maxWidth: '100%',
                 padding:
                   activeSize === '4x1'
-                    ? '6px 12px'
+                    ? (edgeToEdge ? '4px 4px' : '6px 12px')
                     : activeSize === '2x2'
-                    ? '11px 12px'
-                    : '12px 14px',
+                    ? (edgeToEdge ? '6px 6px' : '11px 12px')
+                    : (edgeToEdge ? '8px 8px' : '12px 14px'),
                 backgroundColor: bgStyleCss,
                 border: borderRgba,
-                borderRadius: `${radius}px`,
-                backdropFilter: blur > 0 ? `blur(${blur}px)` : 'none',
-                WebkitBackdropFilter: blur > 0 ? `blur(${blur}px)` : 'none',
-                boxShadow: `0 16px 36px -8px rgba(0, 0, 0, ${Math.min(
-                  0.85,
-                  0.2 + alpha * 0.6
-                )}), 0 0 0 1px rgba(255, 255, 255, ${borderAlpha})`,
+                borderRadius: showBorder ? `${radius}px` : '0px',
+                backdropFilter: (showBorder && blur > 0) ? `blur(${blur}px)` : 'none',
+                WebkitBackdropFilter: (showBorder && blur > 0) ? `blur(${blur}px)` : 'none',
+                boxShadow: showBorder
+                  ? `0 16px 36px -8px rgba(0, 0, 0, ${Math.min(
+                      0.85,
+                      0.2 + alpha * 0.6
+                    )}), 0 0 0 1px rgba(255, 255, 255, ${borderAlpha})`
+                  : 'none',
+                filter: showBorder ? 'none' : 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.95))',
               }}
             >
               {/* 2X2 VARIANTS */}
@@ -691,29 +805,47 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                     <div className="flex items-center justify-between gap-3 w-full h-full min-w-0">
                       <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center mb-1">
-                          <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 tracking-wider">
+                          <span
+                            className="font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 tracking-wider"
+                            style={{ fontSize: fs(8) }}
+                          >
                             🩺 WARD MCQ
                           </span>
                         </div>
-                        <span className="text-[11.5px] font-bold text-white truncate block leading-tight">
+                        <span
+                          className="font-bold text-white truncate block leading-tight"
+                          style={{ fontSize: fs(11.5) }}
+                        >
                           {mcqCh1}
                         </span>
-                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                        <span
+                          className="font-semibold text-zinc-300 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(10.5) }}
+                        >
                           {mcqCh2}
                         </span>
                       </div>
                       <div className="w-[1px] h-11 bg-white/15 shrink-0" />
                       <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center mb-1">
-                          <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 tracking-wider">
+                          <span
+                            className="font-extrabold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 tracking-wider"
+                            style={{ fontSize: fs(8) }}
+                          >
                             🌙 TONIGHT
                           </span>
                         </div>
-                        <span className="text-[11.5px] font-bold text-white truncate block leading-tight">
-                          {vid1Title} ({vid1Duration})
+                        <span
+                          className="font-bold text-white truncate block leading-tight"
+                          style={{ fontSize: fs(11.5) }}
+                        >
+                          {vid1Title}{showDuration ? ` (${vid1Duration})` : ''}
                         </span>
-                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
-                          {vid2Title} ({vid2Duration})
+                        <span
+                          className="font-semibold text-zinc-300 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(10.5) }}
+                        >
+                          {vid2Title}{showDuration ? ` (${vid2Duration})` : ''}
                         </span>
                       </div>
                     </div>
@@ -722,26 +854,44 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                   {currentDesign.id === 'max-typo-multi' && (
                     <div className="flex items-center justify-between gap-3 w-full h-full min-w-0">
                       <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
-                        <span className="text-[8.5px] font-extrabold text-emerald-400 tracking-wider uppercase mb-0.5">
+                        <span
+                          className="font-extrabold text-emerald-400 tracking-wider uppercase mb-0.5"
+                          style={{ fontSize: fs(8.5) }}
+                        >
                           WARD MCQS
                         </span>
-                        <span className="text-[11.5px] font-extrabold text-white truncate block leading-tight">
+                        <span
+                          className="font-extrabold text-white truncate block leading-tight"
+                          style={{ fontSize: fs(11.5) }}
+                        >
                           1. {mcqCh1}
                         </span>
-                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                        <span
+                          className="font-semibold text-zinc-300 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(10.5) }}
+                        >
                           2. {mcqCh2}
                         </span>
                       </div>
                       <div className="w-[1px] h-11 bg-white/15 shrink-0" />
                       <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
-                        <span className="text-[8.5px] font-extrabold text-sky-400 tracking-wider uppercase mb-0.5">
+                        <span
+                          className="font-extrabold text-sky-400 tracking-wider uppercase mb-0.5"
+                          style={{ fontSize: fs(8.5) }}
+                        >
                           TONIGHT'S VIDEOS
                         </span>
-                        <span className="text-[11.5px] font-extrabold text-white truncate block leading-tight">
-                          1. {vid1Title} ({vid1Duration})
+                        <span
+                          className="font-extrabold text-white truncate block leading-tight"
+                          style={{ fontSize: fs(11.5) }}
+                        >
+                          1. {vid1Title}{showDuration ? ` (${vid1Duration})` : ''}
                         </span>
-                        <span className="text-[10.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
-                          2. {vid2Title} ({vid2Duration})
+                        <span
+                          className="font-semibold text-zinc-300 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(10.5) }}
+                        >
+                          2. {vid2Title}{showDuration ? ` (${vid2Duration})` : ''}
                         </span>
                       </div>
                     </div>
@@ -751,41 +901,71 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                     <div className="flex items-center justify-between gap-2.5 w-full h-full min-w-0">
                       <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-[8px] font-extrabold text-emerald-400 tracking-wider">
+                          <span
+                            className="font-extrabold text-emerald-400 tracking-wider"
+                            style={{ fontSize: fs(8) }}
+                          >
                             🩺 WARD MCQS
                           </span>
-                          <span className="text-[7.5px] font-bold text-emerald-400 bg-emerald-500/15 px-1 rounded">
+                          <span
+                            className="font-bold text-emerald-400 bg-emerald-500/15 px-1 rounded"
+                            style={{ fontSize: fs(7.5) }}
+                          >
                             3 QUEUED
                           </span>
                         </div>
-                        <span className="text-[10.5px] font-bold text-white truncate block leading-tight">
+                        <span
+                          className="font-bold text-white truncate block leading-tight"
+                          style={{ fontSize: fs(10.5) }}
+                        >
                           • {mcqCh1}
                         </span>
-                        <span className="text-[9.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
+                        <span
+                          className="font-semibold text-zinc-300 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(9.5) }}
+                        >
                           • {mcqCh2}
                         </span>
-                        <span className="text-[9px] font-medium text-zinc-400 truncate block mt-0.5 leading-tight">
+                        <span
+                          className="font-medium text-zinc-400 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(9) }}
+                        >
                           • {mcqCh3}
                         </span>
                       </div>
                       <div className="w-[1px] h-12 bg-white/15 shrink-0" />
                       <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-[8px] font-extrabold text-sky-400 tracking-wider">
+                          <span
+                            className="font-extrabold text-sky-400 tracking-wider"
+                            style={{ fontSize: fs(8) }}
+                          >
                             🌙 TONIGHT
                           </span>
-                          <span className="text-[7.5px] font-bold text-sky-400 bg-sky-500/15 px-1 rounded">
+                          <span
+                            className="font-bold text-sky-400 bg-sky-500/15 px-1 rounded"
+                            style={{ fontSize: fs(7.5) }}
+                          >
                             55m
                           </span>
                         </div>
-                        <span className="text-[10.5px] font-bold text-white truncate block leading-tight">
-                          • {vid1Title} ({vid1Duration})
+                        <span
+                          className="font-bold text-white truncate block leading-tight"
+                          style={{ fontSize: fs(10.5) }}
+                        >
+                          • {vid1Title}{showDuration ? ` (${vid1Duration})` : ''}
                         </span>
-                        <span className="text-[9.5px] font-semibold text-zinc-300 truncate block mt-0.5 leading-tight">
-                          • {vid2Title} ({vid2Duration})
+                        <span
+                          className="font-semibold text-zinc-300 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(9.5) }}
+                        >
+                          • {vid2Title}{showDuration ? ` (${vid2Duration})` : ''}
                         </span>
-                        <span className="text-[9px] font-medium text-zinc-400 truncate block mt-0.5 leading-tight">
-                          • {vid3Title} ({vid3Duration})
+                        <span
+                          className="font-medium text-zinc-400 truncate block mt-0.5 leading-tight"
+                          style={{ fontSize: fs(9) }}
+                        >
+                          • {vid3Title}{showDuration ? ` (${vid3Duration})` : ''}
                         </span>
                       </div>
                     </div>

@@ -6,9 +6,11 @@ import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.SizeF;
+import android.util.TypedValue;
 import android.widget.RemoteViews;
 
 import java.text.SimpleDateFormat;
@@ -115,8 +117,13 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         int cornerRadius = prefs.getInt("cornerRadius", 24);
         int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
         int cardRes = getCardDrawableRes(bgStyle);
+        boolean showBorder = prefs.getBoolean("showBorder", true);
 
-        views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        if (!showBorder) {
+            views.setInt(R.id.widget_container, "setBackgroundColor", Color.TRANSPARENT);
+        } else {
+            views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        }
         views.setInt(R.id.card_ward_mcqs, "setBackgroundResource", cardRes);
         views.setInt(R.id.card_tonight_videos, "setBackgroundResource", cardRes);
 
@@ -125,7 +132,12 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_subject_badge, prefs.getString("subject", "Microbiology"));
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
-        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
+
+        String vid1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
+        if (!prefs.getBoolean("showDuration", true)) {
+            vid1 = vid1.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+        }
+        views.setTextViewText(R.id.widget_video_ch1, vid1);
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;
@@ -138,14 +150,43 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         int cornerRadius = prefs.getInt("cornerRadius", 24);
         int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
 
-        views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
-        // Note: Zero inner card boxes for 4x1 per user design specification (clean single center line divider)
+        boolean showBorder = prefs.getBoolean("showBorder", true);
+        boolean showDuration = prefs.getBoolean("showDuration", true);
+        boolean edgeToEdge = prefs.getBoolean("edgeToEdge", false);
+        int fontScale = prefs.getInt("fontScale", 100);
+
+        if (!showBorder) {
+            views.setInt(R.id.widget_container, "setBackgroundColor", Color.TRANSPARENT);
+        } else {
+            views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        }
+
+        // Apply dynamic padding for edge-to-edge expansion
+        float density = context.getResources().getDisplayMetrics().density;
+        int padH = (int) ((edgeToEdge ? 4 : 12) * density);
+        int padV = (int) ((edgeToEdge ? 4 : 6) * density);
+        views.setViewPadding(R.id.widget_container, padH, padV, padH, padV);
 
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
 
-        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
-        views.setTextViewText(R.id.widget_video_ch2, prefs.getString("videoCh2", "Drug Resistance (21m)"));
+        String vid1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
+        String vid2 = prefs.getString("videoCh2", "Drug Resistance (21m)");
+        if (!showDuration) {
+            vid1 = vid1.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+            vid2 = vid2.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+        }
+        views.setTextViewText(R.id.widget_video_ch1, vid1);
+        views.setTextViewText(R.id.widget_video_ch2, vid2);
+
+        // Continuous font scaling if customized
+        if (fontScale != 100) {
+            float mult = fontScale / 100.0f;
+            views.setTextViewTextSize(R.id.widget_mcq_ch1, TypedValue.COMPLEX_UNIT_SP, 11f * mult);
+            views.setTextViewTextSize(R.id.widget_mcq_ch2, TypedValue.COMPLEX_UNIT_SP, 10f * mult);
+            views.setTextViewTextSize(R.id.widget_video_ch1, TypedValue.COMPLEX_UNIT_SP, 11f * mult);
+            views.setTextViewTextSize(R.id.widget_video_ch2, TypedValue.COMPLEX_UNIT_SP, 10f * mult);
+        }
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;
@@ -158,8 +199,14 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         int cornerRadius = prefs.getInt("cornerRadius", 24);
         int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
         int cardRes = getCardDrawableRes(bgStyle);
+        boolean showBorder = prefs.getBoolean("showBorder", true);
+        boolean showDuration = prefs.getBoolean("showDuration", true);
 
-        views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        if (!showBorder) {
+            views.setInt(R.id.widget_container, "setBackgroundColor", Color.TRANSPARENT);
+        } else {
+            views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        }
         views.setInt(R.id.card_ward_mcqs, "setBackgroundResource", cardRes);
         views.setInt(R.id.card_tonight_videos, "setBackgroundResource", cardRes);
 
@@ -168,8 +215,15 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_subject_badge, prefs.getString("subject", "Microbiology"));
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
-        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
-        views.setTextViewText(R.id.widget_video_ch2, prefs.getString("videoCh2", "Drug Resistance (21m)"));
+
+        String vid1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
+        String vid2 = prefs.getString("videoCh2", "Drug Resistance (21m)");
+        if (!showDuration) {
+            vid1 = vid1.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+            vid2 = vid2.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+        }
+        views.setTextViewText(R.id.widget_video_ch1, vid1);
+        views.setTextViewText(R.id.widget_video_ch2, vid2);
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;
@@ -182,8 +236,14 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         int cornerRadius = prefs.getInt("cornerRadius", 24);
         int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
         int cardRes = getCardDrawableRes(bgStyle);
+        boolean showBorder = prefs.getBoolean("showBorder", true);
+        boolean showDuration = prefs.getBoolean("showDuration", true);
 
-        views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        if (!showBorder) {
+            views.setInt(R.id.widget_container, "setBackgroundColor", Color.TRANSPARENT);
+        } else {
+            views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+        }
         views.setInt(R.id.card_ward_mcqs, "setBackgroundResource", cardRes);
         views.setInt(R.id.card_tonight_videos, "setBackgroundResource", cardRes);
         views.setInt(R.id.card_revision, "setBackgroundResource", cardRes);
@@ -193,8 +253,15 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_subject_badge, prefs.getString("subject", "Microbiology"));
         views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
         views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
-        views.setTextViewText(R.id.widget_video_ch1, prefs.getString("videoCh1", "Bacterial Genetics (34m)"));
-        views.setTextViewText(R.id.widget_video_ch2, prefs.getString("videoCh2", "Drug Resistance (21m)"));
+
+        String vid1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
+        String vid2 = prefs.getString("videoCh2", "Drug Resistance (21m)");
+        if (!showDuration) {
+            vid1 = vid1.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+            vid2 = vid2.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+        }
+        views.setTextViewText(R.id.widget_video_ch1, vid1);
+        views.setTextViewText(R.id.widget_video_ch2, vid2);
         views.setTextViewText(R.id.widget_revision_ch1, prefs.getString("revisionCh1", "General Pathology (Anki)"));
         views.setTextViewText(R.id.widget_revision_ch2, prefs.getString("revisionCh2", "Autonomic Pharmacology"));
 

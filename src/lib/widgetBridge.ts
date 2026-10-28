@@ -18,6 +18,11 @@ export interface WidgetPayload {
   opacity?: number
   blur?: number
   designVariant?: string
+  showBorder?: boolean
+  showDuration?: boolean
+  edgeToEdge?: boolean
+  fontScale?: number
+  design4x1?: string
 }
 
 export interface WidgetSliderSettings {
@@ -25,8 +30,13 @@ export interface WidgetSliderSettings {
   blur: number // 0 - 32px
   cornerRadius: number // 0 - 40dp
   design2x2: string
+  design4x1: string
   design4x2: string
   design4x4: string
+  showBorder: boolean
+  showDuration: boolean
+  edgeToEdge: boolean
+  fontScale: number
 }
 
 interface WidgetBridgePluginInterface {
@@ -198,8 +208,13 @@ export const getSavedSliderSettings = (): WidgetSliderSettings => {
       blur: 18,
       cornerRadius: 24,
       design2x2: 'hero',
+      design4x1: 'pill-multi',
       design4x2: 'desk',
       design4x4: 'three-tier',
+      showBorder: true,
+      showDuration: true,
+      edgeToEdge: false,
+      fontScale: 100,
     }
   }
   try {
@@ -207,15 +222,26 @@ export const getSavedSliderSettings = (): WidgetSliderSettings => {
     const blur = Number(localStorage.getItem('medmatrix_widget_blur') ?? 18)
     const radius = Number(localStorage.getItem('medmatrix_widget_radius') ?? 24)
     const design2x2 = localStorage.getItem('medmatrix_widget_design_2x2') || 'hero'
+    const design4x1 = localStorage.getItem('medmatrix_widget_design_4x1') || 'pill-multi'
     const design4x2 = localStorage.getItem('medmatrix_widget_design_4x2') || 'desk'
     const design4x4 = localStorage.getItem('medmatrix_widget_design_4x4') || 'three-tier'
+    const showBorder = localStorage.getItem('medmatrix_widget_show_border') !== 'false'
+    const showDuration = localStorage.getItem('medmatrix_widget_show_duration') !== 'false'
+    const edgeToEdge = localStorage.getItem('medmatrix_widget_edge_to_edge') === 'true'
+    const fontScale = Number(localStorage.getItem('medmatrix_widget_font_scale') ?? 100)
+
     return {
       opacity: isNaN(opacity) ? 85 : opacity,
       blur: isNaN(blur) ? 18 : blur,
       cornerRadius: isNaN(radius) ? 24 : radius,
       design2x2,
+      design4x1,
       design4x2,
       design4x4,
+      showBorder,
+      showDuration,
+      edgeToEdge,
+      fontScale: isNaN(fontScale) ? 100 : fontScale,
     }
   } catch {
     return {
@@ -223,8 +249,13 @@ export const getSavedSliderSettings = (): WidgetSliderSettings => {
       blur: 18,
       cornerRadius: 24,
       design2x2: 'hero',
+      design4x1: 'pill-multi',
       design4x2: 'desk',
       design4x4: 'three-tier',
+      showBorder: true,
+      showDuration: true,
+      edgeToEdge: false,
+      fontScale: 100,
     }
   }
 }
@@ -243,11 +274,26 @@ export const saveSliderSettings = (settings: Partial<WidgetSliderSettings>) => {
   if (settings.design2x2) {
     localStorage.setItem('medmatrix_widget_design_2x2', settings.design2x2)
   }
+  if (settings.design4x1) {
+    localStorage.setItem('medmatrix_widget_design_4x1', settings.design4x1)
+  }
   if (settings.design4x2) {
     localStorage.setItem('medmatrix_widget_design_4x2', settings.design4x2)
   }
   if (settings.design4x4) {
     localStorage.setItem('medmatrix_widget_design_4x4', settings.design4x4)
+  }
+  if (settings.showBorder !== undefined) {
+    localStorage.setItem('medmatrix_widget_show_border', String(settings.showBorder))
+  }
+  if (settings.showDuration !== undefined) {
+    localStorage.setItem('medmatrix_widget_show_duration', String(settings.showDuration))
+  }
+  if (settings.edgeToEdge !== undefined) {
+    localStorage.setItem('medmatrix_widget_edge_to_edge', String(settings.edgeToEdge))
+  }
+  if (settings.fontScale !== undefined) {
+    localStorage.setItem('medmatrix_widget_font_scale', String(settings.fontScale))
   }
 }
 
@@ -264,6 +310,17 @@ export async function syncActiveStudyDataToWidget(
     const activeSubject = subjects.find((s) => s.id === activeSubjectId) || subjects[0]
     const subjectName = activeSubject ? activeSubject.name : 'Microbiology'
 
+    // Slider settings
+    const saved = getSavedSliderSettings()
+    const opacity = overrides?.opacity ?? saved.opacity
+    const blur = overrides?.blur ?? saved.blur
+    const cornerRadius = overrides?.cornerRadius ?? saved.cornerRadius
+    const showBorder = overrides?.showBorder ?? saved.showBorder
+    const showDuration = overrides?.showDuration ?? saved.showDuration
+    const edgeToEdge = overrides?.edgeToEdge ?? saved.edgeToEdge
+    const fontScale = overrides?.fontScale ?? saved.fontScale
+    const design4x1 = overrides?.design4x1 ?? saved.design4x1
+
     // 1. Ward MCQs for active subject (chapters watched last night)
     const wardTopics = topics.filter(
       (t) => t.status === 'STEP_2_WARD_MCQ' && t.subjectId === activeSubjectId
@@ -275,23 +332,17 @@ export async function syncActiveStudyDataToWidget(
     const videoTopics = topics.filter(
       (t) => t.status === 'STEP_1_WATCHING' && t.subjectId === activeSubjectId
     )
-    const videoCh1 = videoTopics[0]
-      ? `${videoTopics[0].title} (${videoTopics[0].durationMinutes}m)`
-      : 'Bacterial Genetics (34m)'
-    const videoCh2 = videoTopics[1]
-      ? `${videoTopics[1].title} (${videoTopics[1].durationMinutes}m)`
-      : 'Drug Resistance (21m)'
+    let videoCh1 = videoTopics[0]
+      ? `${videoTopics[0].title}${showDuration ? ` (${videoTopics[0].durationMinutes}m)` : ''}`
+      : (showDuration ? 'Bacterial Genetics (34m)' : 'Bacterial Genetics')
+    let videoCh2 = videoTopics[1]
+      ? `${videoTopics[1].title}${showDuration ? ` (${videoTopics[1].durationMinutes}m)` : ''}`
+      : (showDuration ? 'Drug Resistance (21m)' : 'Drug Resistance')
 
     // 3. Spaced revision topics
     const srTopics = topics.filter((t) => t.status === 'LOCKED_IN_SR')
     const revisionCh1 = srTopics[0]?.title || 'General Pathology (Anki)'
     const revisionCh2 = srTopics[1]?.title || 'Autonomic Pharmacology'
-
-    // Slider settings
-    const saved = getSavedSliderSettings()
-    const opacity = overrides?.opacity ?? saved.opacity
-    const blur = overrides?.blur ?? saved.blur
-    const cornerRadius = overrides?.cornerRadius ?? saved.cornerRadius
 
     // Map opacity to category for Android drawables
     let bgStyle: WidgetBackgroundStyle = 'frosted'
@@ -314,6 +365,11 @@ export async function syncActiveStudyDataToWidget(
       cornerRadius,
       opacity,
       blur,
+      showBorder,
+      showDuration,
+      edgeToEdge,
+      fontScale,
+      design4x1,
     }
 
     await WidgetBridge.updateWidgetData(payload)

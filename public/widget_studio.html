@@ -378,6 +378,65 @@
       </div>
     </div>
 
+    <!-- Display & Typography Toolbox -->
+    <div class="panel">
+      <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 10px;">
+        <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
+          <span>🧰</span> Display &amp; Typography Toolbox
+        </div>
+        <span style="font-size: 11px; color: #a1a1aa;">Customize Frame &amp; Text</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px;">
+        <!-- Toggle 1: Borderless Frameless Canvas -->
+        <div class="slider-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Outer Box / Border</div>
+            <div style="font-size: 10px; color: #71717a; margin-top: 1px;">Toggle frameless floating text</div>
+          </div>
+          <button id="btn-toggle-border" class="btn-preset" onclick="toggleBorder()" style="border-color: #06b6d4; color: #38bdf8; font-weight: 700;">
+            Box: ON
+          </button>
+        </div>
+
+        <!-- Toggle 2: Hide Video Runtime Minutes -->
+        <div class="slider-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Video Minutes (34m)</div>
+            <div style="font-size: 10px; color: #71717a; margin-top: 1px;">Hide time to fit longer topic titles</div>
+          </div>
+          <button id="btn-toggle-duration" class="btn-preset" onclick="toggleDuration()" style="border-color: #06b6d4; color: #38bdf8; font-weight: 700;">
+            Minutes: SHOW
+          </button>
+        </div>
+
+        <!-- Toggle 3: Edge-to-Edge Margin Stretch -->
+        <div class="slider-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Edge Stretch</div>
+            <div style="font-size: 10px; color: #71717a; margin-top: 1px;">Expand text width almost to edge</div>
+          </div>
+          <button id="btn-toggle-edge" class="btn-preset" onclick="toggleEdge()" style="font-weight: 700;">
+            Stretch: OFF
+          </button>
+        </div>
+
+        <!-- Slider: Font Size Scale -->
+        <div class="slider-card" style="padding: 10px 12px;">
+          <div class="slider-header" style="margin-bottom: 4px;">
+            <span style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Font Size Scaling</span>
+            <span id="txt-font-scale" class="slider-val">100%</span>
+          </div>
+          <input type="range" id="rng-font-scale" min="80" max="135" value="100" oninput="updateFontScale()">
+          <div class="slider-footer" style="margin-top: 3px;">
+            <span>80% (Compact)</span>
+            <span>100% (Normal)</span>
+            <span>135% (Glanceable)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Design Variant Sub-Selector -->
     <div class="panel" style="padding: 14px 18px;">
       <div style="display: flex; align-items: center; gap: 12px;">
@@ -457,6 +516,19 @@
     let opacity = 85;
     let blur = 18;
     let radius = 24;
+    let borderless = false;
+    let showDuration = true;
+    let edgeToEdge = false;
+    let fontScale = 100;
+
+    function fs(basePx) {
+      return Math.round(basePx * (fontScale / 100) * 10) / 10 + 'px';
+    }
+
+    function cleanVid(str) {
+      if (!str) return '';
+      return showDuration ? str : str.replace(/\s*\(\d+m\)/i, '');
+    }
 
     const store = {
       subject: "Microbiology",
@@ -598,18 +670,18 @@
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 100%; min-width: 0;">
               <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
                 <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                  <span class="badge badge-emerald" style="font-size: 8px; font-weight: 800; padding: 1.5px 6px; letter-spacing: 0.5px;">🩺 WARD MCQ</span>
+                  <span class="badge badge-emerald" style="font-size: ${fs(8)}; font-weight: 800; padding: 1.5px 6px; letter-spacing: 0.5px;">🩺 WARD MCQ</span>
                 </div>
-                <span class="truncate" style="font-size: 11.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.25;">${store.mcq1}</span>
-                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">${store.mcq2}</span>
+                <span class="truncate" style="font-size: ${fs(11.5)}; font-weight: 700; color: #ffffff; display: block; line-height: 1.25;">${store.mcq1}</span>
+                <span class="truncate" style="font-size: ${fs(10.5)}; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">${store.mcq2}</span>
               </div>
               <div style="width: 1px; height: 46px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
               <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
                 <div style="display: flex; align-items: center; margin-bottom: 3px;">
-                  <span class="badge badge-cyan" style="font-size: 8px; font-weight: 800; padding: 1.5px 6px; letter-spacing: 0.5px;">🌙 TONIGHT</span>
+                  <span class="badge badge-cyan" style="font-size: ${fs(8)}; font-weight: 800; padding: 1.5px 6px; letter-spacing: 0.5px;">🌙 TONIGHT</span>
                 </div>
-                <span class="truncate" style="font-size: 11.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.25;">${store.vid1}</span>
-                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">${store.vid2}</span>
+                <span class="truncate" style="font-size: ${fs(11.5)}; font-weight: 700; color: #ffffff; display: block; line-height: 1.25;">${cleanVid(store.vid1)}</span>
+                <span class="truncate" style="font-size: ${fs(10.5)}; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">${cleanVid(store.vid2)}</span>
               </div>
             </div>
           `
@@ -622,15 +694,15 @@
           render: () => `
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 100%; min-width: 0;">
               <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
-                <span style="font-size: 8.5px; font-weight: 800; color: #34d399; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 2px;">WARD MCQS</span>
-                <span class="truncate" style="font-size: 11.5px; font-weight: 800; color: #ffffff; display: block; line-height: 1.25;">1. ${store.mcq1}</span>
-                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">2. ${store.mcq2}</span>
+                <span style="font-size: ${fs(8.5)}; font-weight: 800; color: #34d399; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 2px;">WARD MCQS</span>
+                <span class="truncate" style="font-size: ${fs(11.5)}; font-weight: 800; color: #ffffff; display: block; line-height: 1.25;">1. ${store.mcq1}</span>
+                <span class="truncate" style="font-size: ${fs(10.5)}; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">2. ${store.mcq2}</span>
               </div>
               <div style="width: 1px; height: 46px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
               <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
-                <span style="font-size: 8.5px; font-weight: 800; color: #38bdf8; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 2px;">TONIGHT'S VIDEOS</span>
-                <span class="truncate" style="font-size: 11.5px; font-weight: 800; color: #ffffff; display: block; line-height: 1.25;">1. ${store.vid1}</span>
-                <span class="truncate" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">2. ${store.vid2}</span>
+                <span style="font-size: ${fs(8.5)}; font-weight: 800; color: #38bdf8; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 2px;">TONIGHT'S VIDEOS</span>
+                <span class="truncate" style="font-size: ${fs(11.5)}; font-weight: 800; color: #ffffff; display: block; line-height: 1.25;">1. ${cleanVid(store.vid1)}</span>
+                <span class="truncate" style="font-size: ${fs(10.5)}; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1.5px; line-height: 1.2;">2. ${cleanVid(store.vid2)}</span>
               </div>
             </div>
           `
@@ -644,22 +716,22 @@
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 100%; min-width: 0;">
               <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                  <span style="font-size: 8px; font-weight: 800; color: #34d399; letter-spacing: 0.5px;">🩺 WARD MCQS</span>
-                  <span style="font-size: 7.5px; font-weight: 700; color: #34d399; background: rgba(52,211,153,0.15); padding: 0.5px 4px; border-radius: 4px;">3 QUEUED</span>
+                  <span style="font-size: ${fs(8)}; font-weight: 800; color: #34d399; letter-spacing: 0.5px;">🩺 WARD MCQS</span>
+                  <span style="font-size: ${fs(7.5)}; font-weight: 700; color: #34d399; background: rgba(52,211,153,0.15); padding: 0.5px 4px; border-radius: 4px;">3 QUEUED</span>
                 </div>
-                <span class="truncate" style="font-size: 10.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.2;">• ${store.mcq1}</span>
-                <span class="truncate" style="font-size: 9.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px; line-height: 1.15;">• ${store.mcq2}</span>
-                <span class="truncate" style="font-size: 9px; font-weight: 500; color: #94a3b8; display: block; margin-top: 1px; line-height: 1.1;">• ${store.mcq3 || 'Staphylococci & Streptococci'}</span>
+                <span class="truncate" style="font-size: ${fs(10.5)}; font-weight: 700; color: #ffffff; display: block; line-height: 1.2;">• ${store.mcq1}</span>
+                <span class="truncate" style="font-size: ${fs(9.5)}; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px; line-height: 1.15;">• ${store.mcq2}</span>
+                <span class="truncate" style="font-size: ${fs(9)}; font-weight: 500; color: #94a3b8; display: block; margin-top: 1px; line-height: 1.1;">• ${store.mcq3 || 'Staphylococci & Streptococci'}</span>
               </div>
               <div style="width: 1px; height: 50px; background: rgba(255,255,255,0.16); flex-shrink: 0;"></div>
               <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; height: 100%;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                  <span style="font-size: 8px; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px;">🌙 TONIGHT</span>
-                  <span style="font-size: 7.5px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 0.5px 4px; border-radius: 4px;">55m</span>
+                  <span style="font-size: ${fs(8)}; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px;">🌙 TONIGHT</span>
+                  <span style="font-size: ${fs(7.5)}; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 0.5px 4px; border-radius: 4px;">55m</span>
                 </div>
-                <span class="truncate" style="font-size: 10.5px; font-weight: 700; color: #ffffff; display: block; line-height: 1.2;">• ${store.vid1}</span>
-                <span class="truncate" style="font-size: 9.5px; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px; line-height: 1.15;">• ${store.vid2}</span>
-                <span class="truncate" style="font-size: 9px; font-weight: 500; color: #94a3b8; display: block; margin-top: 1px; line-height: 1.1;">• ${store.vid3 || 'Antimicrobial Therapy (18m)'}</span>
+                <span class="truncate" style="font-size: ${fs(10.5)}; font-weight: 700; color: #ffffff; display: block; line-height: 1.2;">• ${cleanVid(store.vid1)}</span>
+                <span class="truncate" style="font-size: ${fs(9.5)}; font-weight: 600; color: #cbd5e1; display: block; margin-top: 1px; line-height: 1.15;">• ${cleanVid(store.vid2)}</span>
+                <span class="truncate" style="font-size: ${fs(9)}; font-weight: 500; color: #94a3b8; display: block; margin-top: 1px; line-height: 1.1;">• ${cleanVid(store.vid3 || 'Antimicrobial Therapy (18m)')}</span>
               </div>
             </div>
           `
@@ -1053,23 +1125,26 @@
       const root = document.getElementById('widget-root');
       if (!root) return;
 
+      const padH = edgeToEdge ? '4px' : '12px';
+      const padV = edgeToEdge ? '4px' : '6px';
+
       // Lock STRICT Samsung One UI grid cell dimensions across ALL variants
       if (activeSize === '2x2') {
         root.style.width = '185px';
         root.style.height = '185px';
-        root.style.padding = '11px 12px';
+        root.style.padding = edgeToEdge ? '6px 6px' : '11px 12px';
       } else if (activeSize === '4x1') {
         root.style.width = '380px';
         root.style.height = '78px';
-        root.style.padding = '6px 12px';
+        root.style.padding = `${padV} ${padH}`;
       } else if (activeSize === '4x2') {
         root.style.width = '380px';
         root.style.height = '155px';
-        root.style.padding = '12px 14px';
+        root.style.padding = edgeToEdge ? '8px 8px' : '12px 14px';
       } else { // 4x4
         root.style.width = '380px';
         root.style.height = '330px';
-        root.style.padding = '14px 16px';
+        root.style.padding = edgeToEdge ? '8px 8px' : '14px 16px';
       }
       root.style.display = 'flex';
       root.style.flexDirection = 'column';
@@ -1077,30 +1152,41 @@
       root.style.overflow = 'hidden';
       root.style.boxSizing = 'border-box';
 
-      const alpha = opacity / 100;
-      const bgRgba = `rgba(18, 18, 23, ${alpha})`;
-      const borderAlpha = Math.min(0.25, 0.08 + alpha * 0.15);
-      const borderRgba = `1px solid rgba(255, 255, 255, ${borderAlpha})`;
-
-      root.style.backgroundColor = bgRgba;
-      root.style.border = borderRgba;
-      root.style.borderRadius = radius + 'px';
-
-      if (blur > 0) {
-        root.style.backdropFilter = `blur(${blur}px)`;
-        root.style.webkitBackdropFilter = `blur(${blur}px)`;
-      } else {
+      if (borderless) {
+        root.style.backgroundColor = 'transparent';
+        root.style.border = 'none';
+        root.style.borderRadius = '0px';
         root.style.backdropFilter = 'none';
         root.style.webkitBackdropFilter = 'none';
+        root.style.boxShadow = 'none';
+        root.style.filter = 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.95))';
+      } else {
+        const alpha = opacity / 100;
+        const bgRgba = `rgba(18, 18, 23, ${alpha})`;
+        const borderAlpha = Math.min(0.25, 0.08 + alpha * 0.15);
+        const borderRgba = `1px solid rgba(255, 255, 255, ${borderAlpha})`;
+
+        root.style.backgroundColor = bgRgba;
+        root.style.border = borderRgba;
+        root.style.borderRadius = radius + 'px';
+        root.style.filter = 'none';
+
+        if (blur > 0) {
+          root.style.backdropFilter = `blur(${blur}px)`;
+          root.style.webkitBackdropFilter = `blur(${blur}px)`;
+        } else {
+          root.style.backdropFilter = 'none';
+          root.style.webkitBackdropFilter = 'none';
+        }
+
+        const shadowAlpha = Math.min(0.85, 0.2 + alpha * 0.6);
+        root.style.boxShadow = `0 18px 38px -8px rgba(0, 0, 0, ${shadowAlpha}), 0 0 0 1px rgba(255, 255, 255, ${borderAlpha})`;
       }
 
-      const shadowAlpha = Math.min(0.85, 0.2 + alpha * 0.6);
-      root.style.boxShadow = `0 18px 38px -8px rgba(0, 0, 0, ${shadowAlpha}), 0 0 0 1px rgba(255, 255, 255, ${borderAlpha})`;
-
       // Inner card elements
-      const cardAlpha = Math.min(0.65, 0.15 + alpha * 0.35);
-      const cardBg = `rgba(34, 34, 45, ${cardAlpha})`;
-      const cardBorder = `1px solid rgba(255, 255, 255, ${Math.min(0.18, 0.05 + alpha * 0.1)})`;
+      const cardAlpha = Math.min(0.65, 0.15 + (opacity / 100) * 0.35);
+      const cardBg = borderless ? 'rgba(24, 24, 30, 0.55)' : `rgba(34, 34, 45, ${cardAlpha})`;
+      const cardBorder = borderless ? '1px solid rgba(255, 255, 255, 0.08)' : `1px solid rgba(255, 255, 255, ${Math.min(0.18, 0.05 + (opacity / 100) * 0.1)})`;
       const innerRadius = Math.max(8, radius - 10) + 'px';
 
       const cards = root.querySelectorAll('.card-item');
@@ -1109,6 +1195,45 @@
         c.style.border = cardBorder;
         c.style.borderRadius = innerRadius;
       });
+    }
+
+    function toggleBorder() {
+      borderless = !borderless;
+      const btn = document.getElementById('btn-toggle-border');
+      if (btn) {
+        btn.innerText = borderless ? 'Box: OFF' : 'Box: ON';
+        btn.style.borderColor = borderless ? '#ef4444' : '#06b6d4';
+        btn.style.color = borderless ? '#f87171' : '#38bdf8';
+      }
+      applyStyles();
+    }
+
+    function toggleDuration() {
+      showDuration = !showDuration;
+      const btn = document.getElementById('btn-toggle-duration');
+      if (btn) {
+        btn.innerText = showDuration ? 'Minutes: SHOW' : 'Minutes: HIDE';
+        btn.style.borderColor = showDuration ? '#06b6d4' : '#a855f7';
+        btn.style.color = showDuration ? '#38bdf8' : '#c084fc';
+      }
+      renderWidget();
+    }
+
+    function toggleEdge() {
+      edgeToEdge = !edgeToEdge;
+      const btn = document.getElementById('btn-toggle-edge');
+      if (btn) {
+        btn.innerText = edgeToEdge ? 'Stretch: ON' : 'Stretch: OFF';
+        btn.style.borderColor = edgeToEdge ? '#10b981' : 'rgba(255,255,255,0.1)';
+        btn.style.color = edgeToEdge ? '#34d399' : '#a1a1aa';
+      }
+      applyStyles();
+    }
+
+    function updateFontScale() {
+      fontScale = parseInt(document.getElementById('rng-font-scale').value);
+      document.getElementById('txt-font-scale').innerText = fontScale + '%';
+      renderWidget();
     }
 
     function toggleInputs() {

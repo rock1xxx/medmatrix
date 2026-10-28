@@ -41,6 +41,11 @@ public class WidgetBridgePlugin extends Plugin {
         String revisionCh2 = call.getString("revisionCh2", "Autonomic Pharmacology");
         String bgStyle = call.getString("bgStyle", "frosted");
         int cornerRadius = call.getInt("cornerRadius", 24);
+        boolean showBorder = call.getBoolean("showBorder", true);
+        boolean showDuration = call.getBoolean("showDuration", true);
+        boolean edgeToEdge = call.getBoolean("edgeToEdge", false);
+        int fontScale = call.getInt("fontScale", 100);
+        String design4x1 = call.getString("design4x1", "pill-multi");
 
         if (todayDate != null && !todayDate.isEmpty()) {
             editor.putString("todayDate", todayDate);
@@ -54,6 +59,11 @@ public class WidgetBridgePlugin extends Plugin {
         editor.putString("revisionCh2", revisionCh2);
         editor.putString("bgStyle", bgStyle);
         editor.putInt("cornerRadius", cornerRadius);
+        editor.putBoolean("showBorder", showBorder);
+        editor.putBoolean("showDuration", showDuration);
+        editor.putBoolean("edgeToEdge", edgeToEdge);
+        editor.putInt("fontScale", fontScale);
+        editor.putString("design4x1", design4x1);
         editor.apply();
 
         // Broadcast update to all active home screen widgets across all registered sizes
@@ -132,6 +142,11 @@ public class WidgetBridgePlugin extends Plugin {
         ret.put("revisionCh2", prefs.getString("revisionCh2", "Autonomic Pharmacology"));
         ret.put("bgStyle", prefs.getString("bgStyle", "frosted"));
         ret.put("cornerRadius", prefs.getInt("cornerRadius", 24));
+        ret.put("showBorder", prefs.getBoolean("showBorder", true));
+        ret.put("showDuration", prefs.getBoolean("showDuration", true));
+        ret.put("edgeToEdge", prefs.getBoolean("edgeToEdge", false));
+        ret.put("fontScale", prefs.getInt("fontScale", 100));
+        ret.put("design4x1", prefs.getString("design4x1", "pill-multi"));
         call.resolve(ret);
     }
 
