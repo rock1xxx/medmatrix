@@ -1,5 +1,5 @@
 import { Topic, Subject, GTScheduleItem, ProjectedDayItem, DayOverride, DayShiftTag } from '../types'
-import { addDays, format, parseISO, differenceInDays } from 'date-fns'
+import { addDays, format, differenceInDays } from 'date-fns'
 
 export interface SubjectDaySpan {
   subjectId: string
@@ -37,10 +37,8 @@ export function generateCalendarProjection({
   topics,
   subjects,
   subjectOrder,
-  activeSubjectId,
   dailyPaceTopics,
   gtSchedule,
-  swtCompletedSubjects,
   gtStartThreshold = 7,
   dayOverrides = {},
   startDate = new Date(),
@@ -95,7 +93,6 @@ export function generateCalendarProjection({
   }
 
   const MAX_DAYS = 450 // Cap to prevent infinite loops
-  let previousDayWatched: Topic[] = []
 
   while (
     currentSubjectIdx < orderedIds.length &&
@@ -139,7 +136,6 @@ export function generateCalendarProjection({
         customNote: override?.customNote || 'Dedicated Grand Test (200 MCQs) & Test Analysis (0 new videos)',
       })
 
-      previousDayWatched = []
       currentDate = addDays(currentDate, 1)
       dayNumber++
       continue
@@ -211,7 +207,6 @@ export function generateCalendarProjection({
         }
       }
 
-      previousDayWatched = topicsToday
       currentDate = addDays(currentDate, 1)
       dayNumber++
     } else {

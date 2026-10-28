@@ -16,13 +16,10 @@ import { getTopicSRStatus, getSRStatusMetadata } from '../../lib/srEngine'
 import {
   Search,
   Filter,
-  Bookmark,
   Sparkles,
-  Lock,
   ArrowRight,
   ArrowLeft,
   GripVertical,
-  Plus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 

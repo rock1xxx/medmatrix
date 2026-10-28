@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { subscribeSyncStatus, SyncStatus } from '../../lib/syncEngine'
 import { SyncModal } from '../modals/SyncModal'
@@ -16,7 +15,6 @@ import {
   Radio,
   Smartphone,
   Sliders,
-  AppWindow,
   Layers,
   RefreshCw,
 } from 'lucide-react'
@@ -26,11 +24,52 @@ interface HeaderProps {
   onOpenWidgetSettings: () => void
 }
 
+const SYNC_META: Record<
+  SyncStatus,
+  { label: string; dot: string; text: string; title: string }
+> = {
+  idle: {
+    label: 'Local',
+    dot: 'bg-zinc-500',
+    text: 'text-zinc-500',
+    title: 'Saved on this device',
+  },
+  syncing: {
+    label: 'Syncing',
+    dot: 'bg-sky-400',
+    text: 'text-sky-300',
+    title: 'Pushing your study progress to the cloud',
+  },
+  synced: {
+    label: 'Synced',
+    dot: 'bg-emerald-400',
+    text: 'text-emerald-400',
+    title: 'All devices in sync',
+  },
+  offline: {
+    label: 'Offline',
+    dot: 'bg-amber-400',
+    text: 'text-amber-300',
+    title: 'Offline — changes sync once you reconnect',
+  },
+  error: {
+    label: 'Sync error',
+    dot: 'bg-rose-500',
+    text: 'text-rose-400',
+    title: 'Last sync failed — check your Supabase settings',
+  },
+  not_configured: {
+    label: 'Local',
+    dot: 'bg-zinc-500',
+    text: 'text-zinc-500',
+    title: 'No cloud sync configured — progress stays on this device',
+  },
+}
+
 export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSettings }) => {
   const {
     stretchDrawerOpen,
     setStretchDrawerOpen,
-    stretchTopicIds,
     exportDataJSON,
     importDataJSON,
     resetToInitialSeed,
@@ -47,6 +86,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
 
   useEffect(() => {
     return subscribeSyncStatus((status) => setSyncStatus(status))
+  }, [])
+
+  // The startup "update available" toast can open this modal directly.
+  useEffect(() => {
+    const openUpdateModal = () => setUpdateModalOpen(true)
+    window.addEventListener('medmatrix:openUpdateModal', openUpdateModal)
+    return () => window.removeEventListener('medmatrix:openUpdateModal', openUpdateModal)
   }, [])
 
   // Close menu on click/touch outside or Escape key
@@ -106,10 +152,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
     <>
       <header className="sticky top-0 z-30 bg-[#0c0c0e]/95 backdrop-blur-md border-b border-[#1c1c20] safe-top select-none">
       <div className="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
-        {/* Brand & Offline Indicator */}
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400" title="Offline ready for hospital basement" />
+        {/* Brand & Live Sync Indicator */}
+        <div className="flex items-center gap-2" title={SYNC_META[syncStatus].title}>
+          <div
+            className={`w-2 h-2 rounded-full ${SYNC_META[syncStatus].dot} ${
+              syncStatus === 'syncing' ? 'animate-pulse' : ''
+            }`}
+          />
           <span className="font-bold text-base text-zinc-100 tracking-tight">MedMatrix</span>
+          <span className={`text-[10px] font-medium ${SYNC_META[syncStatus].text}`}>
+            {SYNC_META[syncStatus].label}
+          </span>
         </div>
 
         {/* Action Controls */}

@@ -7,7 +7,6 @@ import {
   AlertCircle,
   ExternalLink,
   Sparkles,
-  Smartphone,
   ShieldCheck,
   Lock,
   Globe,

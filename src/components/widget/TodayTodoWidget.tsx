@@ -1,18 +1,14 @@
 import React, { useState } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { getTopicSRStatus } from '../../lib/srEngine'
-import { SubjectIcon } from '../common/SubjectIcon'
 import {
   CheckCircle2,
   Circle,
   PlayCircle,
-  Brain,
   Sparkles,
-  Clock,
   ArrowUpRight,
   ExternalLink,
   ChevronDown,
-  Layers,
   Check,
   Smartphone,
   SlidersHorizontal,

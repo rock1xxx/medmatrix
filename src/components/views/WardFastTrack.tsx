@@ -1,6 +1,5 @@
 import React from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
-import { SubjectIcon } from '../common/SubjectIcon'
 import { Check, ArrowRight, CheckCircle2, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 

@@ -10,9 +10,7 @@ import {
   Plus,
   ArrowRight,
   Trophy,
-  Sparkles,
   Moon,
-  RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -26,7 +24,6 @@ export const HostelCommandCenter: React.FC = () => {
     lockTopicIntoSR,
     advanceSRLevel,
     snoozeTopicSR,
-    removeTopicFromSR,
     setStretchDrawerOpen,
     setSelectedTopicForDetail,
     refreshDailyBaseline,

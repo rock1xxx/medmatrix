@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { useMedMatrixStore } from './store/useMedMatrixStore'
 import { Header } from './components/layout/Header'
 import { BottomNav } from './components/layout/BottomNav'
@@ -19,6 +19,11 @@ import {
   fetchLatestAppUpdate,
 } from './lib/widgetBridge'
 import { Toaster, toast } from 'sonner'
+
+// Charts are heavy and only used here, so keep recharts out of the initial bundle.
+const AnalyticsView = lazy(() =>
+  import('./components/views/AnalyticsView').then((m) => ({ default: m.AnalyticsView }))
+)
 
 export function App() {
   useEffect(() => {
@@ -77,8 +82,15 @@ export function App() {
         const update = await fetchLatestAppUpdate()
         if (update && update.isUpdateAvailable) {
           toast.info(`MedMatrix Update Available (${update.latestVersion})`, {
-            description: 'Tap Check for Updates in the menu to install.',
-            duration: 8000,
+            id: 'medmatrix-update-available',
+            description: 'Tap Update to install now, or swipe the banner away.',
+            duration: 6000,
+            closeButton: true,
+            action: {
+              label: 'Update',
+              onClick: () =>
+                window.dispatchEvent(new Event('medmatrix:openUpdateModal')),
+            },
           })
         }
       } catch {
@@ -115,6 +127,8 @@ export function App() {
         setActiveTab('matrix')
       } else if (e.key === '5') {
         setActiveTab('kanban')
+      } else if (e.key === '6') {
+        setActiveTab('analytics')
       } else if (e.key === 's' || e.key === 'S') {
         setStretchDrawerOpen(!stretchDrawerOpen)
       } else if (e.key === '?') {
@@ -197,6 +211,19 @@ export function App() {
         {activeTab === 'timeline' && <TimelineRoadmap />}
         {activeTab === 'matrix' && <MasterMatrix />}
         {activeTab === 'kanban' && <MasterKanban />}
+        {activeTab === 'analytics' && (
+          <Suspense
+            fallback={
+              <div className="max-w-xl mx-auto px-4 pt-8 text-center text-xs text-zinc-500">
+                Loading analytics…
+              </div>
+            }
+          >
+            <div className="pt-2">
+              <AnalyticsView />
+            </div>
+          </Suspense>
+        )}
       </main>
 
       {/* Bottom Navigation */}

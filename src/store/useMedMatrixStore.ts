@@ -1,19 +1,26 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOverride, DayShiftTag, SRData } from '../types'
+import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOverride, SRData } from '../types'
 import { INITIAL_SUBJECTS, INITIAL_TOPICS, seedSampleSRCards } from '../data/initialSubjects'
 import { advanceTopicSR, createInitialSRData, DEFAULT_EBBINGHAUS_INTERVALS, DEFAULT_POSTPONE_DAYS } from '../lib/srEngine'
 import { triggerLockCelebration, triggerMasteredCelebration } from '../lib/confetti'
 import { toast } from 'sonner'
 import { addDays, format } from 'date-fns'
 
-export type TimerMode = '10m' | '15m' | '25m'
+const STORAGE_KEY = 'medmatrix-storage-v2'
 
-const TIMER_PRESETS: Record<TimerMode, number> = {
-  '10m': 10 * 60,
-  '15m': 15 * 60,
-  '25m': 25 * 60,
-}
+/**
+ * A brand new install has no local state, so its "last modified" clock must not
+ * out-rank the copy already sitting in the cloud. Starting the clock at 0 lets the
+ * first sync pull existing progress down instead of overwriting it with seed data.
+ */
+const HAS_PERSISTED_STATE = (() => {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY) !== null
+  } catch {
+    return true
+  }
+})()
 
 // Generate initial bi-weekly GTs on alternate Sundays
 const now = new Date()
@@ -53,14 +60,6 @@ interface MedMatrixState {
   // Baseline 2 Quota & Elastic Stretch
   mandatoryTopicIds: string[]
   stretchTopicIds: string[]
-
-  // Ward Sprint Timer
-  timer: {
-    durationSeconds: number
-    remainingSeconds: number
-    isRunning: boolean
-    mode: TimerMode
-  }
 
   // Spaced Repetition Custom Intervals
   ebbinghausIntervals: [number, number, number, number]
@@ -103,12 +102,6 @@ interface MedMatrixState {
   moveSubject: (fromIndex: number, toIndex: number) => void
   setDayOverride: (dateStr: string, override: Partial<DayOverride>) => void
   setGTStartThreshold: (threshold: number) => void
-
-  // Timer Actions
-  timerStart: () => void
-  timerPause: () => void
-  timerReset: (mode?: TimerMode) => void
-  timerTick: () => void
 
   // Decentralized Multi-Device Sync (Supabase)
   lastModified: number
@@ -161,20 +154,13 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       ebbinghausIntervals: DEFAULT_EBBINGHAUS_INTERVALS,
       postponeIntervalDays: DEFAULT_POSTPONE_DAYS,
 
-      lastModified: Date.now(),
+      lastModified: HAS_PERSISTED_STATE ? Date.now() : 0,
       syncConfig: {
         supabaseUrl: (import.meta.env.VITE_SUPABASE_URL as string) || '',
         supabaseAnonKey: (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '',
         syncKey: 'dr-med-sync',
         autoSync: true,
         isConnected: Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY),
-      },
-
-      timer: {
-        durationSeconds: 15 * 60,
-        remainingSeconds: 15 * 60,
-        isRunning: false,
-        mode: '15m',
       },
 
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -274,7 +260,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       lockTopicIntoSR: (id) => {
-        const { topics, activeSubjectId, subjects } = get()
+        const { topics, subjects } = get()
         const topic = topics.find((t) => t.id === id)
         if (!topic) return
 
@@ -447,7 +433,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           const newCount = Math.max(0, (t.bookmarkCount || 0) + delta)
           return { ...t, bookmarkCount: newCount, updatedAt: new Date().toISOString() }
         })
-        set({ topics: updated })
+        set({ topics: updated, lastModified: Date.now() })
       },
 
       updateMarginNotes: (id, notes) => {
@@ -455,7 +441,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         const updated = topics.map((t) =>
           t.id === id ? { ...t, marginNotes: notes, updatedAt: new Date().toISOString() } : t
         )
-        set({ topics: updated })
+        set({ topics: updated, lastModified: Date.now() })
       },
 
       pullToStretchQueue: (id) => {
@@ -516,6 +502,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             set({
               topics: updated,
               mandatoryTopicIds: selectedIds,
+              lastModified: Date.now(),
             })
             const subName = subjects.find((s) => s.id === activeSubjectId)?.name || 'Subject'
             toast.info(`Assigned ${selected.length} video(s) for ${subName} tonight!`)
@@ -581,54 +568,6 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         toast.info(`GTs scheduled to begin after ${gtStartThreshold} subjects completed`)
       },
 
-      timerStart: () => {
-        set((state) => ({
-          timer: { ...state.timer, isRunning: true },
-        }))
-      },
-
-      timerPause: () => {
-        set((state) => ({
-          timer: { ...state.timer, isRunning: false },
-        }))
-      },
-
-      timerReset: (mode) => {
-        const currentMode = mode || get().timer.mode
-        const duration = TIMER_PRESETS[currentMode]
-        set({
-          timer: {
-            mode: currentMode,
-            durationSeconds: duration,
-            remainingSeconds: duration,
-            isRunning: false,
-          },
-        })
-      },
-
-      timerTick: () => {
-        const { timer } = get()
-        if (!timer.isRunning) return
-
-        if (timer.remainingSeconds <= 1) {
-          set({
-            timer: {
-              ...timer,
-              remainingSeconds: 0,
-              isRunning: false,
-            },
-          })
-          toast.success('Ward sprint timer completed!', { duration: 4000 })
-        } else {
-          set({
-            timer: {
-              ...timer,
-              remainingSeconds: timer.remainingSeconds - 1,
-            },
-          })
-        }
-      },
-
       resetToInitialSeed: () => {
         set({
           topics: seedSampleSRCards(INITIAL_TOPICS),
@@ -639,6 +578,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           gtSchedule: INITIAL_GTS,
           mandatoryTopicIds: ['lec-54', 'lec-55'],
           stretchTopicIds: [],
+          lastModified: Date.now(),
         })
         toast.info('Database reset to initial prescribed seed state.')
       },
@@ -768,7 +708,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
     }),
     {
-      name: 'medmatrix-storage-v2',
+      name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {

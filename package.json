@@ -1,11 +1,17 @@
 {
-  "name": "valiant-bohr",
+  "name": "medmatrix",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Offline-first spaced repetition study cockpit for medical interns preparing for NEET PG / INI-CET during hospital shifts.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rock1xxx/medmatrix.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview"
   },

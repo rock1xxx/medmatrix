@@ -1,4 +1,4 @@
-import { addDays, format, isAfter, isBefore, isToday, parseISO, startOfDay } from 'date-fns'
+import { addDays, format, isBefore, isSameDay, parseISO, startOfDay } from 'date-fns'
 import { SRData, SRLevel, SRStatus, Topic } from '../types'
 
 /**
@@ -104,7 +104,9 @@ export function getTopicSRStatus(topic: Topic, referenceDate: Date = new Date())
   const today = startOfDay(referenceDate)
   const targetDay = startOfDay(reviewDate)
 
-  if (isToday(targetDay)) {
+  // Compare against the supplied reference date, not the wall clock, so this
+  // stays correct when projecting future/past days.
+  if (isSameDay(targetDay, today)) {
     return 'DUE_TODAY'
   }
 
@@ -112,11 +114,7 @@ export function getTopicSRStatus(topic: Topic, referenceDate: Date = new Date())
     return 'OVERDUE'
   }
 
-  if (isAfter(targetDay, today)) {
-    return 'SCHEDULED'
-  }
-
-  return 'DUE_TODAY'
+  return 'SCHEDULED'
 }
 
 /**

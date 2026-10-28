@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4x1 "Dense 3-Topic Horizon" design: three compact rows per half -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <View
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_bg_frosted_24" />
+
+    <LinearLayout
+        android:id="@+id/widget_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:baselineAligned="false"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp">
+
+        <LinearLayout
+            android:id="@+id/card_ward_mcqs"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="7dp"
+            android:layout_marginRight="7dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_label_left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.06"
+                android:text="🩺 WARD MCQS"
+                android:textColor="#34D399"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_mcq_ch1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="• Sterilization &amp; Disinfection"
+                android:textColor="#FFFFFF"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_mcq_ch2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="• Bacterial Culture Media"
+                android:textColor="#CBD5E1"
+                android:textSize="9.5sp" />
+
+            <TextView
+                android:id="@+id/widget_mcq_ch3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="• Staphylococci &amp; Streptococci"
+                android:textColor="#A1A1AA"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/widget_center_divider"
+            android:layout_width="1dp"
+            android:layout_height="46dp"
+            android:background="#2EFFFFFF" />
+
+        <LinearLayout
+            android:id="@+id/card_tonight_videos"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="7dp"
+            android:layout_marginLeft="7dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_label_right"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.06"
+                android:text="🌙 TONIGHT"
+                android:textColor="#38BDF8"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_video_ch1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="• Bacterial Genetics (34m)"
+                android:textColor="#FFFFFF"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_video_ch2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="• Drug Resistance (21m)"
+                android:textColor="#CBD5E1"
+                android:textSize="9.5sp" />
+
+            <TextView
+                android:id="@+id/widget_video_ch3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="• Antimicrobial Therapy (18m)"
+                android:textColor="#A1A1AA"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

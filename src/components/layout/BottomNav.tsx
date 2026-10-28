@@ -1,7 +1,7 @@
 import React from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { ViewMode } from '../../types'
-import { Sun, Moon, CalendarDays, BookOpen, Kanban } from 'lucide-react'
+import { Sun, Moon, CalendarDays, BookOpen, Kanban, TrendingUp } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, topics, activeSubjectId } = useMedMatrixStore()
@@ -28,6 +28,7 @@ export const BottomNav: React.FC = () => {
     { id: 'timeline', label: 'Timeline', icon: CalendarDays },
     { id: 'matrix', label: 'Syllabus', icon: BookOpen },
     { id: 'kanban', label: 'Board', icon: Kanban },
+    { id: 'analytics', label: 'Stats', icon: TrendingUp },
   ]
 
   return (

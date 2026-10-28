@@ -1,133 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:baselineAligned="false"
-    android:paddingLeft="10dp"
-    android:paddingRight="10dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
-    android:paddingStart="10dp"
-    android:paddingEnd="10dp">
+    android:layout_height="match_parent">
 
-    <!-- Left Half: Ward MCQs (Multi-Item Queue, Pushed to Edge, No Inner Box) -->
-    <LinearLayout
-        android:id="@+id/card_ward_mcqs"
-        android:layout_width="0dp"
+    <!-- Dedicated background layer so opacity can be applied without fading the text -->
+    <View
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:layout_marginEnd="8dp"
-        android:layout_marginRight="8dp"
+        android:background="@drawable/widget_bg_frosted_24" />
+
+    <!-- Content row wraps its text; the divider is sized against it in Java -->
+    <LinearLayout
+        android:id="@+id/widget_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:orientation="vertical">
+        android:baselineAligned="false"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp">
 
-        <!-- Top Pill Tag: Pushed to Edge, No Subject Clutter -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Left Half: Ward MCQs -->
+        <LinearLayout
+            android:id="@+id/card_ward_mcqs"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="@drawable/widget_badge_emerald_bg"
-            android:paddingLeft="5dp"
-            android:paddingRight="5dp"
-            android:paddingStart="5dp"
-            android:paddingEnd="5dp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp"
-            android:text="🩺 WARD MCQ"
-            android:textColor="#34D399"
-            android:textSize="8sp"
-            android:textStyle="bold" />
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
 
-        <!-- Chapter 1 Title -->
-        <TextView
-            android:id="@+id/widget_mcq_ch1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Sterilization &amp; Disinfection"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold" />
+            <TextView
+                android:id="@+id/widget_label_left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/widget_badge_emerald_bg"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:text="🩺 WARD MCQ"
+                android:textColor="#34D399"
+                android:textSize="8sp"
+                android:textStyle="bold" />
 
-        <!-- Chapter 2 Title -->
-        <TextView
-            android:id="@+id/widget_mcq_ch2"
-            android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/widget_mcq_ch1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Sterilization &amp; Disinfection"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_mcq_ch2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Bacterial Culture Media"
+                android:textColor="#CBD5E1"
+                android:textSize="10.5sp" />
+        </LinearLayout>
+
+        <!-- Center divider: height is kept in step with the text block in Java -->
+        <View
+            android:id="@+id/widget_center_divider"
+            android:layout_width="1dp"
+            android:layout_height="40dp"
+            android:background="#2EFFFFFF" />
+
+        <!-- Right Half: Tonight's Videos -->
+        <LinearLayout
+            android:id="@+id/card_tonight_videos"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Bacterial Culture Media"
-            android:textColor="#CBD5E1"
-            android:textSize="10sp" />
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:layout_marginLeft="8dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_label_right"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/widget_badge_bg"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:text="🌙 TONIGHT"
+                android:textColor="#38BDF8"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_video_ch1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Bacterial Genetics (34m)"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_video_ch2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Drug Resistance (21m)"
+                android:textColor="#CBD5E1"
+                android:textSize="10.5sp" />
+        </LinearLayout>
+
     </LinearLayout>
 
-    <!-- Center Line Divider (1dp, subtle translucent white line) -->
-    <ImageView
-        android:id="@+id/widget_center_divider"
-        android:layout_width="1dp"
-        android:layout_height="match_parent"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="4dp"
-        android:background="#2EFFFFFF"
-        android:contentDescription="@null" />
-
-    <!-- Right Half: Tonight's Videos (Multi-Item Queue, Pushed to Edge, No Inner Box) -->
-    <LinearLayout
-        android:id="@+id/card_tonight_videos"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:layout_marginStart="8dp"
-        android:layout_marginLeft="8dp"
-        android:gravity="center_vertical"
-        android:orientation="vertical">
-
-        <!-- Top Pill Tag: Pushed to Edge -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/widget_badge_bg"
-            android:paddingLeft="5dp"
-            android:paddingRight="5dp"
-            android:paddingStart="5dp"
-            android:paddingEnd="5dp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp"
-            android:text="🌙 TONIGHT"
-            android:textColor="#38BDF8"
-            android:textSize="8sp"
-            android:textStyle="bold" />
-
-        <!-- Video 1 Title -->
-        <TextView
-            android:id="@+id/widget_video_ch1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Bacterial Genetics (34m)"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <!-- Video 2 Title -->
-        <TextView
-            android:id="@+id/widget_video_ch2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Drug Resistance (21m)"
-            android:textColor="#CBD5E1"
-            android:textSize="10sp" />
-    </LinearLayout>
-
-</LinearLayout>
+</FrameLayout>

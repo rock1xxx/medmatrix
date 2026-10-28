@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
-import { Subject, Topic, TopicStatus } from '../../types'
+import { TopicStatus } from '../../types'
 import { SubjectIcon } from '../common/SubjectIcon'
 import { ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { toast } from 'sonner'

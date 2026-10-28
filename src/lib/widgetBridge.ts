@@ -9,8 +9,10 @@ export interface WidgetPayload {
   subject: string
   mcqCh1: string
   mcqCh2: string
+  mcqCh3?: string
   videoCh1: string
   videoCh2: string
+  videoCh3?: string
   revisionCh1: string
   revisionCh2: string
   bgStyle: WidgetBackgroundStyle
@@ -357,6 +359,7 @@ export async function syncActiveStudyDataToWidget(
     )
     const mcqCh1 = wardTopics[0]?.title || 'Sterilization & Disinfection'
     const mcqCh2 = wardTopics[1]?.title || 'Bacterial Culture Media'
+    const mcqCh3 = wardTopics[2]?.title || 'Staphylococci & Streptococci'
 
     // 2. Tonight's video queue for active subject
     const videoTopics = topics.filter(
@@ -368,6 +371,9 @@ export async function syncActiveStudyDataToWidget(
     let videoCh2 = videoTopics[1]
       ? `${videoTopics[1].title}${showDuration ? ` (${videoTopics[1].durationMinutes}m)` : ''}`
       : (showDuration ? 'Drug Resistance (21m)' : 'Drug Resistance')
+    const videoCh3 = videoTopics[2]
+      ? `${videoTopics[2].title}${showDuration ? ` (${videoTopics[2].durationMinutes}m)` : ''}`
+      : (showDuration ? 'Antimicrobial Therapy (18m)' : 'Antimicrobial Therapy')
 
     // 3. Spaced revision topics
     const srTopics = topics.filter((t) => t.status === 'LOCKED_IN_SR')
@@ -387,8 +393,10 @@ export async function syncActiveStudyDataToWidget(
       subject: subjectName,
       mcqCh1,
       mcqCh2,
+      mcqCh3,
       videoCh1,
       videoCh2,
+      videoCh3,
       revisionCh1,
       revisionCh2,
       bgStyle,

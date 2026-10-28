@@ -1,6 +1,4 @@
 import { Subject, Topic } from '../types'
-import { createInitialSRData } from '../lib/srEngine'
-import { subDays, format } from 'date-fns'
 
 export const INITIAL_SUBJECTS: Subject[] = [
   {
@@ -197,9 +195,6 @@ export const INITIAL_SUBJECTS: Subject[] = [
 
 const now = new Date()
 const nowISO = now.toISOString()
-const yesterday = subDays(now, 1)
-const twoDaysAgo = subDays(now, 2)
-const threeDaysAgo = subDays(now, 3)
 
 export const INITIAL_TOPICS: Topic[] = [
   // ==================== 1. ANATOMY (12 Videos) ====================

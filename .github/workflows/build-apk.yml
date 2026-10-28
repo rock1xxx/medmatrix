@@ -34,6 +34,12 @@ jobs:
 
       - name: Build Web Application
         run: npm run build
+        env:
+          # Optional: add these as repository secrets so every freshly installed APK
+          # reconnects to your Supabase project automatically and pulls your progress.
+          # If unset, the app simply starts local-only as before.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Sync Native Android
         run: npx cap sync android

@@ -22,7 +22,7 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react'
-import { format, addDays, parseISO, isSameDay } from 'date-fns'
+import { format, addDays } from 'date-fns'
 
 export const AnalyticsView: React.FC = () => {
   const { topics, subjects } = useMedMatrixStore()

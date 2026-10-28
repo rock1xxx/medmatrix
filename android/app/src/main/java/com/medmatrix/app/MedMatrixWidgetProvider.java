@@ -143,33 +143,113 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
         return views;
     }
 
+    private static int dpToPx(Context context, float dp) {
+        return Math.round(TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics()));
+    }
+
+    private static void setScaledText(RemoteViews views, int viewId, String text, float sizeSp) {
+        views.setTextViewText(viewId, text);
+        views.setTextViewTextSize(viewId, TypedValue.COMPLEX_UNIT_SP, sizeSp);
+    }
+
     public static RemoteViews build4x1Views(Context context, SharedPreferences prefs, PendingIntent pendingIntent) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_4x1_layout);
+        String design = prefs.getString("design4x1", "pill-multi");
+        boolean denseDesign = "dense-3tier".equals(design);
+        boolean typoDesign = "max-typo-multi".equals(design);
 
-        String bgStyle = prefs.getString("bgStyle", "frosted");
+        int layoutRes = denseDesign
+                ? R.layout.widget_4x1_dense_layout
+                : typoDesign
+                ? R.layout.widget_4x1_typo_layout
+                : R.layout.widget_4x1_layout;
+        RemoteViews views = new RemoteViews(context.getPackageName(), layoutRes);
+
         int cornerRadius = prefs.getInt("cornerRadius", 24);
-        int bgRes = getBgDrawableRes(bgStyle, cornerRadius);
-
         boolean showBorder = prefs.getBoolean("showBorder", true);
         boolean showDuration = prefs.getBoolean("showDuration", true);
+        boolean edgeToEdge = prefs.getBoolean("edgeToEdge", false);
+        int opacity = prefs.getInt("opacity", 85);
 
-        if (!showBorder) {
-            views.setInt(R.id.widget_container, "setBackgroundColor", Color.TRANSPARENT);
+        // Slider range in the settings screen is 80% - 135%.
+        float scale = Math.max(0.8f, Math.min(1.35f, prefs.getInt("fontScale", 100) / 100f));
+
+        // Continuous opacity: one fully opaque shape, faded to the chosen level. Fading a
+        // dedicated background layer keeps the text crisp instead of dimming everything.
+        if (!showBorder || opacity <= 0) {
+            views.setInt(R.id.widget_bg, "setBackgroundColor", Color.TRANSPARENT);
         } else {
-            views.setInt(R.id.widget_container, "setBackgroundResource", bgRes);
+            views.setInt(R.id.widget_bg, "setBackgroundResource", getBgDrawableRes("opaque", cornerRadius));
+            views.setFloat(R.id.widget_bg, "setAlpha", Math.max(0f, Math.min(1f, opacity / 100f)));
         }
 
-        views.setTextViewText(R.id.widget_mcq_ch1, prefs.getString("mcqCh1", "Sterilization & Disinfection"));
-        views.setTextViewText(R.id.widget_mcq_ch2, prefs.getString("mcqCh2", "Bacterial Culture Media"));
+        // Padding lives on the content row so the background layer stays full-bleed.
+        int horizontalPadding = edgeToEdge ? 0 : 10;
+        int verticalPadding = edgeToEdge ? 0 : 4;
+        views.setViewPadding(
+                R.id.widget_row,
+                dpToPx(context, horizontalPadding),
+                dpToPx(context, verticalPadding),
+                dpToPx(context, horizontalPadding),
+                dpToPx(context, verticalPadding)
+        );
 
+        // The divider sits inside the text row and is sized against the selected font
+        // scale, so it stays in step with the text instead of spanning the whole widget.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            float dividerHeightDp = (denseDesign ? 46f : 40f) * scale;
+            views.setViewLayoutHeight(R.id.widget_center_divider, dividerHeightDp, TypedValue.COMPLEX_UNIT_DIP);
+        }
+
+        String mcq1 = prefs.getString("mcqCh1", "Sterilization & Disinfection");
+        String mcq2 = prefs.getString("mcqCh2", "Bacterial Culture Media");
+        String mcq3 = prefs.getString("mcqCh3", "Staphylococci & Streptococci");
         String vid1 = prefs.getString("videoCh1", "Bacterial Genetics (34m)");
         String vid2 = prefs.getString("videoCh2", "Drug Resistance (21m)");
+        String vid3 = prefs.getString("videoCh3", "Antimicrobial Therapy (18m)");
+
         if (!showDuration) {
-            vid1 = vid1.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
-            vid2 = vid2.replaceAll("(?i)\\s*\\(\\d+m\\)", "");
+            String durationPattern = "(?i)\\s*\\(\\d+m\\)";
+            vid1 = vid1.replaceAll(durationPattern, "");
+            vid2 = vid2.replaceAll(durationPattern, "");
+            vid3 = vid3.replaceAll(durationPattern, "");
         }
-        views.setTextViewText(R.id.widget_video_ch1, vid1);
-        views.setTextViewText(R.id.widget_video_ch2, vid2);
+
+        float labelSp = (typoDesign ? 8.5f : 8f) * scale;
+        float primarySp = (denseDesign ? 10.5f : 11.5f) * scale;
+        float secondarySp = (denseDesign ? 9.5f : 10.5f) * scale;
+        float tertiarySp = 9f * scale;
+
+        if (denseDesign) {
+            setScaledText(views, R.id.widget_label_left, "🩺 WARD MCQS", labelSp);
+            setScaledText(views, R.id.widget_label_right, "🌙 TONIGHT", labelSp);
+
+            setScaledText(views, R.id.widget_mcq_ch1, "• " + mcq1, primarySp);
+            setScaledText(views, R.id.widget_mcq_ch2, "• " + mcq2, secondarySp);
+            setScaledText(views, R.id.widget_mcq_ch3, "• " + mcq3, tertiarySp);
+
+            setScaledText(views, R.id.widget_video_ch1, "• " + vid1, primarySp);
+            setScaledText(views, R.id.widget_video_ch2, "• " + vid2, secondarySp);
+            setScaledText(views, R.id.widget_video_ch3, "• " + vid3, tertiarySp);
+        } else if (typoDesign) {
+            setScaledText(views, R.id.widget_label_left, "WARD MCQS", labelSp);
+            setScaledText(views, R.id.widget_label_right, "TONIGHT'S VIDEOS", labelSp);
+
+            setScaledText(views, R.id.widget_mcq_ch1, "1. " + mcq1, primarySp);
+            setScaledText(views, R.id.widget_mcq_ch2, "2. " + mcq2, secondarySp);
+
+            setScaledText(views, R.id.widget_video_ch1, "1. " + vid1, primarySp);
+            setScaledText(views, R.id.widget_video_ch2, "2. " + vid2, secondarySp);
+        } else {
+            setScaledText(views, R.id.widget_label_left, "🩺 WARD MCQ", labelSp);
+            setScaledText(views, R.id.widget_label_right, "🌙 TONIGHT", labelSp);
+
+            setScaledText(views, R.id.widget_mcq_ch1, mcq1, primarySp);
+            setScaledText(views, R.id.widget_mcq_ch2, mcq2, secondarySp);
+
+            setScaledText(views, R.id.widget_video_ch1, vid1, primarySp);
+            setScaledText(views, R.id.widget_video_ch2, vid2, secondarySp);
+        }
 
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent);
         return views;

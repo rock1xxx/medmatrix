@@ -51,7 +51,7 @@ export interface Subject {
   targetHours: number
 }
 
-export type ViewMode = 'ward' | 'hostel' | 'timeline' | 'matrix' | 'kanban'
+export type ViewMode = 'ward' | 'hostel' | 'timeline' | 'matrix' | 'kanban' | 'analytics'
 
 export type DutyShift = 'WARD_DAY' | 'CASUALTY' | 'ICU_ROTATION' | 'POST_DUTY_OFF' | 'NIGHT_SHIFT'
 

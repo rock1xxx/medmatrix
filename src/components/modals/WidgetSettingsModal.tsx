@@ -11,9 +11,6 @@ import {
   Smartphone,
   ChevronRight,
   Sliders,
-  Layers,
-  Moon,
-  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -197,23 +194,31 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
 
   const handleSaveAndSync = async () => {
     setIsSyncing(true)
-    saveSliderSettings({
-      opacity,
-      blur,
-      cornerRadius: radius,
-      showBorder,
-      showDuration,
-      edgeToEdge,
-      fontScale,
-      [`design${activeSize}` as const]: currentDesign.id,
-    })
-    const success = await syncActiveStudyDataToWidget(
-      topics,
-      subjects,
-      activeSubjectId,
-      { opacity, blur, cornerRadius: radius, showBorder, showDuration, edgeToEdge, fontScale }
-    )
-    setIsSyncing(false)
+    let success = false
+    try {
+      saveSliderSettings({
+        opacity,
+        blur,
+        cornerRadius: radius,
+        showBorder,
+        showDuration,
+        edgeToEdge,
+        fontScale,
+        [`design${activeSize}` as const]: currentDesign.id,
+      })
+      const designPick = { [`design${activeSize}` as const]: currentDesign.id }
+      success = await syncActiveStudyDataToWidget(
+        topics,
+        subjects,
+        activeSubjectId,
+        { opacity, blur, cornerRadius: radius, showBorder, showDuration, edgeToEdge, fontScale, ...designPick }
+      )
+    } catch (err) {
+      console.warn('[WidgetSettings] Save & sync failed:', err)
+    } finally {
+      // Never leave the button stuck in its disabled "Syncing..." state.
+      setIsSyncing(false)
+    }
     if (success) {
       toast.success('Widget settings saved & synced!', {
         description: `Applied ${currentDesign.name} (${opacity}% opacity, ${showBorder ? 'Framed' : 'Frameless'}) to home screen.`,

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
-import { SubjectIcon } from '../common/SubjectIcon'
 import { SubjectFlowModal } from '../modals/SubjectFlowModal'
 import { generateCalendarProjection } from '../../lib/calendarProjection'
 import { ProjectedDayItem, DayShiftTag } from '../../types'
@@ -8,20 +7,13 @@ import {
   CalendarDays,
   Calendar as CalendarIcon,
   ListFilter,
-  CheckCircle2,
-  Clock,
   Trophy,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Sparkles,
-  Award,
   ListOrdered,
-  Plus,
   X,
   Target,
-  FileText,
-  AlertCircle,
 } from 'lucide-react'
 import {
   format,

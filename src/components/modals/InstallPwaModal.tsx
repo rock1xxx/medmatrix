@@ -7,7 +7,6 @@ import {
   Smartphone,
   CheckCircle2,
   Download,
-  Laptop,
   Check,
 } from 'lucide-react'
 
