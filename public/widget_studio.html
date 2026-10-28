@@ -2,41 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#08080a">
   <title>MedMatrix Widget Studio — Samsung S24 Ultra</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       background-color: #08080a;
       color: #f4f4f5;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      padding: 24px;
+      padding: 12px 10px;
       line-height: 1.5;
       user-select: none;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      width: 100%;
+    }
+    @media (min-width: 640px) {
+      body {
+        padding: 24px;
+      }
     }
     .container {
       max-width: 1040px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 14px;
+      width: 100%;
     }
     .panel {
       background-color: #121217;
       border: 1px solid #22222d;
-      border-radius: 20px;
-      padding: 20px;
+      border-radius: 18px;
+      padding: 14px 16px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      width: 100%;
+      overflow: hidden;
+    }
+    @media (min-width: 640px) {
+      .panel {
+        border-radius: 20px;
+        padding: 20px;
+      }
     }
     .flex-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
     }
     .badge {
@@ -73,20 +92,33 @@
       border-radius: 14px;
       padding: 4px;
       gap: 4px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      max-width: 100%;
+      width: 100%;
+    }
+    .btn-group::-webkit-scrollbar {
+      display: none;
     }
     .btn-size {
-      padding: 8px 16px;
+      padding: 8px 12px;
       border-radius: 10px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       border: none;
       background: transparent;
       color: #a1a1aa;
       transition: all 0.15s ease;
+      white-space: nowrap;
+      flex: 1;
+      min-width: fit-content;
+      text-align: center;
+      touch-action: manipulation;
     }
-    .btn-size:hover {
-      color: #ffffff;
+    .btn-size:active {
+      transform: scale(0.96);
     }
     .btn-size.active {
       background: #06b6d4;
@@ -94,7 +126,7 @@
       box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
     }
     .btn-pill {
-      padding: 7px 14px;
+      padding: 8px 14px;
       border-radius: 12px;
       font-size: 12px;
       font-weight: 600;
@@ -104,10 +136,15 @@
       color: #a1a1aa;
       white-space: nowrap;
       transition: all 0.15s ease;
+      touch-action: manipulation;
+      flex-shrink: 0;
     }
     .btn-pill:hover {
       color: #ffffff;
       border-color: #3f3f4e;
+    }
+    .btn-pill:active {
+      transform: scale(0.96);
     }
     .btn-pill.active {
       background: rgba(6, 182, 212, 0.18);
@@ -119,27 +156,32 @@
       align-items: center;
       gap: 8px;
       overflow-x: auto;
-      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 2px 0;
+      width: 100%;
     }
     .pills-scroll::-webkit-scrollbar {
-      height: 4px;
-    }
-    .pills-scroll::-webkit-scrollbar-thumb {
-      background: #272733;
-      border-radius: 4px;
+      display: none;
     }
     /* Sliders grid */
     .sliders-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
+      grid-template-columns: 1fr;
+      gap: 12px;
       margin-top: 14px;
+    }
+    @media (min-width: 600px) {
+      .sliders-grid {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
     }
     .slider-card {
       background: #171720;
       border: 1px solid #262633;
       border-radius: 14px;
-      padding: 14px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -158,13 +200,34 @@
       color: #38bdf8;
     }
     input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
       width: 100%;
-      height: 6px;
+      height: 8px;
       background: #272733;
       border-radius: 6px;
       outline: none;
       cursor: pointer;
-      accent-color: #06b6d4;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #06b6d4;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #06b6d4;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
     }
     .slider-footer {
       display: flex;
@@ -172,19 +235,67 @@
       font-size: 10px;
       color: #71717a;
     }
+    .preset-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
     .btn-preset {
-      padding: 4px 10px;
-      border-radius: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-size: 11px;
       font-weight: 600;
       border: 1px solid #272733;
       background: #181822;
       color: #d4d4d8;
       cursor: pointer;
+      touch-action: manipulation;
+      transition: all 0.15s ease;
     }
     .btn-preset:hover {
       background: #232330;
       color: #ffffff;
+    }
+    .btn-preset:active {
+      transform: scale(0.96);
+    }
+    .toolbox-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    @media (min-width: 580px) {
+      .toolbox-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    .toolbox-toggle-card {
+      background: #171720;
+      border: 1px solid #262633;
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .btn-toggle-action {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid #272733;
+      background: #181822;
+      color: #d4d4d8;
+      touch-action: manipulation;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      min-height: 38px;
+    }
+    .btn-toggle-action:active {
+      transform: scale(0.95);
     }
     /* Wallpaper Stage */
     .stage {
@@ -192,29 +303,77 @@
                   radial-gradient(circle at 20% 80%, rgba(52, 211, 153, 0.18) 0%, transparent 60%),
                   linear-gradient(180deg, #13131a 0%, #0a0a0e 100%);
       border: 1px solid #262633;
-      border-radius: 28px;
-      padding: 40px 24px;
+      border-radius: 24px;
+      padding: 20px 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 400px;
+      min-height: 220px;
       position: relative;
       overflow: hidden;
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.4);
+      width: 100%;
+      transition: background 0.25s ease;
+    }
+    @media (min-width: 640px) {
+      .stage {
+        padding: 32px 20px;
+        min-height: 300px;
+      }
+    }
+    .stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .stage-tag {
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(0, 0, 0, 0.7);
       border: 1px solid #272733;
       border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 12px;
+      padding: 4px 10px;
+      font-size: 11px;
       color: #e4e4e7;
-      margin-bottom: 20px;
       backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      max-width: 100%;
+    }
+    .wallpaper-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #272733;
+      border-radius: 20px;
+      padding: 3px 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .wallpaper-bar::-webkit-scrollbar {
+      display: none;
+    }
+    .btn-wp {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: #a1a1aa;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+    .btn-wp.active {
+      background: rgba(255,255,255,0.18);
+      color: #ffffff;
     }
     .pulse-dot {
       width: 7px;
@@ -222,6 +381,7 @@
       border-radius: 50%;
       background: #06b6d4;
       animation: pulse 1.8s infinite;
+      flex-shrink: 0;
     }
     @keyframes pulse {
       0% { opacity: 1; transform: scale(1); }
@@ -234,6 +394,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
+      max-width: 100%;
+      padding: 4px 0;
     }
     #widget-root {
       transition: background-color 0.1s ease-out, border 0.1s ease-out, border-radius 0.1s ease-out, backdrop-filter 0.1s ease-out;
@@ -244,6 +407,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      max-width: 100%;
     }
     .truncate {
       white-space: nowrap;
@@ -271,9 +435,14 @@
     /* Inputs drawer */
     .inputs-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: 1fr;
       gap: 12px;
-      margin-top: 12px;
+      margin-top: 14px;
+    }
+    @media (min-width: 480px) {
+      .inputs-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
     }
     .input-field {
       display: flex;
@@ -288,14 +457,17 @@
     .input-field input {
       background: #181822;
       border: 1px solid #2c2c3b;
-      border-radius: 8px;
-      padding: 7px 10px;
+      border-radius: 10px;
+      padding: 9px 12px;
       color: #ffffff;
-      font-size: 12px;
+      font-size: 13px;
       outline: none;
+      font-family: inherit;
+      width: 100%;
     }
     .input-field input:focus {
       border-color: #06b6d4;
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
     }
   </style>
 </head>
@@ -303,35 +475,130 @@
 
   <div class="container">
 
-    <!-- Top Header -->
-    <div class="panel flex-row">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <span class="badge badge-cyan" style="font-size: 13px; padding: 6px 12px;">One UI 6.1</span>
-        <div>
-          <h1 style="font-size: 18px; font-weight: 800; color: #ffffff;">MedMatrix Widget Studio</h1>
-          <p style="font-size: 12px; color: #a1a1aa;">Galaxy S24 Ultra &bull; Fixed-Boundary Grid Formats</p>
+    <!-- 1. Top Header & Size Tabs -->
+    <div class="panel" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge badge-cyan" style="font-size: 11px; padding: 4px 9px;">S24 Ultra One UI</span>
+          <div>
+            <h1 style="font-size: 16px; font-weight: 800; color: #ffffff; line-height: 1.2;">MedMatrix Widget Studio</h1>
+            <p style="font-size: 11px; color: #a1a1aa;">Real-Time Interactive Customizer</p>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #34d399; font-weight: 700; background: rgba(52,211,153,0.12); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(52,211,153,0.25);">
+          ● Live Device Scale
         </div>
       </div>
 
       <!-- Size Switcher -->
       <div class="btn-group">
-        <button id="tab-2x2" class="btn-size" onclick="switchSize('2x2')">2x2 Square (5)</button>
-        <button id="tab-4x1" class="btn-size active" onclick="switchSize('4x1')">4x1 Slim (5)</button>
+        <button id="tab-4x1" class="btn-size active" onclick="switchSize('4x1')">4x1 Slim (3)</button>
         <button id="tab-4x2" class="btn-size" onclick="switchSize('4x2')">4x2 Desk (5)</button>
+        <button id="tab-2x2" class="btn-size" onclick="switchSize('2x2')">2x2 Square (5)</button>
         <button id="tab-4x4" class="btn-size" onclick="switchSize('4x4')">4x4 Full Page (4)</button>
       </div>
     </div>
 
-    <!-- Sliders Panel -->
-    <div class="panel">
-      <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 12px;">
-        <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
-          <span>🎚️</span> Appearance Sliders (Continuous Real-Time Adjustment)
+    <!-- 2. Design Variant Sub-Selector (Pills) -->
+    <div class="panel" style="padding: 10px 14px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 11px; font-weight: 700; color: #a1a1aa; white-space: nowrap;">Variant:</span>
+        <div id="pills-box" class="pills-scroll"></div>
+      </div>
+    </div>
+
+    <!-- 3. LIVE STAGE CANVAS (Hero Section) -->
+    <div id="stage-canvas" class="stage">
+      <div class="stage-header">
+        <div class="stage-tag">
+          <span class="pulse-dot"></span>
+          <span id="stage-badge" style="font-weight: 600;">Fixed Bounds</span>
         </div>
-        <div style="display: flex; gap: 6px;">
+        <!-- Wallpaper Picker for Testing Real Backgrounds -->
+        <div class="wallpaper-bar">
+          <span style="font-size: 9px; color: #71717a; margin-right: 2px;">WALLPAPER:</span>
+          <button id="wp-aurora" class="btn-wp active" onclick="setWallpaper('aurora')">🌌 Aurora</button>
+          <button id="wp-amoled" class="btn-wp" onclick="setWallpaper('amoled')">🖤 AMOLED</button>
+          <button id="wp-dusk" class="btn-wp" onclick="setWallpaper('dusk')">🌅 Dusk</button>
+          <button id="wp-forest" class="btn-wp" onclick="setWallpaper('forest')">🌲 Emerald</button>
+        </div>
+      </div>
+
+      <!-- Widget Render Mount inside Fixed Frame -->
+      <div id="widget-frame-wrapper">
+        <div id="widget-root"></div>
+      </div>
+    </div>
+
+    <!-- 4. Display & Typography Toolbox (Directly Underneath Preview) -->
+    <div class="panel">
+      <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 10px;">
+        <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
+          <span>🧰</span> Display &amp; Typography Toolbox
+        </div>
+        <span style="font-size: 11px; color: #a1a1aa;">Tap to customize in real time</span>
+      </div>
+
+      <div class="toolbox-grid">
+        <!-- Toggle 1: Borderless Frameless Canvas -->
+        <div class="toolbox-toggle-card">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Outer Box / Border</div>
+            <div style="font-size: 10px; color: #71717a;">Frameless floating text</div>
+          </div>
+          <button id="btn-toggle-border" class="btn-toggle-action" onclick="toggleBorder()" style="border-color: #06b6d4; color: #38bdf8; background: rgba(6,182,212,0.12); font-weight: 700;">
+            Box: ON
+          </button>
+        </div>
+
+        <!-- Toggle 2: Hide Video Runtime Minutes -->
+        <div class="toolbox-toggle-card">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Video Minutes (34m)</div>
+            <div style="font-size: 10px; color: #71717a;">Fit long topic titles</div>
+          </div>
+          <button id="btn-toggle-duration" class="btn-toggle-action" onclick="toggleDuration()" style="border-color: #06b6d4; color: #38bdf8; background: rgba(6,182,212,0.12); font-weight: 700;">
+            Minutes: SHOW
+          </button>
+        </div>
+
+        <!-- Toggle 3: Edge-to-Edge Margin Stretch -->
+        <div class="toolbox-toggle-card">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Edge Stretch</div>
+            <div style="font-size: 10px; color: #71717a;">Expand text width</div>
+          </div>
+          <button id="btn-toggle-edge" class="btn-toggle-action" onclick="toggleEdge()" style="font-weight: 700;">
+            Stretch: OFF
+          </button>
+        </div>
+      </div>
+
+      <!-- Slider: Font Size Scale -->
+      <div class="slider-card" style="padding: 12px; margin-top: 10px;">
+        <div class="slider-header" style="margin-bottom: 6px;">
+          <span style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Font Size Scaling</span>
+          <span id="txt-font-scale" class="slider-val">100%</span>
+        </div>
+        <input type="range" id="rng-font-scale" min="80" max="135" value="100" oninput="updateFontScale()">
+        <div class="slider-footer" style="margin-top: 4px;">
+          <span>80% (Compact)</span>
+          <span>100% (Default)</span>
+          <span>135% (Large)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Sliders Panel (Appearance, Frosted Acrylic, Blur, Radius) -->
+    <div class="panel">
+      <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 10px;">
+        <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
+          <span>🎚️</span> Appearance &amp; Glass Sliders
+        </div>
+        <div class="preset-group">
           <button class="btn-preset" onclick="setPreset('clear')">Clear (25%)</button>
-          <button class="btn-preset" onclick="setPreset('frosted')" style="border-color: #06b6d4; color: #38bdf8;">Frosted Acrylic (85%)</button>
-          <button class="btn-preset" onclick="setPreset('opaque')">AMOLED Pitch Black (100%)</button>
+          <button class="btn-preset" onclick="setPreset('frosted')" style="border-color: #06b6d4; color: #38bdf8;">Frosted (85%)</button>
+          <button class="btn-preset" onclick="setPreset('opaque')">Opaque (100%)</button>
         </div>
       </div>
 
@@ -344,8 +611,8 @@
           </div>
           <input type="range" id="rng-opacity" min="0" max="100" value="85" oninput="updateSliders()">
           <div class="slider-footer">
-            <span>0% (Clear Transparent)</span>
-            <span>100% (Solid Black)</span>
+            <span>0% (Clear)</span>
+            <span>100% (Pitch Black)</span>
           </div>
         </div>
 
@@ -357,8 +624,8 @@
           </div>
           <input type="range" id="rng-blur" min="0" max="32" value="18" oninput="updateSliders()">
           <div class="slider-footer">
-            <span>0px (Crisp Wallpaper)</span>
-            <span>32px (Deep Frosting)</span>
+            <span>0px (Crisp)</span>
+            <span>32px (Deep Frost)</span>
           </div>
         </div>
 
@@ -371,94 +638,14 @@
           <input type="range" id="rng-radius" min="0" max="40" value="24" oninput="updateSliders()">
           <div class="slider-footer">
             <span>0dp (Square)</span>
-            <span>24dp (Samsung Standard)</span>
+            <span>24dp (Samsung)</span>
             <span>40dp (Pill)</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Display & Typography Toolbox -->
-    <div class="panel">
-      <div class="flex-row" style="border-bottom: 1px solid #20202c; padding-bottom: 10px;">
-        <div style="font-size: 13px; font-weight: 700; color: #f4f4f5; display: flex; align-items: center; gap: 8px;">
-          <span>🧰</span> Display &amp; Typography Toolbox
-        </div>
-        <span style="font-size: 11px; color: #a1a1aa;">Customize Frame &amp; Text</span>
-      </div>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px;">
-        <!-- Toggle 1: Borderless Frameless Canvas -->
-        <div class="slider-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;">
-          <div>
-            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Outer Box / Border</div>
-            <div style="font-size: 10px; color: #71717a; margin-top: 1px;">Toggle frameless floating text</div>
-          </div>
-          <button id="btn-toggle-border" class="btn-preset" onclick="toggleBorder()" style="border-color: #06b6d4; color: #38bdf8; font-weight: 700;">
-            Box: ON
-          </button>
-        </div>
-
-        <!-- Toggle 2: Hide Video Runtime Minutes -->
-        <div class="slider-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;">
-          <div>
-            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Video Minutes (34m)</div>
-            <div style="font-size: 10px; color: #71717a; margin-top: 1px;">Hide time to fit longer topic titles</div>
-          </div>
-          <button id="btn-toggle-duration" class="btn-preset" onclick="toggleDuration()" style="border-color: #06b6d4; color: #38bdf8; font-weight: 700;">
-            Minutes: SHOW
-          </button>
-        </div>
-
-        <!-- Toggle 3: Edge-to-Edge Margin Stretch -->
-        <div class="slider-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;">
-          <div>
-            <div style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Edge Stretch</div>
-            <div style="font-size: 10px; color: #71717a; margin-top: 1px;">Expand text width almost to edge</div>
-          </div>
-          <button id="btn-toggle-edge" class="btn-preset" onclick="toggleEdge()" style="font-weight: 700;">
-            Stretch: OFF
-          </button>
-        </div>
-
-        <!-- Slider: Font Size Scale -->
-        <div class="slider-card" style="padding: 10px 12px;">
-          <div class="slider-header" style="margin-bottom: 4px;">
-            <span style="font-size: 12px; font-weight: 700; color: #e4e4e7;">Font Size Scaling</span>
-            <span id="txt-font-scale" class="slider-val">100%</span>
-          </div>
-          <input type="range" id="rng-font-scale" min="80" max="135" value="100" oninput="updateFontScale()">
-          <div class="slider-footer" style="margin-top: 3px;">
-            <span>80% (Compact)</span>
-            <span>100% (Normal)</span>
-            <span>135% (Glanceable)</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Design Variant Sub-Selector -->
-    <div class="panel" style="padding: 14px 18px;">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <span style="font-size: 12px; font-weight: 700; color: #a1a1aa; white-space: nowrap;">Design Variant:</span>
-        <div id="pills-box" class="pills-scroll"></div>
-      </div>
-    </div>
-
-    <!-- Live Stage Canvas -->
-    <div class="stage">
-      <div class="stage-tag">
-        <span class="pulse-dot"></span>
-        <span id="stage-badge" style="font-weight: 600;">Fixed 4x2 Home Screen Bounds: 380px &times; 155px</span>
-      </div>
-
-      <!-- Widget Render Mount inside Fixed Frame -->
-      <div id="widget-frame-wrapper">
-        <div id="widget-root"></div>
-      </div>
-    </div>
-
-    <!-- Chapter Names Customizer (Collapsible) -->
+    <!-- 6. Chapter Names Customizer (Collapsible) -->
     <div class="panel">
       <div class="flex-row">
         <span style="font-size: 13px; font-weight: 700; color: #e4e4e7;">✏️ Test Custom Chapter Names</span>
@@ -501,7 +688,7 @@
       </div>
     </div>
 
-    <!-- Active Design Info Card -->
+    <!-- 7. Active Design Info Card -->
     <div class="panel" style="display: flex; flex-direction: column; gap: 6px;">
       <h3 id="info-title" style="font-size: 14px; font-weight: 700; color: #ffffff;">About This Design</h3>
       <p id="info-desc" style="font-size: 12px; color: #a1a1aa; line-height: 1.6;"></p>
@@ -1128,24 +1315,25 @@
       const padH = edgeToEdge ? '4px' : '12px';
       const padV = edgeToEdge ? '4px' : '6px';
 
-      // Lock STRICT Samsung One UI grid cell dimensions across ALL variants
+      // Lock STRICT Samsung One UI grid cell dimensions with mobile-responsive fit
       if (activeSize === '2x2') {
         root.style.width = '185px';
         root.style.height = '185px';
         root.style.padding = edgeToEdge ? '6px 6px' : '11px 12px';
       } else if (activeSize === '4x1') {
-        root.style.width = '380px';
+        root.style.width = 'min(380px, 100%)';
         root.style.height = '78px';
         root.style.padding = `${padV} ${padH}`;
       } else if (activeSize === '4x2') {
-        root.style.width = '380px';
+        root.style.width = 'min(380px, 100%)';
         root.style.height = '155px';
         root.style.padding = edgeToEdge ? '8px 8px' : '12px 14px';
       } else { // 4x4
-        root.style.width = '380px';
+        root.style.width = 'min(380px, 100%)';
         root.style.height = '330px';
         root.style.padding = edgeToEdge ? '8px 8px' : '14px 16px';
       }
+      root.style.maxWidth = '100%';
       root.style.display = 'flex';
       root.style.flexDirection = 'column';
       root.style.justifyContent = 'space-between';
@@ -1251,6 +1439,33 @@
       store.vid2 = document.getElementById('in-vid2').value;
       store.vid3 = document.getElementById('in-vid3').value;
       renderWidget();
+    }
+
+    let activeWallpaper = 'aurora';
+    function setWallpaper(theme) {
+      activeWallpaper = theme;
+      const stage = document.getElementById('stage-canvas');
+      if (!stage) return;
+      ['wp-aurora', 'wp-amoled', 'wp-dusk', 'wp-forest'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          if (id === 'wp-' + theme) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+
+      if (theme === 'amoled') {
+        stage.style.background = '#000000';
+      } else if (theme === 'dusk') {
+        stage.style.background = 'radial-gradient(circle at 75% 20%, rgba(244, 63, 94, 0.28) 0%, transparent 55%), radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.25) 0%, transparent 60%), linear-gradient(180deg, #181022 0%, #0a0812 100%)';
+      } else if (theme === 'forest') {
+        stage.style.background = 'radial-gradient(circle at 75% 20%, rgba(16, 185, 129, 0.25) 0%, transparent 55%), radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.22) 0%, transparent 60%), linear-gradient(180deg, #0d1a16 0%, #070e0b 100%)';
+      } else {
+        stage.style.background = 'radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.22) 0%, transparent 55%), radial-gradient(circle at 20% 80%, rgba(52, 211, 153, 0.18) 0%, transparent 60%), linear-gradient(180deg, #13131a 0%, #0a0a0e 100%)';
+      }
     }
 
     // Init

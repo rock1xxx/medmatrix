@@ -547,7 +547,7 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
             <div
               className="z-10 transition-all duration-100 flex flex-col justify-between overflow-hidden box-border"
               style={{
-                width: activeSize === '2x2' ? '185px' : '380px',
+                width: activeSize === '2x2' ? '185px' : 'min(380px, 100%)',
                 height:
                   activeSize === '2x2'
                     ? '185px'
