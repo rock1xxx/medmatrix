@@ -59,28 +59,24 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Release Latest APK
-        uses: softprops/action-gh-release@v2
+      - name: Publish GitHub Release
         if: github.ref == 'refs/heads/main'
-        with:
-          tag_name: android-latest
-          name: "MedMatrix Android App (APK with One UI Widget)"
-          overwrite: true
-          make_latest: true
-          body: |
-            ### 📱 MedMatrix Native Android App
-            Compiled directly for Android 14+ / Samsung Galaxy S24 Ultra.
+        run: |
+          BUILD_TAG="v1.0.${{ github.run_number }}"
+          echo "Publishing release $BUILD_TAG..."
 
-            #### 📥 How to Install on your S24 Ultra:
-            1. Download `MedMatrix.apk` directly on your phone.
-            2. Tap the downloaded file to install (allow "Install unknown apps" if prompted).
-            3. Open the app once to load your study desk.
-            
-            #### 🌟 How to Add the Resizable Widget:
-            1. Long-press an empty space on your **S24 Ultra Home Screen**.
-            2. Tap **Widgets**.
-            3. Scroll to **MedMatrix** &rarr; select **MedMatrix Today**.
-            4. Drag it to your home screen and resize it freely!
-          files: android/app/build/outputs/apk/debug/MedMatrix.apk
+          # 1. Update rolling android-latest release assets
+          gh release upload android-latest android/app/build/outputs/apk/debug/MedMatrix.apk --clobber || \
+          gh release create android-latest android/app/build/outputs/apk/debug/MedMatrix.apk \
+            --title "MedMatrix Android App (APK with One UI Widget)" \
+            --notes "Compiled for Android 14+ / Samsung Galaxy S24 Ultra. Rolling latest release." \
+            --clobber
+
+          # 2. Publish permanent versioned release for this build run
+          gh release create "$BUILD_TAG" android/app/build/outputs/apk/debug/MedMatrix.apk \
+            --title "MedMatrix Build #${{ github.run_number }}" \
+            --notes "Automated APK build for commit ${{ github.sha }} with native One UI 4x1, 4x2, and 2x2 widgets." \
+            --latest || true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

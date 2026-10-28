@@ -9,6 +9,8 @@ import {
   Sparkles,
   Smartphone,
   ShieldCheck,
+  Lock,
+  Globe,
 } from 'lucide-react'
 import {
   fetchLatestAppUpdate,
@@ -28,10 +30,12 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose }) => 
   const [downloading, setDownloading] = useState(false)
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isPrivateRepo, setIsPrivateRepo] = useState(false)
 
   const checkForUpdates = async () => {
     setLoading(true)
     setError(null)
+    setIsPrivateRepo(false)
     try {
       const info = await fetchLatestAppUpdate()
       if (info) {
@@ -39,8 +43,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose }) => 
       } else {
         setError('Could not reach GitHub Releases. Please check your internet connection.')
       }
-    } catch {
-      setError('Failed to check for updates.')
+    } catch (err: any) {
+      if (err?.message === 'PRIVATE_REPO_404') {
+        setIsPrivateRepo(true)
+        setError('GitHub Repository is Private')
+      } else {
+        setError('Failed to check for updates.')
+      }
     } finally {
       setLoading(false)
     }
@@ -130,7 +139,56 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose }) => 
             </div>
           )}
 
-          {!loading && error && (
+          {!loading && isPrivateRepo && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-3 text-xs">
+              <div className="flex items-center gap-2 font-bold text-amber-300">
+                <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>GitHub Repository is Private (HTTP 404)</span>
+              </div>
+              <p className="text-[11.5px] leading-relaxed text-amber-200/90">
+                GitHub blocks anonymous downloads and release checks on private repositories. To enable seamless 1-tap in-app updates directly from your phone, switch the repo to <strong>Public</strong> in GitHub settings.
+              </p>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <a
+                  href="https://github.com/rock1xxx/medmatrix/settings"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold text-xs border border-amber-500/30 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Make Repo Public (Enable 1-Tap Updates)</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 opacity-70" />
+                </a>
+
+                <a
+                  href="https://github.com/rock1xxx/medmatrix/actions"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs border border-zinc-700 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Download APK from GitHub Actions</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 opacity-70" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={checkForUpdates}
+                  className="w-full mt-1 py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-[11px] font-medium border border-zinc-800 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Re-check Now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!loading && !isPrivateRepo && error && (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 space-y-2 text-xs">
               <div className="flex items-center gap-2 font-bold text-rose-200">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />

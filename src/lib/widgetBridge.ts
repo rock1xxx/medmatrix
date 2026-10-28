@@ -136,22 +136,49 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
       // web fallback
     }
 
-    const res = await fetch(
-      'https://api.github.com/repos/rock1xxx/medmatrix/releases/tags/android-latest',
-      {
-        headers: { Accept: 'application/vnd.github.v3+json' },
-      }
-    )
+    let isPrivateRepo404 = false
+    let res: Response | null = null
+    try {
+      res = await fetch(
+        'https://api.github.com/repos/rock1xxx/medmatrix/releases/tags/android-latest',
+        {
+          headers: { Accept: 'application/vnd.github.v3+json' },
+        }
+      )
+    } catch (e) {
+      console.warn('[WidgetBridge] GitHub fetch network error:', e)
+    }
 
     let data: any
-    if (res.ok) {
+    if (res && res.ok) {
       data = await res.json()
     } else {
-      const fallbackRes = await fetch(
-        'https://api.github.com/repos/rock1xxx/medmatrix/releases/latest'
-      )
-      if (!fallbackRes.ok) return null
-      data = await fallbackRes.json()
+      if (res && res.status === 404) {
+        isPrivateRepo404 = true
+      }
+      try {
+        const fallbackRes = await fetch(
+          'https://api.github.com/repos/rock1xxx/medmatrix/releases/latest',
+          {
+            headers: { Accept: 'application/vnd.github.v3+json' },
+          }
+        )
+        if (fallbackRes.ok) {
+          data = await fallbackRes.json()
+          isPrivateRepo404 = false
+        } else if (fallbackRes.status === 404) {
+          isPrivateRepo404 = true
+        }
+      } catch (e) {
+        console.warn('[WidgetBridge] GitHub fallback fetch error:', e)
+      }
+    }
+
+    if (!data) {
+      if (isPrivateRepo404) {
+        throw new Error('PRIVATE_REPO_404')
+      }
+      return null
     }
 
     const apkAsset = data.assets?.find((a: any) =>
@@ -181,7 +208,10 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
       apkSizeMb,
       isUpdateAvailable: isNewer,
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message === 'PRIVATE_REPO_404') {
+      throw err
+    }
     console.warn('[WidgetBridge] Failed to fetch update info:', err)
     return null
   }
