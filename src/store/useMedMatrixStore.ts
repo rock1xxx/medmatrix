@@ -11,17 +11,112 @@ import { addDays, format } from 'date-fns'
 const STORAGE_KEY = 'medmatrix-storage-v2'
 
 /**
- * A brand new install has no local state, so its "last modified" clock must not
- * out-rank the copy already sitting in the cloud. Starting the clock at 0 lets the
- * first sync pull existing progress down instead of overwriting it with seed data.
+ * Written immediately before anything that replaces the study database (cloud
+ * pull, JSON import, seed reset) so an accidental destructive step is reversible.
  */
-const HAS_PERSISTED_STATE = (() => {
+const LAST_GOOD_KEY = 'medmatrix-storage-lastgood-v2'
+
+/**
+ * Inspects the persisted blob before Zustand hydrates it.
+ *
+ * A half-written or hand-edited key must not be treated as "this device has
+ * history": that would start the clock at `Date.now()`, out-rank the good device
+ * snapshot, and quietly leave the user staring at seed data. A corrupt key is moved
+ * aside (never deleted silently) so hydration starts clean and recovery can run.
+ */
+const LOCAL_STATE_PROBE = (() => {
+  if (typeof localStorage === 'undefined') return { hasState: true, corrupted: false }
+
+  const raw = localStorage.getItem(STORAGE_KEY)
+  if (raw === null) return { hasState: false, corrupted: false }
+
   try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY) !== null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || !isUsableStudyData(parsed.state)) {
+      return { hasState: true, corrupted: true }
+    }
+    return { hasState: true, corrupted: false }
   } catch {
-    return true
+    return { hasState: true, corrupted: true }
   }
 })()
+
+if (LOCAL_STATE_PROBE.corrupted) {
+  try {
+    localStorage.setItem(`${STORAGE_KEY}.corrupt`, localStorage.getItem(STORAGE_KEY) || '')
+  } catch {
+    // Out of space for the forensic copy; still drop the unreadable key.
+  }
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Nothing else to do.
+  }
+}
+
+/**
+ * A brand new install (or one whose state was unreadable) has no history, so its
+ * "last modified" clock must not out-rank the copy sitting in the cloud. Starting at
+ * 0 lets the first sync pull existing progress down instead of overwriting it.
+ */
+export const HAD_LOCAL_STATE_AT_BOOT = LOCAL_STATE_PROBE.hasState && !LOCAL_STATE_PROBE.corrupted
+
+/** True while the first cloud read of this launch is still in flight. */
+let hasCompletedFirstCloudRead = false
+
+/** Set once a device snapshot has been recovered after storage was wiped. */
+let recoveredLocalHistory = false
+
+export function markLocalHistoryRecovered(): void {
+  recoveredLocalHistory = true
+}
+
+/**
+ * Whether this device has study history of its own. A wiped install that recovered
+ * its snapshot counts as history: its timestamps are then trustworthy, so the cloud
+ * pull falls back to the ordinary newest-wins comparison.
+ */
+export function hasLocalHistory(): boolean {
+  return HAD_LOCAL_STATE_AT_BOOT || recoveredLocalHistory
+}
+
+export function markFirstCloudReadDone(): void {
+  hasCompletedFirstCloudRead = true
+}
+
+/**
+ * A fresh install must let the cloud win outright, even if the user poked around
+ * for a minute before the first read came back. Otherwise its local edits would
+ * look newer and overwrite real progress that only exists in Supabase.
+ */
+export function isFirstCloudContact(): boolean {
+  return !hasCompletedFirstCloudRead
+}
+
+/**
+ * Rejects anything that would leave the app with no curriculum to show. A cloud row
+ * or a JSON file that parses but carries no topics is treated as damage, not as an
+ * instruction to erase the local database.
+ */
+export function isUsableStudyData(
+  data: { topics?: unknown; subjects?: unknown } | null | undefined
+): boolean {
+  if (!data) return false
+  const { topics, subjects } = data
+  if (!Array.isArray(topics) || topics.length === 0) return false
+  if (!Array.isArray(subjects) || subjects.length === 0) return false
+  return (topics as Topic[]).every(
+    (t) => !!t && typeof t.id === 'string' && typeof t.title === 'string' && typeof t.status === 'string'
+  )
+}
+
+function writeLastGoodSnapshot(payload: Record<string, unknown>): void {
+  try {
+    localStorage.setItem(LAST_GOOD_KEY, JSON.stringify(payload))
+  } catch {
+    // A full disk must not block the write that is about to happen anyway.
+  }
+}
 
 // Generate initial bi-weekly GTs on alternate Sundays
 const now = new Date()
@@ -119,8 +214,13 @@ interface MedMatrixState {
   clearSupabaseConfig: () => void
   setSyncKey: (syncKey: string) => void
   touchLastModified: () => void
-  loadExternalSyncData: (data: Partial<MedMatrixState>) => boolean
+  loadExternalSyncData: (
+    data: Partial<MedMatrixState>,
+    options?: { force?: boolean; preserveUndo?: boolean }
+  ) => boolean
   getSyncPayload: () => Record<string, unknown>
+  restoreLastGoodState: () => boolean
+  hasLastGoodState: () => boolean
 
   // Persistence & Data Management
   resetToInitialSeed: () => void
@@ -157,7 +257,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       ebbinghausIntervals: DEFAULT_EBBINGHAUS_INTERVALS,
       postponeIntervalDays: DEFAULT_POSTPONE_DAYS,
 
-      lastModified: HAS_PERSISTED_STATE ? Date.now() : 0,
+      lastModified: HAD_LOCAL_STATE_AT_BOOT ? Date.now() : 0,
       syncConfig: {
         supabaseUrl: (import.meta.env.VITE_SUPABASE_URL as string) || '',
         supabaseAnonKey: (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '',
@@ -572,6 +672,8 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       resetToInitialSeed: () => {
+        // Keep the pre-reset database so this stays undoable from the menu.
+        writeLastGoodSnapshot(get().getSyncPayload())
         set({
           topics: seedSampleSRCards(INITIAL_TOPICS),
           subjects: INITIAL_SUBJECTS,
@@ -654,14 +756,23 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         set({ lastModified: Date.now() })
       },
 
-      loadExternalSyncData: (incoming) => {
+      loadExternalSyncData: (incoming, options) => {
         const current = get()
-        if (!incoming.topics || !incoming.subjects) return false
+        if (!isUsableStudyData(incoming)) return false
 
-        // Only accept if remote is newer
-        if (incoming.lastModified && current.lastModified && incoming.lastModified <= current.lastModified) {
+        // Only accept if remote is newer, unless the caller is deliberately
+        // restoring an authoritative copy (first cloud contact / device backup).
+        if (
+          !options?.force &&
+          incoming.lastModified &&
+          current.lastModified &&
+          incoming.lastModified <= current.lastModified
+        ) {
           return false
         }
+
+        // Never let a replacement silently destroy what is on screen right now.
+        if (!options?.preserveUndo) writeLastGoodSnapshot(current.getSyncPayload())
 
         set({
           topics: incoming.topics,
@@ -680,6 +791,42 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           lastModified: incoming.lastModified || Date.now(),
         })
         return true
+      },
+
+      hasLastGoodState: () => {
+        try {
+          return !!localStorage.getItem(LAST_GOOD_KEY)
+        } catch {
+          return false
+        }
+      },
+
+      restoreLastGoodState: () => {
+        try {
+          const raw = localStorage.getItem(LAST_GOOD_KEY)
+          if (!raw) {
+            toast.info('No previous snapshot has been saved on this device yet.')
+            return false
+          }
+          const parsed = JSON.parse(raw)
+          if (!isUsableStudyData(parsed)) {
+            toast.error('The saved snapshot is unreadable. Nothing was changed.')
+            return false
+          }
+          const restored = get().loadExternalSyncData(parsed, {
+            force: true,
+            preserveUndo: true,
+          })
+          if (restored) {
+            toast.success('Restored the previous study state from this device.')
+          } else {
+            toast.error('Could not restore the previous state.')
+          }
+          return restored
+        } catch {
+          toast.error('Could not read the saved snapshot.')
+          return false
+        }
       },
 
       getSyncPayload: () => {
@@ -711,10 +858,12 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       importDataJSON: (jsonStr) => {
         try {
           const parsed = JSON.parse(jsonStr)
-          if (!Array.isArray(parsed.topics) || !Array.isArray(parsed.subjects)) {
-            toast.error('Invalid JSON structure: missing topics or subjects array.')
+          if (!isUsableStudyData(parsed)) {
+            toast.error('That file is not a usable MedMatrix backup. Nothing was changed.')
             return false
           }
+          // Overwriting a working database is destructive, so keep an undo copy.
+          writeLastGoodSnapshot(get().getSyncPayload())
           set({
             topics: parsed.topics,
             subjects: parsed.subjects,

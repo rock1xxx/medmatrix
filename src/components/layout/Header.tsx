@@ -17,6 +17,7 @@ import {
   Sliders,
   Layers,
   RefreshCw,
+  History,
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -73,6 +74,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
     exportDataJSON,
     importDataJSON,
     resetToInitialSeed,
+    restoreLastGoodState,
   } = useMedMatrixStore()
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -128,7 +130,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `MedMatrix_Backup_${new Date().toISOString().slice(0, 10)}.json`
+    const stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '')
+    a.download = `MedMatrix_Backup_${stamp}.json`
     a.click()
     URL.revokeObjectURL(url)
     setMenuOpen(false)
@@ -274,6 +277,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
                   >
                     <Upload className="w-3.5 h-3.5 text-zinc-400" />
                     <span>Restore from JSON</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      restoreLastGoodState()
+                      setMenuOpen(false)
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-amber-300 hover:bg-zinc-800 flex items-center gap-2"
+                    title="Undo the last cloud pull, JSON restore or seed reset"
+                  >
+                    <History className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Restore Previous State</span>
                   </button>
                   <button
                     type="button"

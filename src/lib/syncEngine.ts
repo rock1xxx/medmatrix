@@ -1,5 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { useMedMatrixStore } from '../store/useMedMatrixStore'
+import {
+  useMedMatrixStore,
+  hasLocalHistory,
+  isFirstCloudContact,
+  isUsableStudyData,
+  markFirstCloudReadDone,
+} from '../store/useMedMatrixStore'
 import { loadSyncConfigFromDevice, saveSyncConfigToDevice } from './widgetBridge'
 import { toast } from 'sonner'
 
@@ -169,6 +175,11 @@ export async function pullLatestState(): Promise<boolean> {
   setStatus('syncing')
   const store = useMedMatrixStore.getState()
   const syncKey = store.syncConfig.syncKey || 'dr-med-sync'
+  // A freshly installed app has no history of its own, so the cloud copy is the
+  // source of truth even if the user tapped around before this read came back.
+  // A device that recovered its snapshot *does* have history, so normal
+  // newest-wins applies there.
+  const cloudWinsFirstContact = isFirstCloudContact() && !hasLocalHistory()
 
   try {
     const { data, error } = await client
@@ -184,13 +195,23 @@ export async function pullLatestState(): Promise<boolean> {
     }
 
     hasPulledOnce = true
+    markFirstCloudReadDone()
 
     if (data && data.data) {
       const remoteData = data.data
+
+      if (!isUsableStudyData(remoteData)) {
+        // A row that exists but carries no curriculum is damage, not an instruction
+        // to erase the local database. Keep what is on this device.
+        console.warn('[SyncEngine] Cloud row has no usable study data; keeping local copy.')
+        setStatus('synced')
+        return false
+      }
+
       const remoteLastModified = Number(data.last_modified || remoteData.lastModified)
 
-      if (remoteLastModified > store.lastModified) {
-        const didUpdate = store.loadExternalSyncData(remoteData)
+      if (cloudWinsFirstContact || remoteLastModified > store.lastModified) {
+        const didUpdate = store.loadExternalSyncData(remoteData, { force: cloudWinsFirstContact })
         if (didUpdate) {
           toast.success('Synced progress from other device!', {
             duration: 2500,
@@ -240,7 +261,28 @@ export async function pushLocalState(): Promise<boolean> {
   const syncKey = store.syncConfig.syncKey || 'dr-med-sync'
   const payload = store.getSyncPayload()
 
+  // An empty database must never overwrite a real one in the cloud.
+  if (!isUsableStudyData(payload)) {
+    console.warn('[SyncEngine] Refusing to upload an empty study database.')
+    return false
+  }
+
   try {
+    // Compare against the live row right before writing, so a push that was queued
+    // before another device synced cannot clobber that newer progress.
+    const { data: currentRow } = await client
+      .from('medmatrix_sync')
+      .select('last_modified')
+      .eq('id', syncKey)
+      .maybeSingle()
+
+    const cloudClock = Number(currentRow?.last_modified || 0)
+    if (cloudClock > Number(payload.lastModified)) {
+      console.warn('[SyncEngine] Cloud copy is newer than this device; pulling instead of overwriting.')
+      await pullLatestState()
+      return false
+    }
+
     const { error } = await client.from('medmatrix_sync').upsert({
       id: syncKey,
       data: payload,
@@ -283,6 +325,7 @@ export async function triggerManualSync(showToast = true) {
   setStatus('syncing')
   const store = useMedMatrixStore.getState()
   const syncKey = store.syncConfig.syncKey || 'dr-med-sync'
+  const cloudWinsFirstContact = isFirstCloudContact() && !hasLocalHistory()
 
   try {
     const { data, error } = await client
@@ -299,13 +342,22 @@ export async function triggerManualSync(showToast = true) {
 
     // A successful read means it is safe to write from now on.
     hasPulledOnce = true
+    markFirstCloudReadDone()
 
     if (data && data.data) {
       const remote = data.data
+
+      if (!isUsableStudyData(remote)) {
+        console.warn('[SyncEngine] Cloud row has no usable study data; keeping local copy.')
+        setStatus('synced')
+        if (showToast) toast.error('The cloud copy is empty. Local progress was kept.')
+        return
+      }
+
       const remoteLastModified = Number(data.last_modified || remote.lastModified)
 
-      if (remoteLastModified > store.lastModified) {
-        store.loadExternalSyncData(remote)
+      if (cloudWinsFirstContact || remoteLastModified > store.lastModified) {
+        store.loadExternalSyncData(remote, { force: cloudWinsFirstContact })
         if (showToast) toast.success('Pulled latest study progress from Supabase!')
         setStatus('synced')
         return

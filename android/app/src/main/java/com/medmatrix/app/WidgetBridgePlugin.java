@@ -15,11 +15,14 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.Settings;
 import androidx.core.content.FileProvider;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -35,6 +38,11 @@ public class WidgetBridgePlugin extends Plugin {
     // credentials survive app updates, "clear cache" and Android auto-backup
     // restores. Nothing is ever written into the repository.
     public static final String SYNC_PREFS_NAME = "MedMatrixSyncPrefs";
+    // Full study database mirrored into the app's private files dir. WebView
+    // localStorage is wiped by "clear storage", a WebView reset or a reinstall;
+    // these files are not, and they are covered by Android Auto Backup.
+    private static final String DATA_SNAPSHOT_FILE = "medmatrix-data.json";
+    private static final String DATA_SNAPSHOT_PREV = "medmatrix-data.prev.json";
 
     @PluginMethod
     public void updateWidgetData(PluginCall call) {
@@ -198,6 +206,101 @@ public class WidgetBridgePlugin extends Plugin {
         ret.put("supabaseAnonKey", prefs.getString("supabaseAnonKey", ""));
         ret.put("syncKey", prefs.getString("syncKey", "dr-med-sync"));
         call.resolve(ret);
+    }
+
+    /**
+     * Writes the whole study database to a file, never in place: the previous copy
+     * is rotated to a second slot and the new one is renamed into position after a
+     * successful, fsynced write. A crash or a full disk therefore cannot leave the
+     * device with zero readable copies.
+     */
+    @PluginMethod
+    public void saveDataSnapshot(PluginCall call) {
+        String json = call.getString("json");
+        if (json == null || json.isEmpty()) {
+            call.reject("Refusing to write an empty data snapshot");
+            return;
+        }
+
+        Context context = getContext();
+        File dir = context.getFilesDir();
+        File main = new File(dir, DATA_SNAPSHOT_FILE);
+        File prev = new File(dir, DATA_SNAPSHOT_PREV);
+        File tmp = new File(dir, DATA_SNAPSHOT_FILE + ".tmp");
+
+        try {
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
+                out.write(json.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                out.getFD().sync();
+            }
+
+            if (main.exists()) {
+                if (prev.exists() && !prev.delete()) {
+                    // A stale backup slot is not worth failing the write over.
+                }
+                if (!main.renameTo(prev)) {
+                    // Keep the live copy rather than deleting it.
+                }
+            }
+
+            if (!tmp.renameTo(main)) {
+                call.reject("Could not move the data snapshot into place");
+                return;
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("success", true);
+            ret.put("bytes", json.getBytes(StandardCharsets.UTF_8).length);
+            call.resolve(ret);
+        } catch (Exception e) {
+            tmp.delete();
+            call.reject("Could not write data snapshot: " + e.getMessage(), e);
+        }
+    }
+
+    @PluginMethod
+    public void loadDataSnapshot(PluginCall call) {
+        Context context = getContext();
+        File dir = context.getFilesDir();
+        JSObject ret = new JSObject();
+
+        File main = new File(dir, DATA_SNAPSHOT_FILE);
+        String json = readTextFile(main);
+        File source = main;
+
+        if (json == null) {
+            File prev = new File(dir, DATA_SNAPSHOT_PREV);
+            json = readTextFile(prev);
+            source = prev;
+        }
+
+        if (json == null) {
+            ret.put("json", "");
+            ret.put("savedAt", 0);
+            call.resolve(ret);
+            return;
+        }
+
+        ret.put("json", json);
+        ret.put("savedAt", source.lastModified());
+        call.resolve(ret);
+    }
+
+    private static String readTextFile(File file) {
+        if (file == null || !file.exists() || file.length() == 0) return null;
+        try (FileInputStream in = new FileInputStream(file)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream((int) file.length());
+            byte[] buffer = new byte[16384];
+            int len;
+            while ((len = in.read(buffer)) != -1) {
+                out.write(buffer, 0, len);
+            }
+            String text = new String(out.toByteArray(), StandardCharsets.UTF_8);
+            return text.isEmpty() ? null : text;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @PluginMethod

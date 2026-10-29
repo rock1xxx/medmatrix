@@ -55,10 +55,17 @@ interface WidgetBridgePluginInterface {
   downloadAndInstallApk(options?: { apkUrl?: string }): Promise<{ success: boolean; downloadId?: number; fallback?: boolean }>
   saveSyncConfig(options: DeviceSyncConfig): Promise<{ success: boolean }>
   loadSyncConfig(): Promise<DeviceSyncConfig>
+  saveDataSnapshot(options: { json: string }): Promise<{ success: boolean; bytes?: number }>
+  loadDataSnapshot(): Promise<{ json: string; savedAt: number }>
 }
 
 // Mirrors the Android SharedPreferences file so the browser build behaves the same.
 const DEVICE_SYNC_KEY = 'medmatrix_sync_config_device'
+
+// Second copy of the whole study database, kept outside the state the store persists
+// through Zustand, so a corrupt or cleared `medmatrix-storage-v2` is recoverable.
+const DEVICE_DATA_KEY = 'medmatrix_data_snapshot_v1'
+const DEVICE_DATA_AT_KEY = 'medmatrix_data_snapshot_v1_at'
 
 // Register Capacitor plugin (falls back gracefully in browser / web environments)
 export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetBridge', {
@@ -132,6 +139,30 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
         }
       }
       return { supabaseUrl: '', supabaseAnonKey: '', syncKey: 'dr-med-sync' }
+    },
+    saveDataSnapshot: async (options: { json: string }) => {
+      if (typeof window !== 'undefined') {
+        // Keep the previous copy so a bad write never replaces the only backup.
+        const previous = localStorage.getItem(DEVICE_DATA_KEY)
+        if (previous) localStorage.setItem(`${DEVICE_DATA_KEY}_prev`, previous)
+        localStorage.setItem(DEVICE_DATA_KEY, options.json)
+        localStorage.setItem(DEVICE_DATA_AT_KEY, String(Date.now()))
+      }
+      return { success: true, bytes: options.json.length }
+    },
+    loadDataSnapshot: async () => {
+      if (typeof window !== 'undefined') {
+        const json =
+          localStorage.getItem(DEVICE_DATA_KEY) ||
+          localStorage.getItem(`${DEVICE_DATA_KEY}_prev`)
+        if (json) {
+          return {
+            json,
+            savedAt: Number(localStorage.getItem(DEVICE_DATA_AT_KEY) || 0),
+          }
+        }
+      }
+      return { json: '', savedAt: 0 }
     },
   },
 })
@@ -236,24 +267,36 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
       apkAsset?.updated_at || data.published_at || new Date().toISOString()
     const releaseNotes = data.body || 'Performance improvements and widget enhancements.'
 
-    // CI publishes version.json next to the APK. Comparing real build numbers is
-    // the only reliable "is this newer than what I run" check; the old comparison
-    // used a localStorage marker that only got written when the install button was
-    // tapped, so the banner reappeared on every launch after a reinstall.
+    // CI puts the build number in the rolling release title ("… — build 42"),
+    // because release *assets* are served without CORS headers and a WebView cannot
+    // read version.json directly. The API response itself is CORS-friendly.
     let remoteVersionCode: number | null = null
     let remoteVersionName = ''
-    const versionAsset = data.assets?.find((a: any) => a.name === 'version.json')
-    if (versionAsset?.browser_download_url) {
-      try {
-        const versionRes = await fetch(versionAsset.browser_download_url, { cache: 'no-store' })
-        if (versionRes.ok) {
-          const meta = await versionRes.json()
-          const code = Number(meta?.versionCode)
-          if (Number.isFinite(code) && code > 0) remoteVersionCode = code
-          if (typeof meta?.versionName === 'string') remoteVersionName = meta.versionName
+    const buildFromTitle = /build\s+#?(\d+)/i.exec(data.name || '')
+    const buildFromTag = /^v1\.0\.(\d+)$/.exec(data.tag_name || '')
+    const buildFromNotes = /build\s+#?(\d+)/i.exec(data.body || '')
+    const parsedBuild = Number(
+      buildFromTitle?.[1] || buildFromTag?.[1] || buildFromNotes?.[1] || 0
+    )
+    if (Number.isFinite(parsedBuild) && parsedBuild > 0) {
+      remoteVersionCode = parsedBuild
+      remoteVersionName = `1.0.${parsedBuild}`
+    } else {
+      // Older releases have no build number in the metadata; version.json is the
+      // only source, and it may be blocked by CORS. Best effort only.
+      const versionAsset = data.assets?.find((a: any) => a.name === 'version.json')
+      if (versionAsset?.browser_download_url) {
+        try {
+          const versionRes = await fetch(versionAsset.browser_download_url, { cache: 'no-store' })
+          if (versionRes.ok) {
+            const meta = await versionRes.json()
+            const code = Number(meta?.versionCode)
+            if (Number.isFinite(code) && code > 0) remoteVersionCode = code
+            if (typeof meta?.versionName === 'string') remoteVersionName = meta.versionName
+          }
+        } catch (e) {
+          console.warn('[WidgetBridge] Could not read published build info:', e)
         }
-      } catch (e) {
-        console.warn('[WidgetBridge] Could not read published build info:', e)
       }
     }
 
@@ -305,6 +348,31 @@ export async function loadSyncConfigFromDevice(): Promise<DeviceSyncConfig | nul
     return null
   } catch (err) {
     console.warn('[WidgetBridge] Could not read sync config from device storage:', err)
+    return null
+  }
+}
+
+export async function saveDataSnapshotToDevice(json: string): Promise<boolean> {
+  try {
+    const res = await WidgetBridge.saveDataSnapshot({ json })
+    return !!res?.success
+  } catch (err) {
+    console.warn('[WidgetBridge] Could not write the device data snapshot:', err)
+    return false
+  }
+}
+
+/**
+ * The last full study database written to the device, if any. On Android this is a
+ * file in the app's private storage; in the browser it is a second localStorage slot.
+ */
+export async function loadDataSnapshotFromDevice(): Promise<{ json: string; savedAt: number } | null> {
+  try {
+    const res = await WidgetBridge.loadDataSnapshot()
+    if (res?.json) return { json: res.json, savedAt: Number(res.savedAt) || 0 }
+    return null
+  } catch (err) {
+    console.warn('[WidgetBridge] Could not read the device data snapshot:', err)
     return null
   }
 }

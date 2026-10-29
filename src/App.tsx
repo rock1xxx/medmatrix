@@ -14,6 +14,7 @@ import { TodayTodoWidget } from './components/widget/TodayTodoWidget'
 import { WidgetSettingsModal } from './components/modals/WidgetSettingsModal'
 import { UpdateBanner } from './components/layout/UpdateBanner'
 import { bootstrapSyncConfig, initSyncEngine } from './lib/syncEngine'
+import { restoreDeviceSnapshotIfNewer, startDeviceSnapshotMirror } from './lib/deviceBackup'
 import {
   syncActiveStudyDataToWidget,
   checkIsWidgetConfigLaunch,
@@ -28,14 +29,24 @@ const AnalyticsView = lazy(() =>
 
 export function App() {
   useEffect(() => {
-    // Recover the Supabase credentials first (build-time env, then the device
-    // mirror) so the sync engine's very first pull already has a client.
+    // Order matters. Recover the on-device snapshot first, then the Supabase
+    // credentials, and only then start the sync engine — so no path can ever upload
+    // seed data over real progress, and a wiped WebView still finds its database.
     let cancelled = false
-    bootstrapSyncConfig().finally(() => {
-      if (!cancelled) initSyncEngine()
-    })
+    let stopMirror: (() => void) | null = null
+
+    restoreDeviceSnapshotIfNewer()
+      .catch(() => false)
+      .then(() => bootstrapSyncConfig())
+      .finally(() => {
+        if (cancelled) return
+        initSyncEngine()
+        stopMirror = startDeviceSnapshotMirror()
+      })
+
     return () => {
       cancelled = true
+      stopMirror?.()
     }
   }, [])
   const {

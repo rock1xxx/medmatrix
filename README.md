@@ -92,15 +92,38 @@ For local dev, copy `.env.example` to `.env` and fill it in (`.env` is git-ignor
 
 Saving the credentials in the app (Sync → Save) also mirrors them into native **SharedPreferences** (`MedMatrixSyncPrefs`), not just WebView `localStorage`. That survives in-place APK updates, "clear cache", and WebView storage resets, and it is included in Android Auto Backup. The browser build keeps the same mirror in `localStorage`. Nothing is ever written back into the repository.
 
+Credentials are only half of it — the study database itself is mirrored into `filesDir/medmatrix-data.json` on every change (see **Data and backups**), so a wiped WebView still has its progress. Ordering on boot is: device snapshot → credentials → sync engine. That way the first cloud read has both the data and the client, and no code path can push seed data first.
+
 On a **fresh install the app deliberately starts its change clock at 0**, so the copy in Supabase always out-ranks the seeded local data and gets pulled down on first launch. Without that, a new install would look "newer" and overwrite your real progress in the cloud with seed data. Saving the URL and key does **not** bump that clock either — connecting is not a study edit — so the first sync after a reinstall pulls your progress down instead of uploading the seed curriculum over it.
+
+Every APK build is signed with the keystore committed at `android/app/medmatrix.keystore`, so installing a new APK over the old one is always allowed — Android never forces an uninstall, and an in-place update keeps both the WebView data and the native snapshot.
 
 If you would rather not use secrets, the APK still restores app data through Android Auto Backup (`allowBackup` is enabled) when the device has system backup turned on — but that restore is at the OS's discretion and can lag behind the reinstall.
 
 ## Data and backups
 
-- State lives in `localStorage` under `medmatrix-storage-v2`.
-- **Export Backup (JSON)** / **Restore from JSON** in the ⋮ menu move the full study database between devices or into cold storage.
-- **Reset Seed Data** returns the 271-chapter curriculum to its starting state.
+The study database is treated as the most important thing in the app, so it is kept in three independent places:
+
+| Copy | Where | Survives |
+| --- | --- | --- |
+| Live state | `localStorage` → `medmatrix-storage-v2` | reloads, normal app updates |
+| Device snapshot | Android: `filesDir/medmatrix-data.json` (+ `.prev.json`); web: a second `localStorage` slot | clear cache, WebView storage reset, in-place APK updates, uninstall when Android backup is on |
+| Cloud row | Supabase `medmatrix_sync`, keyed by your sync key | reinstalls, storage wipes, losing the phone |
+
+Recovery is automatic: on boot the app restores the device snapshot if it is newer than what the WebView has, then pulls the cloud row. The order is deliberate — nothing can upload seed data before those two reads have happened.
+
+Guards that keep a bad write from becoming a lost database:
+
+- **A fresh install never writes first.** Its change clock starts at `0`, and saving credentials no longer bumps it, so the cloud copy out-ranks it and is pulled down. The first cloud read of a fresh install wins even if you tapped around for a minute beforehand.
+- **Empty payloads are refused.** A cloud row, JSON file or snapshot with no topics is treated as damage; the local database is kept instead of being replaced by it.
+- **Pushes re-check the cloud first.** Before uploading, the app re-reads the row's timestamp; if another device synced something newer, it pulls that instead of overwriting it.
+- **Corrupt state is set aside, not trusted.** If `medmatrix-storage-v2` is unparseable or incomplete it is copied to `medmatrix-storage-v2.corrupt` and the app boots clean, which lets the device snapshot fill the gap.
+- **Destructive steps keep an undo copy.** Every cloud pull, **Restore from JSON** and **Reset Seed Data** first writes the current database to `medmatrix-storage-lastgood-v2`, and ⋮ → **Restore Previous State** puts it back. The Android snapshot file also rotates a previous copy.
+- **Exports are timestamped** (`MedMatrix_Backup_2026-10-29_1345.json`) so several backups can coexist.
+
+**Export Backup (JSON)** / **Restore from JSON** in the ⋮ menu move the whole database between devices or into cold storage. **Reset Seed Data** returns the 271-chapter curriculum to its starting state (and is undoable as above).
+
+One thing the app cannot protect by itself: the suggested Supabase policy allows full access to anyone holding the anon key, and that key ships inside the APK. Keep the project private, keep a copy of the JSON export somewhere outside the phone, and turn on your Supabase project's own backups (or Point-in-Time Recovery) before relying on cloud sync as the only copy.
 
 ## Android app + home-screen widget
 
@@ -108,7 +131,7 @@ If you would rather not use secrets, the APK still restores app data through And
 
 The widget bridge (`src/lib/widgetBridge.ts`) pushes today's MCQs, tonight's videos and revision cards into Android shared preferences; in the browser it degrades to `localStorage`. **Check for Updates** in the ⋮ menu reads the release feed and hands the APK to the native installer.
 
-Each build publishes a `version.json` (`versionCode` / `versionName`) next to the APK in the `android-latest` release. The app compares that with its own installed `versionCode`, so the "new APK available" strip only appears when something is genuinely newer, and dismissing it keeps it dismissed for that build. In the browser there is no banner, because a browser cannot install an APK.
+Each build stamps its run number into the rolling release title ("… — build 42") and also uploads a `version.json` next to the APK. The app compares that number with its own installed `versionCode`, so the "new APK available" strip only appears when something is genuinely newer, and dismissing it keeps it dismissed for that build. The title is the source of truth rather than `version.json`, because release *assets* are served without CORS headers and a WebView cannot read them; the GitHub API response is readable. In the browser there is no banner, because a browser cannot install an APK.
 
 ## Project structure
 
