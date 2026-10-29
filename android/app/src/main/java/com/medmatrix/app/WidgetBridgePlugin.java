@@ -31,6 +31,10 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class WidgetBridgePlugin extends Plugin {
 
     public static final String PREFS_NAME = "MedMatrixWidgetPrefs";
+    // Kept in SharedPreferences (not WebView localStorage) so the Supabase
+    // credentials survive app updates, "clear cache" and Android auto-backup
+    // restores. Nothing is ever written into the repository.
+    public static final String SYNC_PREFS_NAME = "MedMatrixSyncPrefs";
 
     @PluginMethod
     public void updateWidgetData(PluginCall call) {
@@ -166,6 +170,33 @@ public class WidgetBridgePlugin extends Plugin {
         ret.put("edgeToEdge", prefs.getBoolean("edgeToEdge", false));
         ret.put("fontScale", prefs.getInt("fontScale", 100));
         ret.put("design4x1", prefs.getString("design4x1", "pill-multi"));
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void saveSyncConfig(PluginCall call) {
+        Context context = getContext();
+        SharedPreferences prefs = context.getSharedPreferences(SYNC_PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putString("supabaseUrl", call.getString("supabaseUrl", ""))
+            .putString("supabaseAnonKey", call.getString("supabaseAnonKey", ""))
+            .putString("syncKey", call.getString("syncKey", "dr-med-sync"))
+            .apply();
+
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void loadSyncConfig(PluginCall call) {
+        Context context = getContext();
+        SharedPreferences prefs = context.getSharedPreferences(SYNC_PREFS_NAME, Context.MODE_PRIVATE);
+
+        JSObject ret = new JSObject();
+        ret.put("supabaseUrl", prefs.getString("supabaseUrl", ""));
+        ret.put("supabaseAnonKey", prefs.getString("supabaseAnonKey", ""));
+        ret.put("syncKey", prefs.getString("syncKey", "dr-med-sync"));
         call.resolve(ret);
     }
 

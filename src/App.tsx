@@ -12,13 +12,14 @@ import { TopicDetailsModal } from './components/modals/TopicDetailsModal'
 import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsModal'
 import { TodayTodoWidget } from './components/widget/TodayTodoWidget'
 import { WidgetSettingsModal } from './components/modals/WidgetSettingsModal'
-import { initSyncEngine } from './lib/syncEngine'
+import { UpdateBanner } from './components/layout/UpdateBanner'
+import { bootstrapSyncConfig, initSyncEngine } from './lib/syncEngine'
 import {
   syncActiveStudyDataToWidget,
   checkIsWidgetConfigLaunch,
   fetchLatestAppUpdate,
 } from './lib/widgetBridge'
-import { Toaster, toast } from 'sonner'
+import { Toaster } from 'sonner'
 
 // Charts are heavy and only used here, so keep recharts out of the initial bundle.
 const AnalyticsView = lazy(() =>
@@ -27,7 +28,15 @@ const AnalyticsView = lazy(() =>
 
 export function App() {
   useEffect(() => {
-    initSyncEngine()
+    // Recover the Supabase credentials first (build-time env, then the device
+    // mirror) so the sync engine's very first pull already has a client.
+    let cancelled = false
+    bootstrapSyncConfig().finally(() => {
+      if (!cancelled) initSyncEngine()
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
   const {
     topics,
@@ -75,30 +84,41 @@ export function App() {
     syncActiveStudyDataToWidget(topics, subjects, activeSubjectId)
   }, [topics, subjects, activeSubjectId])
 
-  // Non-intrusive background check for new GitHub APK updates on startup
+  // Background check for a newer APK on startup. The result is a dismissible
+  // banner, not a toast: it can be closed the moment it appears.
+  const [pendingUpdate, setPendingUpdate] = useState<{ version: string; buildId: string } | null>(
+    null
+  )
+
   useEffect(() => {
+    let cancelled = false
     const timer = setTimeout(async () => {
       try {
         const update = await fetchLatestAppUpdate()
-        if (update && update.isUpdateAvailable) {
-          toast.info(`MedMatrix Update Available (${update.latestVersion})`, {
-            id: 'medmatrix-update-available',
-            description: 'Tap Update to install now, or swipe the banner away.',
-            duration: 6000,
-            closeButton: true,
-            action: {
-              label: 'Update',
-              onClick: () =>
-                window.dispatchEvent(new Event('medmatrix:openUpdateModal')),
-            },
-          })
-        }
-      } catch {
-        // Silently ignore network failures on startup
+        if (cancelled || !update || !update.isUpdateAvailable) return
+
+        // A dismissed build stays dismissed until a newer one is published.
+        const dismissed = localStorage.getItem('medmatrix_update_dismissed_build')
+        if (dismissed === update.publishedAt) return
+
+        setPendingUpdate({ version: update.latestVersion, buildId: update.publishedAt })
+      } catch (err) {
+        // Network failures are expected offline; log only so a broken banner is visible.
+        console.debug('[MedMatrix] startup update check skipped:', err)
       }
-    }, 4000)
-    return () => clearTimeout(timer)
+    }, 2500)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [])
+
+  const dismissUpdateBanner = () => {
+    if (pendingUpdate) {
+      localStorage.setItem('medmatrix_update_dismissed_build', pendingUpdate.buildId)
+    }
+    setPendingUpdate(null)
+  }
   const [isWidgetView] = useState(() => {
     if (typeof window === 'undefined') return false
     const search = window.location.search
@@ -203,6 +223,14 @@ export function App() {
         onOpenShortcuts={() => setShortcutsModalOpen(true)}
         onOpenWidgetSettings={() => setWidgetSettingsOpen(true)}
       />
+
+      {pendingUpdate && (
+        <UpdateBanner
+          version={pendingUpdate.version}
+          onUpdate={() => window.dispatchEvent(new Event('medmatrix:openUpdateModal'))}
+          onDismiss={dismissUpdateBanner}
+        />
+      )}
 
       {/* Active View Container */}
       <main className="flex-1 w-full pt-2">

@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { useMedMatrixStore } from '../store/useMedMatrixStore'
+import { loadSyncConfigFromDevice, saveSyncConfigToDevice } from './widgetBridge'
 import { toast } from 'sonner'
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'error' | 'not_configured'
@@ -16,6 +17,12 @@ let supabaseClient: SupabaseClient | null = null
 let currentUrl = ''
 let currentKey = ''
 let realtimeChannel: ReturnType<SupabaseClient['channel']> | null = null
+
+// Never upload before we have seen the cloud copy at least once. A fresh install
+// starts at lastModified 0; if the first pull fails (offline, bad key) and the user
+// edits something, the bump would otherwise make the seed data out-rank the real
+// progress sitting in Supabase.
+let hasPulledOnce = false
 
 function getClient(): SupabaseClient | null {
   const { syncConfig } = useMedMatrixStore.getState()
@@ -176,6 +183,8 @@ export async function pullLatestState(): Promise<boolean> {
       return false
     }
 
+    hasPulledOnce = true
+
     if (data && data.data) {
       const remoteData = data.data
       const remoteLastModified = Number(data.last_modified || remoteData.lastModified)
@@ -217,6 +226,12 @@ export async function pushLocalState(): Promise<boolean> {
   const client = getClient()
   if (!client) {
     setStatus('not_configured')
+    return false
+  }
+
+  if (!hasPulledOnce) {
+    // The debounced auto-push must wait until the cloud copy has been read once.
+    // Manual sync and the post-pull push path still work (they pull first).
     return false
   }
 
@@ -282,6 +297,9 @@ export async function triggerManualSync(showToast = true) {
       return
     }
 
+    // A successful read means it is safe to write from now on.
+    hasPulledOnce = true
+
     if (data && data.data) {
       const remote = data.data
       const remoteLastModified = Number(data.last_modified || remote.lastModified)
@@ -317,6 +335,56 @@ export async function triggerManualSync(showToast = true) {
  * Background auto-sync listener
  */
 let isInitialized = false
+
+/**
+ * Finds Supabase credentials for this install. Order of preference:
+ *   1. what the user already saved in this install (localStorage)
+ *   2. values compiled into the APK by CI from repository secrets
+ *   3. the copy mirrored in Android SharedPreferences / the browser mirror
+ * Must finish before initSyncEngine() so the very first pull already has a client.
+ */
+export async function bootstrapSyncConfig(): Promise<void> {
+  const state = useMedMatrixStore.getState()
+  if (state.syncConfig.supabaseUrl && state.syncConfig.supabaseAnonKey) {
+    // Already configured (user-entered or compiled in). Keep the device mirror in
+    // sync without rewriting SharedPreferences on every single launch.
+    const current = {
+      supabaseUrl: state.syncConfig.supabaseUrl,
+      supabaseAnonKey: state.syncConfig.supabaseAnonKey,
+      syncKey: state.syncConfig.syncKey || 'dr-med-sync',
+    }
+    void loadSyncConfigFromDevice().then((saved) => {
+      if (
+        !saved ||
+        saved.supabaseUrl !== current.supabaseUrl ||
+        saved.supabaseAnonKey !== current.supabaseAnonKey ||
+        saved.syncKey !== current.syncKey
+      ) {
+        void saveSyncConfigToDevice(current)
+      }
+    })
+    return
+  }
+
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL as string) || ''
+  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || ''
+  let url = envUrl
+  let key = envKey
+  let syncKey = state.syncConfig.syncKey || 'dr-med-sync'
+
+  if (!url || !key) {
+    const saved = await loadSyncConfigFromDevice()
+    if (saved) {
+      url = saved.supabaseUrl
+      key = saved.supabaseAnonKey
+      syncKey = saved.syncKey || syncKey
+    }
+  }
+
+  if (url && key) {
+    useMedMatrixStore.getState().restoreSyncConfig(url, key, syncKey)
+  }
+}
 
 export function initSyncEngine() {
   if (isInitialized || typeof window === 'undefined') return

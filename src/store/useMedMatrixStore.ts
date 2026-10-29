@@ -4,6 +4,7 @@ import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOv
 import { INITIAL_SUBJECTS, INITIAL_TOPICS, seedSampleSRCards } from '../data/initialSubjects'
 import { advanceTopicSR, createInitialSRData, DEFAULT_EBBINGHAUS_INTERVALS, DEFAULT_POSTPONE_DAYS } from '../lib/srEngine'
 import { triggerLockCelebration, triggerMasteredCelebration } from '../lib/confetti'
+import { saveSyncConfigToDevice } from '../lib/widgetBridge'
 import { toast } from 'sonner'
 import { addDays, format } from 'date-fns'
 
@@ -113,6 +114,8 @@ interface MedMatrixState {
     isConnected: boolean
   }
   setSupabaseConfig: (url: string, key: string, syncKey?: string) => void
+  /** Silent variant used when the credentials come from the build or from device storage. */
+  restoreSyncConfig: (url: string, key: string, syncKey?: string) => void
   clearSupabaseConfig: () => void
   setSyncKey: (syncKey: string) => void
   touchLastModified: () => void
@@ -584,17 +587,39 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       setSupabaseConfig: (supabaseUrl, supabaseAnonKey, syncKey) => {
+        const next = {
+          supabaseUrl: supabaseUrl.trim(),
+          supabaseAnonKey: supabaseAnonKey.trim(),
+          syncKey: syncKey ? syncKey.trim() : get().syncConfig.syncKey,
+        }
         set((state) => ({
           syncConfig: {
             ...state.syncConfig,
-            supabaseUrl: supabaseUrl.trim(),
-            supabaseAnonKey: supabaseAnonKey.trim(),
-            syncKey: syncKey ? syncKey.trim() : state.syncConfig.syncKey,
-            isConnected: Boolean(supabaseUrl.trim() && supabaseAnonKey.trim()),
+            ...next,
+            isConnected: Boolean(next.supabaseUrl && next.supabaseAnonKey),
           },
           lastModified: Date.now(),
         }))
-        toast.success('Supabase cloud credentials saved!')
+        // Mirror to the device store so a reinstall / storage wipe can recover it.
+        void saveSyncConfigToDevice({ ...next, syncKey: next.syncKey || 'dr-med-sync' })
+        toast.success('Supabase cloud credentials saved on this device!')
+      },
+
+      restoreSyncConfig: (supabaseUrl, supabaseAnonKey, syncKey) => {
+        const next = {
+          supabaseUrl: supabaseUrl.trim(),
+          supabaseAnonKey: supabaseAnonKey.trim(),
+          syncKey: (syncKey || get().syncConfig.syncKey || 'dr-med-sync').trim(),
+        }
+        if (!next.supabaseUrl || !next.supabaseAnonKey) return
+        set((state) => ({
+          syncConfig: {
+            ...state.syncConfig,
+            ...next,
+            isConnected: true,
+          },
+        }))
+        void saveSyncConfigToDevice(next)
       },
 
       clearSupabaseConfig: () => {
@@ -607,6 +632,11 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           },
           lastModified: Date.now(),
         }))
+        void saveSyncConfigToDevice({
+          supabaseUrl: '',
+          supabaseAnonKey: '',
+          syncKey: get().syncConfig.syncKey,
+        })
         toast.info('Disconnected from Supabase cloud sync.')
       },
 
@@ -712,19 +742,9 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          if (state.syncConfig) {
-            const envUrl = (import.meta.env.VITE_SUPABASE_URL as string) || ''
-            const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || ''
-            if (!state.syncConfig.supabaseUrl && envUrl) {
-              state.syncConfig.supabaseUrl = envUrl
-            }
-            if (!state.syncConfig.supabaseAnonKey && envKey) {
-              state.syncConfig.supabaseAnonKey = envKey
-            }
-            state.syncConfig.isConnected = Boolean(
-              state.syncConfig.supabaseUrl && state.syncConfig.supabaseAnonKey
-            )
-          }
+          // Credentials (build-time env, device mirror, or user-entered) are
+          // resolved by bootstrapSyncConfig() so they go through a real state
+          // update and get persisted, rather than mutating the rehydrated object.
           if (Array.isArray(state.topics)) {
             // Clean up dummy seed cards (lec-14, lec-16, lec-24) from previous seed
             state.topics = state.topics.map((t) => {

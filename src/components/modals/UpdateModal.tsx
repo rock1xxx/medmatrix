@@ -70,7 +70,6 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose }) => 
     try {
       const success = await triggerInAppApkUpdate(updateInfo.apkUrl)
       if (success) {
-        localStorage.setItem('medmatrix_installed_release_date', updateInfo.publishedAt)
         toast.success('Prompt opened! Tap "Update" on the system dialog.', {
           id: 'app-update',
           duration: 6000,

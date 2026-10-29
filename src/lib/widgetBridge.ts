@@ -1,4 +1,4 @@
-import { registerPlugin } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { format } from 'date-fns'
 import type { Topic, Subject } from '../types'
 
@@ -41,13 +41,24 @@ export interface WidgetSliderSettings {
   fontScale: number
 }
 
+export interface DeviceSyncConfig {
+  supabaseUrl: string
+  supabaseAnonKey: string
+  syncKey: string
+}
+
 interface WidgetBridgePluginInterface {
   updateWidgetData(options: WidgetPayload): Promise<{ success: boolean; widgetsUpdated: number }>
   getWidgetSettings(): Promise<WidgetPayload>
   checkLaunchIntent(): Promise<{ isWidgetConfig: boolean }>
   getAppVersion(): Promise<{ versionName: string; versionCode: number }>
   downloadAndInstallApk(options?: { apkUrl?: string }): Promise<{ success: boolean; downloadId?: number; fallback?: boolean }>
+  saveSyncConfig(options: DeviceSyncConfig): Promise<{ success: boolean }>
+  loadSyncConfig(): Promise<DeviceSyncConfig>
 }
+
+// Mirrors the Android SharedPreferences file so the browser build behaves the same.
+const DEVICE_SYNC_KEY = 'medmatrix_sync_config_device'
 
 // Register Capacitor plugin (falls back gracefully in browser / web environments)
 export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetBridge', {
@@ -103,6 +114,25 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
       }
       return { success: true, fallback: true }
     },
+    saveSyncConfig: async (options: DeviceSyncConfig) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(DEVICE_SYNC_KEY, JSON.stringify(options))
+      }
+      return { success: true }
+    },
+    loadSyncConfig: async () => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem(DEVICE_SYNC_KEY)
+        if (saved) {
+          try {
+            return JSON.parse(saved) as DeviceSyncConfig
+          } catch {
+            // Corrupt mirror; fall through to empty config.
+          }
+        }
+      }
+      return { supabaseUrl: '', supabaseAnonKey: '', syncKey: 'dr-med-sync' }
+    },
   },
 })
 
@@ -128,8 +158,12 @@ export async function checkIsWidgetConfigLaunch(): Promise<boolean> {
 
 export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
   try {
+    // Only the Android APK can install an APK, so the in-app update prompt is
+    // meaningless (and misleading) in the browser build.
+    const isNativeApp = Capacitor.isNativePlatform()
+
     let currentVersion = '1.0'
-    let currentVersionCode = 1
+    let currentVersionCode = 0
     try {
       const ver = await WidgetBridge.getAppVersion()
       if (ver?.versionName) currentVersion = ver.versionName
@@ -193,12 +227,40 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
       ? Math.round((apkAsset.size / (1024 * 1024)) * 10) / 10
       : 15.5
 
-    const publishedAt = data.published_at || new Date().toISOString()
-    const latestVersion = data.name || data.tag_name || 'Latest'
+    // The rolling android-latest release keeps its original published_at forever, so a
+    // rebuilt APK would never look newer. The asset's updated_at moves on every
+    // --clobber upload, which is what actually identifies a fresh build.
+    const publishedAt =
+      apkAsset?.updated_at || data.published_at || new Date().toISOString()
     const releaseNotes = data.body || 'Performance improvements and widget enhancements.'
 
-    const lastKnownRelease = localStorage.getItem('medmatrix_installed_release_date')
-    const isNewer = !lastKnownRelease || new Date(publishedAt).getTime() > new Date(lastKnownRelease).getTime()
+    // CI publishes version.json next to the APK. Comparing real build numbers is
+    // the only reliable "is this newer than what I run" check; the old comparison
+    // used a localStorage marker that only got written when the install button was
+    // tapped, so the banner reappeared on every launch after a reinstall.
+    let remoteVersionCode: number | null = null
+    let remoteVersionName = ''
+    const versionAsset = data.assets?.find((a: any) => a.name === 'version.json')
+    if (versionAsset?.browser_download_url) {
+      try {
+        const versionRes = await fetch(versionAsset.browser_download_url, { cache: 'no-store' })
+        if (versionRes.ok) {
+          const meta = await versionRes.json()
+          const code = Number(meta?.versionCode)
+          if (Number.isFinite(code) && code > 0) remoteVersionCode = code
+          if (typeof meta?.versionName === 'string') remoteVersionName = meta.versionName
+        }
+      } catch (e) {
+        console.warn('[WidgetBridge] Could not read published build info:', e)
+      }
+    }
+
+    const latestVersion = remoteVersionName || data.name || data.tag_name || 'Latest'
+    const isUpdateAvailable =
+      isNativeApp &&
+      currentVersionCode > 0 &&
+      remoteVersionCode !== null &&
+      remoteVersionCode > currentVersionCode
 
     return {
       currentVersion,
@@ -208,13 +270,38 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
       releaseNotes,
       apkUrl,
       apkSizeMb,
-      isUpdateAvailable: isNewer,
+      isUpdateAvailable,
     }
   } catch (err: any) {
     if (err?.message === 'PRIVATE_REPO_404') {
       throw err
     }
     console.warn('[WidgetBridge] Failed to fetch update info:', err)
+    return null
+  }
+}
+
+export async function saveSyncConfigToDevice(config: DeviceSyncConfig): Promise<void> {
+  try {
+    await WidgetBridge.saveSyncConfig(config)
+  } catch (err) {
+    console.warn('[WidgetBridge] Could not mirror sync config to device storage:', err)
+  }
+}
+
+export async function loadSyncConfigFromDevice(): Promise<DeviceSyncConfig | null> {
+  try {
+    const cfg = await WidgetBridge.loadSyncConfig()
+    if (cfg?.supabaseUrl && cfg?.supabaseAnonKey) {
+      return {
+        supabaseUrl: cfg.supabaseUrl,
+        supabaseAnonKey: cfg.supabaseAnonKey,
+        syncKey: cfg.syncKey || 'dr-med-sync',
+      }
+    }
+    return null
+  } catch (err) {
+    console.warn('[WidgetBridge] Could not read sync config from device storage:', err)
     return null
   }
 }

@@ -90,6 +90,8 @@ Typing the URL and key in again after every reinstall is avoidable — bake them
 
 For local dev, copy `.env.example` to `.env` and fill it in (`.env` is git-ignored). The values are read by Vite at build time and fall back to whatever the device has stored.
 
+Saving the credentials in the app (Sync → Save) also mirrors them into native **SharedPreferences** (`MedMatrixSyncPrefs`), not just WebView `localStorage`. That survives in-place APK updates, "clear cache", and WebView storage resets, and it is included in Android Auto Backup. The browser build keeps the same mirror in `localStorage`. Nothing is ever written back into the repository.
+
 On a **fresh install the app deliberately starts its change clock at 0**, so the copy in Supabase always out-ranks the seeded local data and gets pulled down on first launch. Without that, a new install would look "newer" and overwrite your real progress in the cloud with seed data.
 
 If you would rather not use secrets, the APK still restores app data through Android Auto Backup (`allowBackup` is enabled) when the device has system backup turned on — but that restore is at the OS's discretion and can lag behind the reinstall.
@@ -105,6 +107,8 @@ If you would rather not use secrets, the APK still restores app data through And
 `.github/workflows/build-apk.yml` builds a debug APK on every push to `main`, publishes it to a rolling `android-latest` release, and cuts a versioned release per run. The native side lives in `android/` and is wired through `@capacitor/core`.
 
 The widget bridge (`src/lib/widgetBridge.ts`) pushes today's MCQs, tonight's videos and revision cards into Android shared preferences; in the browser it degrades to `localStorage`. **Check for Updates** in the ⋮ menu reads the release feed and hands the APK to the native installer.
+
+Each build publishes a `version.json` (`versionCode` / `versionName`) next to the APK in the `android-latest` release. The app compares that with its own installed `versionCode`, so the "new APK available" strip only appears when something is genuinely newer, and dismissing it keeps it dismissed for that build. In the browser there is no banner, because a browser cannot install an APK.
 
 ## Project structure
 

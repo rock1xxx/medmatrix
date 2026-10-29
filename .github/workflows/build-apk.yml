@@ -81,7 +81,13 @@ jobs:
             --notes "Compiled for Android 14+ / Samsung Galaxy S24 Ultra. Rolling latest release." \
             --clobber
 
-          # 2. Publish permanent versioned release for this build run
+          # 2. Publish the build metadata next to the APK. The app compares this
+          #    versionCode with its own to decide whether an update really exists.
+          printf '{"versionCode":%s,"versionName":"1.0.%s"}' \
+            "${{ github.run_number }}" "${{ github.run_number }}" > version.json
+          gh release upload android-latest version.json --clobber
+
+          # 3. Publish permanent versioned release for this build run
           gh release create "$BUILD_TAG" android/app/build/outputs/apk/debug/MedMatrix.apk \
             --title "MedMatrix Build #${{ github.run_number }}" \
             --notes "Automated APK build for commit ${{ github.sha }} with native One UI 4x1, 4x2, and 2x2 widgets." \
