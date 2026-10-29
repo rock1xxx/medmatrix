@@ -4,14 +4,25 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Dedicated background layer so opacity can be applied without fading the text -->
-    <View
+    <!--
+      Dedicated background layer so opacity can be applied without fading the text.
+
+      This MUST be an ImageView (or another @RemoteViews.RemoteView class) and never a
+      bare <View>. RemoteViews inflates widget layouts through a LayoutInflater whose
+      filter only allows classes annotated with @RemoteViews.RemoteView, and
+      android.view.View is not one of them, so a plain <View> throws InflateException
+      inside the launcher and the widget dies with "Couldn't add widget" / "Problem
+      loading widget". ImageView is on the supported list.
+    -->
+    <ImageView
         android:id="@+id/widget_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/widget_bg_frosted_24" />
+        android:background="@drawable/widget_bg_frosted_24"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no" />
 
-    <!-- Content row wraps its text; the divider is sized against it in Java -->
+    <!-- Content row wraps its text, so the divider inside it never spans the widget -->
     <LinearLayout
         android:id="@+id/widget_row"
         android:layout_width="match_parent"
@@ -78,12 +89,21 @@
                 android:textSize="10.5sp" />
         </LinearLayout>
 
-        <!-- Center divider: height is kept in step with the text block in Java -->
-        <View
+        <!--
+          Center divider. Height is match_parent inside a wrap_content row, so
+          LinearLayout re-measures it to exactly the height of the tallest text
+          column: the line tracks the text at any font scale instead of spanning the
+          whole widget. Again an ImageView, never a bare <View> (see widget_bg).
+        -->
+        <ImageView
             android:id="@+id/widget_center_divider"
             android:layout_width="1dp"
-            android:layout_height="40dp"
-            android:background="#2EFFFFFF" />
+            android:layout_height="match_parent"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="#2EFFFFFF"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
 
         <!-- Right Half: Tonight's Videos -->
         <LinearLayout

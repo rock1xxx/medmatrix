@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.widget.RemoteViews;
 
 public class MedMatrixWidget2x2Provider extends AppWidgetProvider {
 
@@ -16,10 +15,12 @@ public class MedMatrixWidget2x2Provider extends AppWidgetProvider {
         }
     }
 
-    public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+    public static boolean updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(MedMatrixWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
         PendingIntent pendingIntent = MedMatrixWidgetProvider.getAppPendingIntent(context);
-        RemoteViews views = MedMatrixWidgetProvider.build2x2Views(context, prefs, pendingIntent);
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        // Never throws: a failure here would otherwise take the whole app down.
+        return MedMatrixWidgetProvider.updateOne(context, appWidgetManager, appWidgetId, "2x2",
+                () -> MedMatrixWidgetProvider.build2x2Views(context, prefs, pendingIntent));
     }
+
 }

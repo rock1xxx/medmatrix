@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.Settings;
+import android.util.Log;
 import androidx.core.content.FileProvider;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,6 +53,37 @@ public class WidgetBridgePlugin extends Plugin {
     // restore can be walked back several days without any cloud round-trip.
     private static final String DATA_HISTORY_DIR = "medmatrix-backup-history";
     private static final int DATA_HISTORY_LIMIT = 14;
+
+    /** Updates one placed widget. Implemented by each provider's rebuild entry point. */
+    private interface WidgetUpdater {
+        boolean update(AppWidgetManager manager, int appWidgetId);
+    }
+
+    /**
+     * Rebuilds every placed widget of one provider class and returns how many succeeded.
+     * Each widget is isolated: one size that fails to build can no longer stop the other
+     * sizes from refreshing, and nothing here is allowed to throw back into the bridge.
+     */
+    private static int refreshWidgets(Context context, AppWidgetManager appWidgetManager,
+                                      Class<?> providerClass, String label, WidgetUpdater updater) {
+        try {
+            int[] ids = appWidgetManager.getAppWidgetIds(new ComponentName(context, providerClass));
+            if (ids == null || ids.length == 0) return 0;
+
+            int updated = 0;
+            for (int id : ids) {
+                try {
+                    if (updater.update(appWidgetManager, id)) updated++;
+                } catch (Exception e) {
+                    Log.e("MedMatrixWidget", label + ": widget " + id + " could not be rebuilt", e);
+                }
+            }
+            return updated;
+        } catch (Exception e) {
+            Log.e("MedMatrixWidget", label + ": could not list placed widgets", e);
+            return 0;
+        }
+    }
 
     @PluginMethod
     public void updateWidgetData(PluginCall call) {
@@ -102,59 +134,27 @@ public class WidgetBridgePlugin extends Plugin {
         editor.putString("design4x1", design4x1);
         editor.apply();
 
-        // Broadcast update to all active home screen widgets across all registered sizes
+        // Rebuild every registered home screen widget size.
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         int totalWidgetsUpdated = 0;
-
-        // 1. 2x2 widgets
-        ComponentName comp2x2 = new ComponentName(context, MedMatrixWidget2x2Provider.class);
-        int[] ids2x2 = appWidgetManager.getAppWidgetIds(comp2x2);
-        if (ids2x2 != null && ids2x2.length > 0) {
-            totalWidgetsUpdated += ids2x2.length;
-            for (int id : ids2x2) {
-                MedMatrixWidget2x2Provider.updateAppWidget(context, appWidgetManager, id);
-            }
-        }
-
-        // 2. 4x1 widgets
-        ComponentName comp4x1 = new ComponentName(context, MedMatrixWidget4x1Provider.class);
-        int[] ids4x1 = appWidgetManager.getAppWidgetIds(comp4x1);
-        if (ids4x1 != null && ids4x1.length > 0) {
-            totalWidgetsUpdated += ids4x1.length;
-            for (int id : ids4x1) {
-                MedMatrixWidget4x1Provider.updateAppWidget(context, appWidgetManager, id);
-            }
-        }
-
-        // 3. 4x2 widgets
-        ComponentName comp4x2 = new ComponentName(context, MedMatrixWidget4x2Provider.class);
-        int[] ids4x2 = appWidgetManager.getAppWidgetIds(comp4x2);
-        if (ids4x2 != null && ids4x2.length > 0) {
-            totalWidgetsUpdated += ids4x2.length;
-            for (int id : ids4x2) {
-                MedMatrixWidget4x2Provider.updateAppWidget(context, appWidgetManager, id);
-            }
-        }
-
-        // 3. 4x4 widgets
-        ComponentName comp4x4 = new ComponentName(context, MedMatrixWidget4x4Provider.class);
-        int[] ids4x4 = appWidgetManager.getAppWidgetIds(comp4x4);
-        if (ids4x4 != null && ids4x4.length > 0) {
-            totalWidgetsUpdated += ids4x4.length;
-            for (int id : ids4x4) {
-                MedMatrixWidget4x4Provider.updateAppWidget(context, appWidgetManager, id);
-            }
-        }
-
-        // 4. Default widget provider
-        ComponentName compDefault = new ComponentName(context, MedMatrixWidgetProvider.class);
-        int[] idsDefault = appWidgetManager.getAppWidgetIds(compDefault);
-        if (idsDefault != null && idsDefault.length > 0) {
-            totalWidgetsUpdated += idsDefault.length;
-            for (int id : idsDefault) {
-                MedMatrixWidgetProvider.updateAppWidget(context, appWidgetManager, id);
-            }
-        }
+        totalWidgetsUpdated += refreshWidgets(context, appWidgetManager,
+                MedMatrixWidget2x2Provider.class, "2x2",
+                (manager, id) -> MedMatrixWidget2x2Provider.updateAppWidget(context, manager, id));
+        totalWidgetsUpdated += refreshWidgets(context, appWidgetManager,
+                MedMatrixWidget4x1Provider.class, "4x1",
+                (manager, id) -> MedMatrixWidget4x1Provider.updateAppWidget(context, manager, id));
+        totalWidgetsUpdated += refreshWidgets(context, appWidgetManager,
+                MedMatrixWidget4x2Provider.class, "4x2",
+                (manager, id) -> MedMatrixWidget4x2Provider.updateAppWidget(context, manager, id));
+        totalWidgetsUpdated += refreshWidgets(context, appWidgetManager,
+                MedMatrixWidget4x4Provider.class, "4x4",
+                (manager, id) -> MedMatrixWidget4x4Provider.updateAppWidget(context, manager, id));
+        totalWidgetsUpdated += refreshWidgets(context, appWidgetManager,
+                MedMatrixWidgetProvider.class, "legacy",
+                (manager, id) -> {
+                    MedMatrixWidgetProvider.updateAppWidget(context, manager, id);
+                    return true;
+                });
 
         JSObject ret = new JSObject();
         ret.put("success", true);

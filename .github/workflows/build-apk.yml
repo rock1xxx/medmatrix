@@ -53,6 +53,25 @@ jobs:
       - name: Grant Execute Permission to Gradle
         run: chmod +x android/gradlew
 
+      # Guards the rules that decide whether a home screen widget can inflate at all:
+      # every view class in a widget layout must be a @RemoteViews.RemoteView class, and
+      # every id the providers touch must exist in the layout. A bare <View> (a 1dp
+      # divider is the classic one) makes the launcher throw InflateException and the
+      # widget never renders, so this fails the build instead of the home screen.
+      - name: Run Widget & Layout Unit Tests
+        run: |
+          cd android
+          ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Upload Unit Test Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: android/app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Build Android Debug APK
         run: |
           cd android

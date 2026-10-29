@@ -22,6 +22,108 @@ interface WidgetSettingsModalProps {
 
 type SizeCategory = '2x2' | '4x1' | '4x2' | '4x4'
 
+/** Layout variants offered by the widget studio. Static, so it is module level:
+ *  a fresh object on every render would make the settings effect re-run forever. */
+const designOptions: Record<
+  SizeCategory,
+  Array<{ id: string; name: string; desc: string }>
+> = {
+  '2x2': [
+    {
+      id: 'hero',
+      name: '1. Active Focus Hero',
+      desc: 'Big bold headline for the #1 morning Ward MCQ chapter + secondary chapter + next video time pill.',
+    },
+    {
+      id: 'dual',
+      name: '2. Compact Dual Split',
+      desc: 'Equal balance between morning Ward MCQs and tonight’s lectures in a clean two-deck split.',
+    },
+    {
+      id: 'sequence',
+      name: '3. Numbered Sequence Flow',
+      desc: 'Sequential flow listing exactly what to do step 1, 2, and 3 today with numbered badges.',
+    },
+    {
+      id: 'horizon',
+      name: '4. Split Shift Horizon',
+      desc: 'Clinical shift split with color-coded accent indicators for Day Duty vs Night Study.',
+    },
+    {
+      id: 'rings',
+      name: '5. Dual Health Rings',
+      desc: 'Samsung Health / Galaxy Watch inspired circular completion metrics.',
+    },
+  ],
+  '4x1': [
+    {
+      id: 'pill-multi',
+      name: '1. Pill Badge Multi-Queue (User Favorite)',
+      desc: 'Compact rounded pill tags pushed tight to the top edges with zero subject clutter and 1px center divider. Sized to fit 2 full chapters per side.',
+    },
+    {
+      id: 'max-typo-multi',
+      name: '2. Max-Typography Multi-Row (User Favorite)',
+      desc: 'Clean uppercase category labels pushed flush against edge, with bold numbered rows fitting 2 full chapter queues cleanly per half.',
+    },
+    {
+      id: 'dense-3tier',
+      name: '3. Dense 3-Topic Horizon (Max Capacity)',
+      desc: 'Engineered for maximum task capacity. Fits 3 full topics per half (6 total in a 4x1 banner) using compact micro-typography.',
+    },
+  ],
+  '4x2': [
+    {
+      id: 'desk',
+      name: '1. Dual Chapter Desk (Recommended)',
+      desc: 'The perfected layout. High contrast, large bold chapter fonts, zero clutter, no tick marks.',
+    },
+    {
+      id: 'checkbox',
+      name: '2. Interactive Checkbox Desk',
+      desc: 'Features crisp check rings on the left for Ward MCQs, and play icons on the right for tonight’s lectures.',
+    },
+    {
+      id: 'timeline',
+      name: '3. Shift Timeline Horizon',
+      desc: 'Horizontal timeline visually separating morning ward rounds (09:00) from hostel desk (20:00).',
+    },
+    {
+      id: 'progress',
+      name: '4. Target Progress Bars',
+      desc: 'Progress-first design featuring horizontal completion fill bars for instant visual reassurance.',
+    },
+    {
+      id: 'triptych',
+      name: '5. Triple Triptych Desk',
+      desc: 'High-density 3-column banner with Ward MCQs, Tonight’s Lectures, and spaced revision.',
+    },
+  ],
+  '4x4': [
+    {
+      id: 'three-tier',
+      name: '1. Three-Tier Master Desk',
+      desc: 'Full-page overview dividing your workflow into Ward MCQs, Tonight’s Video Queue, and 15-min Spaced Revision.',
+    },
+    {
+      id: 'tabbed',
+      name: '2. Tabbed Focus Deck',
+      desc: 'Category filter tabs at the top (All, MCQs, Videos, Revision) with status indicators.',
+    },
+    {
+      id: 'timeline-kanban',
+      name: '3. Full Shift Kanban Timeline',
+      desc: 'Chronological timeline mapping your full day from 09:00 ward duty to midnight hostel locking.',
+    },
+    {
+      id: 'command',
+      name: '4. High-Yield Command Deck',
+      desc: 'Includes 1.5x/2.0x playback speed calculations and Grand Test countdown indicator.',
+    },
+  ],
+}
+
+
 export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   isOpen,
   onClose,
@@ -47,19 +149,32 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   const [isSyncing, setIsSyncing] = useState(false)
   const [showHowTo, setShowHowTo] = useState(false)
 
-  // Load saved preferences
+  // Load saved preferences. Re-runs when the size tab changes so the design picker
+  // reflects what the home screen is really showing for that size — previously it reset
+  // to design #1, so saving a second time silently overwrote the chosen layout.
   useEffect(() => {
-    if (isOpen) {
-      const saved = getSavedSliderSettings()
-      setOpacity(saved.opacity)
-      setBlur(saved.blur)
-      setRadius(saved.cornerRadius)
-      setShowBorder(saved.showBorder)
-      setShowDuration(saved.showDuration)
-      setEdgeToEdge(saved.edgeToEdge)
-      setFontScale(saved.fontScale)
-    }
-  }, [isOpen])
+    if (!isOpen) return
+
+    const saved = getSavedSliderSettings()
+    setOpacity(saved.opacity)
+    setBlur(saved.blur)
+    setRadius(saved.cornerRadius)
+    setShowBorder(saved.showBorder)
+    setShowDuration(saved.showDuration)
+    setEdgeToEdge(saved.edgeToEdge)
+    setFontScale(saved.fontScale)
+
+    const savedDesignId =
+      activeSize === '2x2'
+        ? saved.design2x2
+        : activeSize === '4x1'
+          ? saved.design4x1
+          : activeSize === '4x2'
+            ? saved.design4x2
+            : saved.design4x4
+    const savedIndex = designOptions[activeSize].findIndex((d) => d.id === savedDesignId)
+    setSelectedDesignIndex(savedIndex >= 0 ? savedIndex : 0)
+  }, [isOpen, activeSize])
 
   if (!isOpen) return null
 
@@ -88,106 +203,6 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
   const srTopics = topics.filter((t) => t.status === 'LOCKED_IN_SR')
   const sr1 = srTopics[0]?.title || 'General Pathology (Anki)'
   const sr2 = srTopics[1]?.title || 'Autonomic Pharmacology'
-
-  // 12 Refined Designs
-  const designOptions: Record<
-    SizeCategory,
-    Array<{ id: string; name: string; desc: string }>
-  > = {
-    '2x2': [
-      {
-        id: 'hero',
-        name: '1. Active Focus Hero',
-        desc: 'Big bold headline for the #1 morning Ward MCQ chapter + secondary chapter + next video time pill.',
-      },
-      {
-        id: 'dual',
-        name: '2. Compact Dual Split',
-        desc: 'Equal balance between morning Ward MCQs and tonight’s lectures in a clean two-deck split.',
-      },
-      {
-        id: 'sequence',
-        name: '3. Numbered Sequence Flow',
-        desc: 'Sequential flow listing exactly what to do step 1, 2, and 3 today with numbered badges.',
-      },
-      {
-        id: 'horizon',
-        name: '4. Split Shift Horizon',
-        desc: 'Clinical shift split with color-coded accent indicators for Day Duty vs Night Study.',
-      },
-      {
-        id: 'rings',
-        name: '5. Dual Health Rings',
-        desc: 'Samsung Health / Galaxy Watch inspired circular completion metrics.',
-      },
-    ],
-    '4x1': [
-      {
-        id: 'pill-multi',
-        name: '1. Pill Badge Multi-Queue (User Favorite)',
-        desc: 'Compact rounded pill tags pushed tight to the top edges with zero subject clutter and 1px center divider. Sized to fit 2 full chapters per side.',
-      },
-      {
-        id: 'max-typo-multi',
-        name: '2. Max-Typography Multi-Row (User Favorite)',
-        desc: 'Clean uppercase category labels pushed flush against edge, with bold numbered rows fitting 2 full chapter queues cleanly per half.',
-      },
-      {
-        id: 'dense-3tier',
-        name: '3. Dense 3-Topic Horizon (Max Capacity)',
-        desc: 'Engineered for maximum task capacity. Fits 3 full topics per half (6 total in a 4x1 banner) using compact micro-typography.',
-      },
-    ],
-    '4x2': [
-      {
-        id: 'desk',
-        name: '1. Dual Chapter Desk (Recommended)',
-        desc: 'The perfected layout. High contrast, large bold chapter fonts, zero clutter, no tick marks.',
-      },
-      {
-        id: 'checkbox',
-        name: '2. Interactive Checkbox Desk',
-        desc: 'Features crisp check rings on the left for Ward MCQs, and play icons on the right for tonight’s lectures.',
-      },
-      {
-        id: 'timeline',
-        name: '3. Shift Timeline Horizon',
-        desc: 'Horizontal timeline visually separating morning ward rounds (09:00) from hostel desk (20:00).',
-      },
-      {
-        id: 'progress',
-        name: '4. Target Progress Bars',
-        desc: 'Progress-first design featuring horizontal completion fill bars for instant visual reassurance.',
-      },
-      {
-        id: 'triptych',
-        name: '5. Triple Triptych Desk',
-        desc: 'High-density 3-column banner with Ward MCQs, Tonight’s Lectures, and spaced revision.',
-      },
-    ],
-    '4x4': [
-      {
-        id: 'three-tier',
-        name: '1. Three-Tier Master Desk',
-        desc: 'Full-page overview dividing your workflow into Ward MCQs, Tonight’s Video Queue, and 15-min Spaced Revision.',
-      },
-      {
-        id: 'tabbed',
-        name: '2. Tabbed Focus Deck',
-        desc: 'Category filter tabs at the top (All, MCQs, Videos, Revision) with status indicators.',
-      },
-      {
-        id: 'timeline-kanban',
-        name: '3. Full Shift Kanban Timeline',
-        desc: 'Chronological timeline mapping your full day from 09:00 ward duty to midnight hostel locking.',
-      },
-      {
-        id: 'command',
-        name: '4. High-Yield Command Deck',
-        desc: 'Includes 1.5x/2.0x playback speed calculations and Grand Test countdown indicator.',
-      },
-    ],
-  }
 
   const activeDesignList = designOptions[activeSize]
   const currentDesign = activeDesignList[selectedDesignIndex] || activeDesignList[0]
@@ -326,8 +341,8 @@ export const WidgetSettingsModal: React.FC<WidgetSettingsModalProps> = ({
                     key={size}
                     type="button"
                     onClick={() => {
+                      // The saved design for this size is restored by the effect above.
                       setActiveSize(size)
-                      setSelectedDesignIndex(0)
                     }}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       activeSize === size

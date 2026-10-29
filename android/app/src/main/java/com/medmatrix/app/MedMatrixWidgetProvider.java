@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.SizeF;
 import android.util.TypedValue;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import java.text.SimpleDateFormat;
@@ -48,6 +49,11 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
     }
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        updateOne(context, appWidgetManager, appWidgetId, "4x2 (default layout)",
+                () -> buildDefaultViews(context, appWidgetManager, appWidgetId));
+    }
+
+    private static RemoteViews buildDefaultViews(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         PendingIntent pendingIntent = getAppPendingIntent(context);
 
@@ -72,7 +78,36 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
             }
         }
 
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        return views;
+    }
+
+    private static final String TAG = "MedMatrixWidget";
+
+    /** Builds one widget's RemoteViews on demand. */
+    public interface ViewsBuilder {
+        RemoteViews build() throws Exception;
+    }
+
+    /**
+     * Applies one widget update and never throws. AppWidgetProvider.onUpdate runs on the
+     * app's main thread, so an exception while building or applying a layout would crash
+     * the whole app instead of just leaving that single widget stale. It also means one
+     * broken widget can no longer stop the other sizes from updating.
+     */
+    public static boolean updateOne(Context context, AppWidgetManager appWidgetManager,
+                                    int appWidgetId, String label, ViewsBuilder builder) {
+        try {
+            RemoteViews views = builder.build();
+            if (views == null) {
+                Log.w(TAG, label + ": no views were built for widget " + appWidgetId);
+                return false;
+            }
+            appWidgetManager.updateAppWidget(appWidgetId, views);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, label + ": could not update widget " + appWidgetId, e);
+            return false;
+        }
     }
 
     public static String getTodayDateFormatted(SharedPreferences prefs) {
@@ -194,12 +229,9 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
                 dpToPx(context, verticalPadding)
         );
 
-        // The divider sits inside the text row and is sized against the selected font
-        // scale, so it stays in step with the text instead of spanning the whole widget.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            float dividerHeightDp = (denseDesign ? 46f : 40f) * scale;
-            views.setViewLayoutHeight(R.id.widget_center_divider, dividerHeightDp, TypedValue.COMPLEX_UNIT_DIP);
-        }
+        // The divider is match_parent inside the wrap_content row, so LinearLayout
+        // re-measures it to the height of the tallest text column. That keeps the line in
+        // step with the text at every font scale without touching layout params at runtime.
 
         String mcq1 = prefs.getString("mcqCh1", "Sterilization & Disinfection");
         String mcq2 = prefs.getString("mcqCh2", "Bacterial Culture Media");

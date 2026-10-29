@@ -5,11 +5,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <View
+    <!--
+      Background layer. MUST be an ImageView (a @RemoteViews.RemoteView class): a bare
+      <View> is rejected by the RemoteViews inflation filter and the widget fails to load.
+    -->
+    <ImageView
         android:id="@+id/widget_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/widget_bg_frosted_24" />
+        android:background="@drawable/widget_bg_frosted_24"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no" />
 
     <LinearLayout
         android:id="@+id/widget_row"
@@ -70,11 +76,16 @@
                 android:textSize="10.5sp" />
         </LinearLayout>
 
-        <View
+        <!-- match_parent height -> re-measured to the text column height by LinearLayout -->
+        <ImageView
             android:id="@+id/widget_center_divider"
             android:layout_width="1dp"
-            android:layout_height="40dp"
-            android:background="#2EFFFFFF" />
+            android:layout_height="match_parent"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="#2EFFFFFF"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
 
         <LinearLayout
             android:id="@+id/card_tonight_videos"
