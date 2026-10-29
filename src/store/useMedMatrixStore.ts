@@ -216,7 +216,7 @@ interface MedMatrixState {
   touchLastModified: () => void
   loadExternalSyncData: (
     data: Partial<MedMatrixState>,
-    options?: { force?: boolean; preserveUndo?: boolean }
+    options?: { force?: boolean; preserveUndo?: boolean; bumpClock?: boolean }
   ) => boolean
   getSyncPayload: () => Record<string, unknown>
   restoreLastGoodState: () => boolean
@@ -685,7 +685,13 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           stretchTopicIds: [],
           lastModified: Date.now(),
         })
-        toast.info('Database reset to initial prescribed seed state.')
+        toast.info('Database reset to initial prescribed seed state.', {
+          duration: 8000,
+          action: {
+            label: 'Undo',
+            onClick: () => get().restoreLastGoodState(),
+          },
+        })
       },
 
       setSupabaseConfig: (supabaseUrl, supabaseAnonKey, syncKey) => {
@@ -788,7 +794,9 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           stretchTopicIds: incoming.stretchTopicIds || current.stretchTopicIds,
           ebbinghausIntervals: incoming.ebbinghausIntervals || current.ebbinghausIntervals,
           postponeIntervalDays: incoming.postponeIntervalDays ?? current.postponeIntervalDays,
-          lastModified: incoming.lastModified || Date.now(),
+          // A user-driven rescue must out-rank whatever was just written, otherwise
+          // the next pull would re-adopt the copy it was undoing.
+          lastModified: options?.bumpClock ? Date.now() : incoming.lastModified || Date.now(),
         })
         return true
       },
@@ -816,6 +824,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           const restored = get().loadExternalSyncData(parsed, {
             force: true,
             preserveUndo: true,
+            bumpClock: true,
           })
           if (restored) {
             toast.success('Restored the previous study state from this device.')
@@ -880,7 +889,13 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             postponeIntervalDays: parsed.postponeIntervalDays ?? DEFAULT_POSTPONE_DAYS,
             lastModified: parsed.lastModified || Date.now(),
           })
-          toast.success('Successfully imported MedMatrix study database!')
+          toast.success('Successfully imported MedMatrix study database!', {
+            duration: 8000,
+            action: {
+              label: 'Undo',
+              onClick: () => get().restoreLastGoodState(),
+            },
+          })
           return true
         } catch {
           toast.error('Failed to parse JSON file.')
