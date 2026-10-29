@@ -135,7 +135,6 @@ export interface AnalyticsSnapshot {
     chapters: number
     subjects: number
     hoursTotal: number
-    hoursLocked: number
     hoursRemaining: number
   }
   coverage: number
@@ -147,7 +146,6 @@ export interface AnalyticsSnapshot {
     onFinalRung: number
     dueToday: number
     overdue: number
-    scheduled: number
     levels: Array<{ level: number; label: string; interval: string; color: string; count: number }>
     averageLevel: number
     /** Share of the engine that is at L3/L4 — a proxy for durable recall. */
@@ -155,13 +153,10 @@ export interface AnalyticsSnapshot {
   }
   activity: {
     reviewsByDay: Map<string, number>
-    locksByDay: Map<string, number>
     totalReviews: number
     last14Reviews: number
     prev14Reviews: number
     reviewDelta: number
-    thisWeekReviews: number
-    lastWeekReviews: number
     activeDays: number
     streak: number
     bestStreak: number
@@ -316,7 +311,6 @@ export function buildAnalytics(
   const levelCounts = [0, 0, 0, 0, 0]
   let dueToday = 0
   let overdue = 0
-  let scheduled = 0
   let mastered = 0
   let totalReviews = 0
   let flags = 0
@@ -351,7 +345,6 @@ export function buildAnalytics(
       const status = getTopicSRStatus(topic, today)
       if (status === 'DUE_TODAY') dueToday++
       else if (status === 'OVERDUE') overdue++
-      else if (status === 'SCHEDULED') scheduled++
 
       const locked = safeParse(sr.lockedAt)
       if (locked) {
@@ -379,9 +372,6 @@ export function buildAnalytics(
     return total
   }
 
-  const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 })
-  const thisWeekReviews = sumWindow(reviewsByDay, 0, differenceInCalendarDays(today, thisWeekStart) + 1)
-  const lastWeekReviews = sumWindow(reviewsByDay, differenceInCalendarDays(today, thisWeekStart) + 1, 7)
   const last14Reviews = sumWindow(reviewsByDay, 0, 14)
   const prev14Reviews = sumWindow(reviewsByDay, 14, 14)
   const streak = computeStreak(reviewsByDay, today)
@@ -491,7 +481,6 @@ export function buildAnalytics(
       chapters,
       subjects: subjects.length,
       hoursTotal,
-      hoursLocked,
       hoursRemaining: Math.max(0, hoursTotal - hoursLocked),
     },
     coverage,
@@ -507,7 +496,6 @@ export function buildAnalytics(
       onFinalRung: levelCounts[3] + levelCounts[4],
       dueToday,
       overdue,
-      scheduled,
       levels: SR_RUNGS.map((rung) => ({
         level: rung.level,
         label: rung.label,
@@ -520,13 +508,10 @@ export function buildAnalytics(
     },
     activity: {
       reviewsByDay,
-      locksByDay,
       totalReviews,
       last14Reviews,
       prev14Reviews,
       reviewDelta: last14Reviews - prev14Reviews,
-      thisWeekReviews,
-      lastWeekReviews,
       activeDays,
       streak: streak.current,
       bestStreak: streak.best,
