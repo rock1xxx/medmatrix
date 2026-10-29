@@ -598,7 +598,9 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             ...next,
             isConnected: Boolean(next.supabaseUrl && next.supabaseAnonKey),
           },
-          lastModified: Date.now(),
+          // Deliberately no lastModified bump: connecting is not a study edit.
+          // Bumping here made a fresh install look "newer" than the cloud row, so
+          // the very first sync pushed seed curriculum over the user's real progress.
         }))
         // Mirror to the device store so a reinstall / storage wipe can recover it.
         void saveSyncConfigToDevice({ ...next, syncKey: next.syncKey || 'dr-med-sync' })
