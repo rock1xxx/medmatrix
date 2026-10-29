@@ -18,8 +18,8 @@ Once a topic is locked it enters a custom Ebbinghaus schedule and keeps resurfac
 | **Ward** | The morning shift. One-tap "done with MCQs" per topic for the active subject. |
 | **Tonight** | Three steps at the hostel desk: annotate → review what is due → watch tonight's videos. |
 | **Timeline** | Projected first-read finish date, month calendar and daily agenda, per-day shift-load overrides (low/medium/high duty), Grand Test dates and Subject-Wise Test milestones. |
-| **Syllabus** | All 19 subjects / 271 chapters, searchable, category-filtered, with a per-topic status dropdown. |
-| **Board** | Drag-and-drop Kanban over the same pipeline, with high-yield and subject filters. |
+| **Syllabus** | All 19 subjects / 271 chapters, searchable, category-filtered, with a per-topic status dropdown. On a laptop the same tab becomes a wide subject rail + chapter table with multi-select and a bulk status bar. |
+| **Board** | Drag-and-drop Kanban over the same pipeline, with high-yield and subject filters. Desktop only — the tab is hidden on phones, where the board has no room to be useful. |
 | **Stats** | Pipeline distribution, SR level histogram, 7-day review forecast, subject progress. Loaded lazily, so the charts never weigh down the first paint. |
 
 ## Spaced repetition

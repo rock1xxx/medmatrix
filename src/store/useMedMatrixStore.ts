@@ -174,6 +174,7 @@ interface MedMatrixState {
 
   // Topic Pipeline Actions
   updateTopicStatus: (id: string, status: TopicStatus) => void
+  bulkUpdateTopicStatus: (ids: string[], status: TopicStatus) => number
   cycleTopicStatusNext: (id: string) => void
   lockTopicIntoSR: (id: string) => void
   advanceSRLevel: (id: string) => void
@@ -342,6 +343,45 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         )
 
         set({ topics: updated, lastModified: Date.now() })
+      },
+
+      // One set() for the whole batch: a bulk edit on the desktop table should not
+      // fire dozens of store writes (or dozens of confetti bursts) at once.
+      bulkUpdateTopicStatus: (ids, status) => {
+        const targets = new Set(ids)
+        if (targets.size === 0) return 0
+
+        const { topics } = get()
+        const updatedAt = new Date().toISOString()
+        let changed = 0
+
+        const updated = topics.map((t) => {
+          if (!targets.has(t.id)) return t
+          changed += 1
+          const needsSRData = status === 'LOCKED_IN_SR' && !t.srData
+          return {
+            ...t,
+            status,
+            srData: needsSRData ? createInitialSRData() : t.srData,
+            updatedAt,
+          }
+        })
+
+        if (changed === 0) return 0
+        set({ topics: updated, lastModified: Date.now() })
+
+        const label =
+          status === 'QUEUED'
+            ? 'Queued'
+            : status === 'STEP_1_WATCHING'
+            ? 'Watching'
+            : status === 'STEP_2_WARD_MCQ'
+            ? 'Ward MCQ'
+            : status === 'STEP_3_ANNOTATING'
+            ? 'Annotating'
+            : 'Locked in SR'
+        toast.success(`Updated ${changed} chapter${changed === 1 ? '' : 's'} to ${label}.`)
+        return changed
       },
 
       cycleTopicStatusNext: (id) => {

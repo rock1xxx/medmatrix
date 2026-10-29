@@ -154,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
   return (
     <>
       <header className="sticky top-0 z-30 bg-[#0c0c0e]/95 backdrop-blur-md border-b border-[#1c1c20] safe-top select-none">
-      <div className="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
+      <div className="max-w-4xl lg:max-w-[1400px] mx-auto px-4 py-2 flex items-center justify-between">
         {/* Brand & Live Sync Indicator */}
         <div className="flex items-center gap-2" title={SYNC_META[syncStatus].title}>
           <div
