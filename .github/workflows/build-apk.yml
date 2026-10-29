@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+# Only the newest push should publish the rolling android-latest APK, otherwise
+# two overlapping runs race on --clobber and an older build can win.
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     name: Build Native Android APK with Widget

@@ -95,7 +95,7 @@ export function App() {
     const timer = setTimeout(async () => {
       try {
         const update = await fetchLatestAppUpdate()
-        if (cancelled || !update || !update.isUpdateAvailable) return
+        if (cancelled || !update || !update.isNativeApp || !update.isUpdateAvailable) return
 
         // A dismissed build stays dismissed until a newer one is published.
         const dismissed = localStorage.getItem('medmatrix_update_dismissed_build')

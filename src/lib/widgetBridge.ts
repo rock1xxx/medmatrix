@@ -145,6 +145,8 @@ export interface AppUpdateInfo {
   apkUrl: string
   apkSizeMb: number
   isUpdateAvailable: boolean
+  /** True inside the Android APK. The startup banner is Android-only. */
+  isNativeApp: boolean
 }
 
 export async function checkIsWidgetConfigLaunch(): Promise<boolean> {
@@ -256,8 +258,8 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
     }
 
     const latestVersion = remoteVersionName || data.name || data.tag_name || 'Latest'
+    // Kept platform-agnostic so the browser checker can still report an APK build.
     const isUpdateAvailable =
-      isNativeApp &&
       currentVersionCode > 0 &&
       remoteVersionCode !== null &&
       remoteVersionCode > currentVersionCode
@@ -271,6 +273,7 @@ export async function fetchLatestAppUpdate(): Promise<AppUpdateInfo | null> {
       apkUrl,
       apkSizeMb,
       isUpdateAvailable,
+      isNativeApp,
     }
   } catch (err: any) {
     if (err?.message === 'PRIVATE_REPO_404') {
