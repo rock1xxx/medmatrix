@@ -228,35 +228,38 @@ public class WidgetBridgePlugin extends Plugin {
         File prev = new File(dir, DATA_SNAPSHOT_PREV);
         File tmp = new File(dir, DATA_SNAPSHOT_FILE + ".tmp");
 
-        try {
-            try (FileOutputStream out = new FileOutputStream(tmp)) {
-                out.write(json.getBytes(StandardCharsets.UTF_8));
-                out.flush();
-                out.getFD().sync();
-            }
-
-            if (main.exists()) {
-                if (prev.exists() && !prev.delete()) {
-                    // A stale backup slot is not worth failing the write over.
+        // Disk writes stay off the UI thread; this fires on every study edit.
+        new Thread(() -> {
+            try {
+                try (FileOutputStream out = new FileOutputStream(tmp)) {
+                    out.write(json.getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                    out.getFD().sync();
                 }
-                if (!main.renameTo(prev)) {
-                    // Keep the live copy rather than deleting it.
+
+                if (main.exists()) {
+                    if (prev.exists() && !prev.delete()) {
+                        // A stale backup slot is not worth failing the write over.
+                    }
+                    if (!main.renameTo(prev)) {
+                        // Keep the live copy rather than deleting it.
+                    }
                 }
-            }
 
-            if (!tmp.renameTo(main)) {
-                call.reject("Could not move the data snapshot into place");
-                return;
-            }
+                if (!tmp.renameTo(main)) {
+                    call.reject("Could not move the data snapshot into place");
+                    return;
+                }
 
-            JSObject ret = new JSObject();
-            ret.put("success", true);
-            ret.put("bytes", json.getBytes(StandardCharsets.UTF_8).length);
-            call.resolve(ret);
-        } catch (Exception e) {
-            tmp.delete();
-            call.reject("Could not write data snapshot: " + e.getMessage(), e);
-        }
+                JSObject ret = new JSObject();
+                ret.put("success", true);
+                ret.put("bytes", json.getBytes(StandardCharsets.UTF_8).length);
+                call.resolve(ret);
+            } catch (Exception e) {
+                tmp.delete();
+                call.reject("Could not write data snapshot: " + e.getMessage(), e);
+            }
+        }, "MedMatrixSnapshotWrite").start();
     }
 
     @PluginMethod
