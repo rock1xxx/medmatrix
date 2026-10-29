@@ -23,7 +23,12 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Locale;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -43,6 +48,10 @@ public class WidgetBridgePlugin extends Plugin {
     // these files are not, and they are covered by Android Auto Backup.
     private static final String DATA_SNAPSHOT_FILE = "medmatrix-data.json";
     private static final String DATA_SNAPSHOT_PREV = "medmatrix-data.prev.json";
+    // One dated copy per day, pruned to the newest N, so a bad edit or a botched
+    // restore can be walked back several days without any cloud round-trip.
+    private static final String DATA_HISTORY_DIR = "medmatrix-backup-history";
+    private static final int DATA_HISTORY_LIMIT = 14;
 
     @PluginMethod
     public void updateWidgetData(PluginCall call) {
@@ -251,6 +260,8 @@ public class WidgetBridgePlugin extends Plugin {
                     return;
                 }
 
+                writeHistoryCopy(context, json);
+
                 JSObject ret = new JSObject();
                 ret.put("success", true);
                 ret.put("bytes", json.getBytes(StandardCharsets.UTF_8).length);
@@ -287,6 +298,82 @@ public class WidgetBridgePlugin extends Plugin {
 
         ret.put("json", json);
         ret.put("savedAt", source.lastModified());
+        call.resolve(ret);
+    }
+
+    /**
+     * Keeps one dated copy per day and drops the oldest beyond the limit. A failure
+     * here is never allowed to affect the live snapshot that was just written.
+     */
+    private static void writeHistoryCopy(Context context, String json) {
+        try {
+            File dir = new File(context.getFilesDir(), DATA_HISTORY_DIR);
+            if (!dir.exists() && !dir.mkdirs()) return;
+
+            String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+            File target = new File(dir, today + ".json");
+            if (target.exists() && target.length() > 0) return;
+
+            File tmp = new File(dir, today + ".tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
+                out.write(json.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                out.getFD().sync();
+            }
+            if (!tmp.renameTo(target)) {
+                tmp.delete();
+                return;
+            }
+
+            File[] files = dir.listFiles((d, name) -> name.endsWith(".json"));
+            if (files == null || files.length <= DATA_HISTORY_LIMIT) return;
+
+            Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
+            for (int i = 0; i < files.length - DATA_HISTORY_LIMIT; i++) {
+                files[i].delete();
+            }
+        } catch (Exception e) {
+            // History is a convenience; the live snapshot already succeeded.
+        }
+    }
+
+    @PluginMethod
+    public void listDataSnapshots(PluginCall call) {
+        JSArray snapshots = new JSArray();
+        File dir = new File(getContext().getFilesDir(), DATA_HISTORY_DIR);
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".json"));
+
+        if (files != null) {
+            Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            for (File file : files) {
+                JSObject item = new JSObject();
+                item.put("name", file.getName());
+                item.put("savedAt", file.lastModified());
+                item.put("bytes", file.length());
+                snapshots.put(item);
+            }
+        }
+
+        JSObject ret = new JSObject();
+        ret.put("snapshots", snapshots);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void loadDataSnapshotFile(PluginCall call) {
+        String name = call.getString("name", "");
+        JSObject ret = new JSObject();
+
+        // Only ever read a dated history file from inside the app's own directory.
+        if (name == null || !name.matches("\\d{4}-\\d{2}-\\d{2}\\.json")) {
+            ret.put("json", "");
+            call.resolve(ret);
+            return;
+        }
+
+        File file = new File(new File(getContext().getFilesDir(), DATA_HISTORY_DIR), name);
+        String json = readTextFile(file);
+        ret.put("json", json == null ? "" : json);
         call.resolve(ret);
     }
 

@@ -17,11 +17,37 @@ import { loadDataSnapshotFromDevice, saveDataSnapshotToDevice } from './widgetBr
  * Nothing here ever writes to the network or to the repository.
  */
 
-const WRITE_DEBOUNCE_MS = 1200
+const WRITE_DEBOUNCE_MS = 700
 
 let isRestoring = false
 let writeTimer: ReturnType<typeof setTimeout> | null = null
 let unsubscribe: (() => void) | null = null
+let flushListenersAttached = false
+
+/** Write anything still inside the debounce window, e.g. when Android backgrounds us. */
+export function flushPendingDeviceSnapshot(): void {
+  if (!writeTimer) return
+  clearTimeout(writeTimer)
+  writeTimer = null
+  writeDeviceSnapshotNow()
+}
+
+/**
+ * Android can kill a backgrounded app without warning, and a 700 ms debounce would
+ * lose the edit that triggered it. These fire on tab hide, navigation away and on the
+ * app going to the background, so the last edit is always on disk.
+ */
+function attachFlushListeners(): void {
+  if (flushListenersAttached || typeof window === 'undefined') return
+  flushListenersAttached = true
+
+  const flush = () => flushPendingDeviceSnapshot()
+  window.addEventListener('pagehide', flush)
+  window.addEventListener('beforeunload', flush)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush()
+  })
+}
 
 /** Snapshot the current database immediately, skipping the debounce. */
 export function writeDeviceSnapshotNow(): void {
@@ -80,6 +106,7 @@ export function startDeviceSnapshotMirror(): () => void {
 
   let previousLastModified = useMedMatrixStore.getState().lastModified
   writeDeviceSnapshotNow()
+  attachFlushListeners()
 
   unsubscribe = useMedMatrixStore.subscribe((state) => {
     if (state.lastModified === previousLastModified) return

@@ -1,0 +1,102 @@
+name: MedMatrix Cloud Backup
+
+# Pulls the synced study database out of Supabase and keeps an encrypted rolling
+# history in this repo's releases: one snapshot every three days, the newest ten
+# kept (~a month). Backups are encrypted because releases on a public repo are
+# downloadable by anyone.
+
+on:
+  schedule:
+    # 03:00 UTC every third day of the month.
+    - cron: '0 3 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: medmatrix-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Snapshot the cloud row
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.BACKUP_PASSPHRASE }}" ]; then
+            echo "::error::Add a BACKUP_PASSPHRASE secret (a long random string). Backups are encrypted with it."
+            exit 1
+          fi
+
+      - name: Fetch the latest synced row
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SYNC_KEY: ${{ vars.MEDMATRIX_SYNC_KEY || 'dr-med-sync' }}
+        run: |
+          set -euo pipefail
+
+          RESPONSE=$(curl -sS --fail --max-time 60 \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL%/}/rest/v1/medmatrix_sync?select=data,last_modified&id=eq.${SYNC_KEY}")
+
+          echo "$RESPONSE" | jq -e 'type == "array"' >/dev/null
+          COUNT=$(echo "$RESPONSE" | jq 'length')
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No row with id '${SYNC_KEY}' in medmatrix_sync. Check the sync key in the app."
+            exit 1
+          fi
+
+          TOPIC_COUNT=$(echo "$RESPONSE" | jq '.[0].data.topics | length // 0')
+          if [ "$TOPIC_COUNT" -lt 1 ]; then
+            echo "::error::The cloud row has no topics. Refusing to store an empty backup."
+            exit 1
+          fi
+
+          echo "$RESPONSE" | jq '.[0].data' > backup.json
+          echo "Captured ${TOPIC_COUNT} chapters ($(wc -c < backup.json) bytes)."
+
+      - name: Encrypt the snapshot
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          NAME="medmatrix-backup-$(date -u +%Y-%m-%d).json.enc"
+          openssl enc -aes-256-cbc -pbkdf2 -salt \
+            -in backup.json -out "$NAME" -pass pass:"${BACKUP_PASSPHRASE}"
+          rm -f backup.json
+          echo "BACKUP_FILE=$NAME" >> "$GITHUB_ENV"
+          ls -la "$NAME"
+
+      - name: Publish to the rolling backup release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          gh release view medmatrix-backups >/dev/null 2>&1 || \
+            gh release create medmatrix-backups \
+              --title "MedMatrix cloud backups (encrypted)" \
+              --notes "Rolling encrypted snapshots of the Supabase sync row, one every three days, newest ten kept. Restore with: openssl enc -d -aes-256-cbc -pbkdf2 -in <file> -out restored.json, then import it in the app." || true
+
+          gh release upload medmatrix-backups "$BACKUP_FILE" --clobber
+
+          # Keep only the newest ten snapshots (~one month at this cadence).
+          gh release view medmatrix-backups --json assets \
+            --jq '.assets | sort_by(.createdAt) | reverse | .[10:] | .[].name' |
+          while read -r old; do
+            [ -z "$old" ] && continue
+            echo "Pruning ${old}"
+            gh release delete-asset medmatrix-backups "$old" --yes
+          done
+
+          echo "Backups now held:"
+          gh release view medmatrix-backups --json assets --jq '.assets | sort_by(.createdAt) | .[] | "\(.name)  \(.size) bytes"'

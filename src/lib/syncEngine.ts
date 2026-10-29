@@ -90,7 +90,13 @@ function setupRealtimeSubscription() {
               const updated = useMedMatrixStore.getState().loadExternalSyncData(remoteData)
               if (updated) {
                 setStatus('synced')
-                toast.success('Live Sync: Study progress updated from your other device!')
+                toast.success('Live sync: progress updated from your other device.', {
+                  duration: 8000,
+                  action: {
+                    label: 'Use local instead',
+                    onClick: () => useMedMatrixStore.getState().restoreLastGoodState(),
+                  },
+                })
               }
             }
           }
@@ -213,8 +219,15 @@ export async function pullLatestState(): Promise<boolean> {
       if (cloudWinsFirstContact || remoteLastModified > store.lastModified) {
         const didUpdate = store.loadExternalSyncData(remoteData, { force: cloudWinsFirstContact })
         if (didUpdate) {
-          toast.success('Synced progress from other device!', {
-            duration: 2500,
+          // Adopting the cloud copy replaces whatever was on this device. It is kept
+          // in the undo slot, and the toast offers it back rather than deciding for
+          // the user whether the cloud or the local edits were the real ones.
+          toast.success('Synced progress from another device.', {
+            duration: 8000,
+            action: {
+              label: 'Use local instead',
+              onClick: () => useMedMatrixStore.getState().restoreLastGoodState(),
+            },
           })
           setStatus('synced')
           return true
@@ -224,6 +237,10 @@ export async function pullLatestState(): Promise<boolean> {
         setStatus('synced')
         return true
       }
+    } else if (hasLocalHistory() && store.lastModified > 0) {
+      // No cloud row exists yet but this device has real history, so create it now
+      // instead of waiting for the next edit.
+      await pushLocalState()
     }
 
     setStatus('synced')

@@ -47,6 +47,13 @@ export interface DeviceSyncConfig {
   syncKey: string
 }
 
+export interface DeviceDataSnapshot {
+  /** Dated file name, `yyyy-MM-dd.json`. */
+  name: string
+  savedAt: number
+  bytes: number
+}
+
 interface WidgetBridgePluginInterface {
   updateWidgetData(options: WidgetPayload): Promise<{ success: boolean; widgetsUpdated: number }>
   getWidgetSettings(): Promise<WidgetPayload>
@@ -57,6 +64,8 @@ interface WidgetBridgePluginInterface {
   loadSyncConfig(): Promise<DeviceSyncConfig>
   saveDataSnapshot(options: { json: string }): Promise<{ success: boolean; bytes?: number }>
   loadDataSnapshot(): Promise<{ json: string; savedAt: number }>
+  listDataSnapshots(): Promise<{ snapshots: DeviceDataSnapshot[] }>
+  loadDataSnapshotFile(options: { name: string }): Promise<{ json: string }>
 }
 
 // Mirrors the Android SharedPreferences file so the browser build behaves the same.
@@ -164,6 +173,11 @@ export const WidgetBridge = registerPlugin<WidgetBridgePluginInterface>('WidgetB
       }
       return { json: '', savedAt: 0 }
     },
+    // Dated history lives in the Android app's files dir; a browser has no private
+    // storage of its own, and mirroring 14 copies into localStorage would blow the
+    // quota, so the browser reports an empty history and relies on the cloud copy.
+    listDataSnapshots: async () => ({ snapshots: [] }),
+    loadDataSnapshotFile: async () => ({ json: '' }),
   },
 })
 
@@ -373,6 +387,26 @@ export async function loadDataSnapshotFromDevice(): Promise<{ json: string; save
     return null
   } catch (err) {
     console.warn('[WidgetBridge] Could not read the device data snapshot:', err)
+    return null
+  }
+}
+
+export async function listDeviceSnapshots(): Promise<DeviceDataSnapshot[]> {
+  try {
+    const res = await WidgetBridge.listDataSnapshots()
+    return Array.isArray(res?.snapshots) ? res.snapshots : []
+  } catch (err) {
+    console.warn('[WidgetBridge] Could not list device snapshots:', err)
+    return []
+  }
+}
+
+export async function loadDeviceSnapshotByName(name: string): Promise<string | null> {
+  try {
+    const res = await WidgetBridge.loadDataSnapshotFile({ name })
+    return res?.json ? res.json : null
+  } catch (err) {
+    console.warn('[WidgetBridge] Could not read that device snapshot:', err)
     return null
   }
 }

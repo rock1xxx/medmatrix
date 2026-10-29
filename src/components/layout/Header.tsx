@@ -5,6 +5,7 @@ import { SyncModal } from '../modals/SyncModal'
 import { InstallPwaModal } from '../modals/InstallPwaModal'
 import { IntervalSettingsModal } from '../modals/IntervalSettingsModal'
 import { UpdateModal } from '../modals/UpdateModal'
+import { DeviceBackupsModal } from '../modals/DeviceBackupsModal'
 import {
   Download,
   Upload,
@@ -18,6 +19,7 @@ import {
   Layers,
   RefreshCw,
   History,
+  HardDriveDownload,
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -82,6 +84,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
   const [installModalOpen, setInstallModalOpen] = useState(false)
   const [intervalModalOpen, setIntervalModalOpen] = useState(false)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
+  const [deviceBackupsOpen, setDeviceBackupsOpen] = useState(false)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -293,6 +296,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
                   <button
                     type="button"
                     onClick={() => {
+                      setDeviceBackupsOpen(true)
+                      setMenuOpen(false)
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                    title="Daily copies kept on this device for the last two weeks"
+                  >
+                    <HardDriveDownload className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Device Backups</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       onOpenShortcuts()
                       setMenuOpen(false)
                     }}
@@ -341,6 +356,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShortcuts, onOpenWidgetSet
 
     {/* In-App GitHub Update Modal */}
     <UpdateModal isOpen={updateModalOpen} onClose={() => setUpdateModalOpen(false)} />
+
+    {/* Daily device snapshot history */}
+    <DeviceBackupsModal isOpen={deviceBackupsOpen} onClose={() => setDeviceBackupsOpen(false)} />
   </>
   )
 }

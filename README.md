@@ -108,7 +108,9 @@ The study database is treated as the most important thing in the app, so it is k
 | --- | --- | --- |
 | Live state | `localStorage` → `medmatrix-storage-v2` | reloads, normal app updates |
 | Device snapshot | Android: `filesDir/medmatrix-data.json` (+ `.prev.json`); web: a second `localStorage` slot | clear cache, WebView storage reset, in-place APK updates, uninstall when Android backup is on |
+| Daily device history | Android: `filesDir/medmatrix-backup-history/yyyy-MM-dd.json`, newest 14 | everything the snapshot survives; ⋮ → **Device Backups** restores any of them |
 | Cloud row | Supabase `medmatrix_sync`, keyed by your sync key | reinstalls, storage wipes, losing the phone |
+| Encrypted cloud history | A `medmatrix-backups` release, one file every three days, newest 10 (~a month) | losing the phone, a wiped Supabase row, a bad push |
 
 Recovery is automatic: on boot the app restores the device snapshot if it is newer than what the WebView has, then pulls the cloud row. The order is deliberate — nothing can upload seed data before those two reads have happened.
 
@@ -120,10 +122,47 @@ Guards that keep a bad write from becoming a lost database:
 - **Corrupt state is set aside, not trusted.** If `medmatrix-storage-v2` is unparseable or incomplete it is copied to `medmatrix-storage-v2.corrupt` and the app boots clean, which lets the device snapshot fill the gap.
 - **Destructive steps keep an undo copy.** Every cloud pull, **Restore from JSON** and **Reset Seed Data** first writes the current database to `medmatrix-storage-lastgood-v2`, and ⋮ → **Restore Previous State** puts it back. The Android snapshot file also rotates a previous copy.
 - **Exports are timestamped** (`MedMatrix_Backup_2026-10-29_1345.json`) so several backups can coexist.
+- **Nothing is thrown away silently.** When a cloud pull replaces the database, the toast offers *Use local instead*, and the phone keeps a dated copy from earlier that day.
 
 **Export Backup (JSON)** / **Restore from JSON** in the ⋮ menu move the whole database between devices or into cold storage. **Reset Seed Data** returns the 271-chapter curriculum to its starting state (and is undoable as above).
 
-One thing the app cannot protect by itself: the suggested Supabase policy allows full access to anyone holding the anon key, and that key ships inside the APK. Keep the project private, keep a copy of the JSON export somewhere outside the phone, and turn on your Supabase project's own backups (or Point-in-Time Recovery) before relying on cloud sync as the only copy.
+### Offline edits, background kills and other edge cases
+
+The change clock (`lastModified`) and the bytes themselves are written synchronously on every edit, and the Android snapshot is flushed again on `pagehide` / app-background, so an edit is on disk before the OS can kill the app.
+
+| Situation | What happens |
+| --- | --- |
+| Edit at 18:00 with no network | Saved locally and in the device snapshot. The push is attempted, sees `offline`, and stops. |
+| Network returns, app closed | Nothing needs to happen yet; the next launch pulls first, finds the cloud copy older, and pushes the local one. |
+| Network returns, app already open | The `online` listener and every foreground switch run a pull, which then pushes. |
+| App killed mid-session | The last edit is already persisted; the next boot restores the snapshot if it is somehow newer. |
+| Two devices edited while both were offline | Newest timestamp wins. The replaced copy stays in the undo slot and the toast offers *Use local instead*, which pushes it back. |
+| WebView storage cleared | The device snapshot refills it on boot. |
+| Full uninstall | `filesDir` and `localStorage` are gone; the cloud pull (or Android backup) restores. |
+| Phone lost | Pull on a new install, or restore an encrypted cloud backup, or import a JSON export. |
+
+Known limits: conflict resolution is last-write-wins with no merge, and a device whose system clock is badly wrong will win or lose comparisons incorrectly.
+
+### Automatic cloud backups (optional, recommended)
+
+`.github/workflows/backup-sync.yml` runs every third day, reads the Supabase row, refuses to store an empty one, encrypts the JSON and publishes it to a `medmatrix-backups` release, keeping the newest ten. Releases on this public repo are downloadable by anyone, which is why the file is encrypted.
+
+Setup, once:
+
+1. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as **repository secrets** — the same values you type into the app.
+2. Add `BACKUP_PASSPHRASE` as a secret: any long random string (`openssl rand -base64 24`). Store it in your password manager; without it the backups cannot be read.
+3. If you changed the sync key from `dr-med-sync`, add a repository **variable** `MEDMATRIX_SYNC_KEY`.
+4. Run the workflow once by hand (Actions → MedMatrix Cloud Backup → Run workflow) to confirm it uploads a file.
+
+Restore from one of those files:
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 \
+  -in medmatrix-backup-2026-11-02.json.enc -out restored.json
+# then: MedMatrix → ⋮ → Restore from JSON → restored.json
+```
+
+One thing the app cannot protect by itself: the suggested Supabase policy allows full access to anyone holding the anon key. Keep that key out of the repository and out of screenshots, and treat the encrypted backups as the copy that survives a wiped Supabase project.
 
 ## Android app + home-screen widget
 

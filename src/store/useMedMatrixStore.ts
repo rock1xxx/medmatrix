@@ -222,6 +222,7 @@ interface MedMatrixState {
   getSyncPayload: () => Record<string, unknown>
   restoreLastGoodState: () => boolean
   hasLastGoodState: () => boolean
+  adoptBackup: (payload: unknown, label?: string) => boolean
 
   // Persistence & Data Management
   resetToInitialSeed: () => void
@@ -839,6 +840,24 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           lastModified: options?.bumpClock ? Date.now() : incoming.lastModified || Date.now(),
         })
         return true
+      },
+
+      adoptBackup: (payload, label) => {
+        const parsed = payload as Partial<MedMatrixState>
+        if (!isUsableStudyData(parsed)) {
+          toast.error('That backup has no usable study data. Nothing was changed.')
+          return false
+        }
+        const restored = get().loadExternalSyncData(parsed, {
+          force: true,
+          bumpClock: true,
+        })
+        if (restored) {
+          toast.success(label ? `Restored ${label}.` : 'Backup restored.')
+        } else {
+          toast.error('Could not restore that backup.')
+        }
+        return restored
       },
 
       hasLastGoodState: () => {
