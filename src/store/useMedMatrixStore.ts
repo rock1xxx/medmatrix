@@ -17,6 +17,16 @@ const STORAGE_KEY = 'medmatrix-storage-v2'
 const LAST_GOOD_KEY = 'medmatrix-storage-lastgood-v2'
 
 /**
+ * Stages that imply the lecture video has been watched. Reaching any of them stamps
+ * `watchedAt`, which is what the ward queue's aging badge measures.
+ */
+const WATCHED_STAGES = new Set<TopicStatus>([
+  'STEP_2_WARD_MCQ',
+  'STEP_3_ANNOTATING',
+  'LOCKED_IN_SR',
+])
+
+/**
  * Inspects the persisted blob before Zustand hydrates it.
  *
  * A half-written or hand-edited key must not be treated as "this device has
@@ -327,6 +337,8 @@ export const useMedMatrixStore = create<MedMatrixState>()(
 
       setSelectedTopicForDetail: (selectedTopicForDetail) => set({ selectedTopicForDetail }),
 
+      // Entering the ward-MCQ stage means the video is done. Stamp it once so the
+      // MCQ backlog can age; moving a chapter around later never resets the clock.
       updateTopicStatus: (id, status) => {
         const { topics } = get()
         const topic = topics.find((t) => t.id === id)
@@ -339,8 +351,17 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           toast.success(`Locked "${topic.title.slice(0, 30)}..." into Spaced Repetition!`)
         }
 
+        const now = new Date().toISOString()
         const updated = topics.map((t) =>
-          t.id === id ? { ...t, status, srData, updatedAt: new Date().toISOString() } : t
+          t.id === id
+            ? {
+                ...t,
+                status,
+                srData,
+                watchedAt: t.watchedAt ?? (WATCHED_STAGES.has(status) ? now : undefined),
+                updatedAt: now,
+              }
+            : t
         )
 
         set({ topics: updated, lastModified: Date.now() })
@@ -364,6 +385,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             ...t,
             status,
             srData: needsSRData ? createInitialSRData() : t.srData,
+            watchedAt: t.watchedAt ?? (WATCHED_STAGES.has(status) ? updatedAt : undefined),
             updatedAt,
           }
         })

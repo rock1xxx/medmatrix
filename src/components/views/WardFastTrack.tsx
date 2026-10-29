@@ -1,7 +1,30 @@
 import React from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
-import { Check, ArrowRight, CheckCircle2, Sun } from 'lucide-react'
+import { Check, ArrowRight, CheckCircle2, Sun, Clock3 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Topic } from '../../types'
+import {
+  AGE_VISIBLE_FROM_DAYS,
+  ageClass,
+  ageLabel,
+  watchedDaysAgo,
+} from '../../lib/topicAge'
+
+/** Quiet aging marker: only appears once the MCQ backlog is a week old. */
+const AgeChip: React.FC<{ topic: Topic }> = ({ topic }) => {
+  const days = watchedDaysAgo(topic)
+  if (days === null || days < AGE_VISIBLE_FROM_DAYS) return null
+
+  return (
+    <span
+      title={`Video watched ${days} days ago — the MCQs are still pending, so this is starting to fade.`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-[1px] text-[10px] font-semibold ${ageClass(days)}`}
+    >
+      <Clock3 className="h-2.5 w-2.5" />
+      {ageLabel(days)}
+    </span>
+  )
+}
 
 export const WardFastTrack: React.FC = () => {
   const {
@@ -19,6 +42,12 @@ export const WardFastTrack: React.FC = () => {
   const activeWardTopics = topics.filter(
     (t) => t.status === 'STEP_2_WARD_MCQ' && t.subjectId === activeSubjectId
   )
+
+  const waits = activeWardTopics.map((topic) => ({
+    id: topic.id,
+    days: watchedDaysAgo(topic) ?? 0,
+  }))
+  const oldestWait = waits.reduce((max, item) => Math.max(max, item.days), 0)
 
   const handleMarkDone = (topicId: string, title: string) => {
     updateTopicStatus(topicId, 'STEP_3_ANNOTATING')
@@ -43,6 +72,9 @@ export const WardFastTrack: React.FC = () => {
           </div>
           <span className="text-xs font-mono font-medium text-zinc-400 bg-[#16161a] border border-[#26262c] px-2.5 py-1 rounded-lg">
             {activeWardTopics.length} pending
+            {oldestWait >= AGE_VISIBLE_FROM_DAYS ? (
+              <span className="ml-1.5 text-zinc-500">· oldest {oldestWait}d</span>
+            ) : null}
           </span>
         </div>
       </div>
@@ -82,13 +114,17 @@ export const WardFastTrack: React.FC = () => {
               className="bg-[#141418] border border-[#222228] hover:border-zinc-700 rounded-2xl p-4 space-y-3 transition-all"
             >
               {/* Lecture info */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-zinc-400">
-                  Lec {topic.chapterNumber} • {topic.durationMinutes}m video
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-xs font-mono text-zinc-400">
+                    Lec {topic.chapterNumber} • {topic.durationMinutes}m video
+                  </span>
+
+                  <AgeChip topic={topic} />
+                </div>
 
                 {topic.highYield && (
-                  <span className="text-[10px] font-semibold text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded-md">
+                  <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-800/40 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
                     High-Yield
                   </span>
                 )}

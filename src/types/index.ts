@@ -34,6 +34,12 @@ export interface Topic {
   highYieldTags: string[]
   status: TopicStatus
   bookmarkCount: number
+  /**
+   * When the video for this chapter was marked watched (ISO). Stamped the first
+   * time a chapter reaches the ward-MCQ stage and never cleared, so a chapter sent
+   * back to the queue keeps its original watch date. Used to age the MCQ backlog.
+   */
+  watchedAt?: string
   marginNotes?: string
   inStretchQueue?: boolean
   srData?: SRData
