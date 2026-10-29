@@ -13,7 +13,8 @@
         android:id="@+id/widget_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/widget_bg_frosted_24"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg_frosted_24"
         android:contentDescription="@null"
         android:importantForAccessibility="no" />
 
@@ -83,6 +84,7 @@
             android:layout_height="match_parent"
             android:layout_marginTop="2dp"
             android:layout_marginBottom="2dp"
+            android:minHeight="30dp"
             android:background="#2EFFFFFF"
             android:contentDescription="@null"
             android:importantForAccessibility="no" />

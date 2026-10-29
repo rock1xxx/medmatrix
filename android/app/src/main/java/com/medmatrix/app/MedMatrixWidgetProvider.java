@@ -211,11 +211,17 @@ public class MedMatrixWidgetProvider extends AppWidgetProvider {
 
         // Continuous opacity: one fully opaque shape, faded to the chosen level. Fading a
         // dedicated background layer keeps the text crisp instead of dimming everything.
+        //
+        // The layer is an ImageView carrying the shape as its image, so the fade uses
+        // setImageAlpha, a genuine @RemotableViewMethod. RemoteViews.setFloat(...,
+        // "setAlpha", ...) goes through View.setAlpha instead, which is not part of the
+        // remotable surface; a rejected action leaves the widget on its initial layout.
         if (!showBorder || opacity <= 0) {
-            views.setInt(R.id.widget_bg, "setBackgroundColor", Color.TRANSPARENT);
+            views.setInt(R.id.widget_bg, "setImageAlpha", 0);
         } else {
-            views.setInt(R.id.widget_bg, "setBackgroundResource", getBgDrawableRes("opaque", cornerRadius));
-            views.setFloat(R.id.widget_bg, "setAlpha", Math.max(0f, Math.min(1f, opacity / 100f)));
+            views.setImageViewResource(R.id.widget_bg, getBgDrawableRes("opaque", cornerRadius));
+            int alpha = Math.round(255f * Math.max(0f, Math.min(1f, opacity / 100f)));
+            views.setInt(R.id.widget_bg, "setImageAlpha", alpha);
         }
 
         // Padding lives on the content row so the background layer stays full-bleed.
