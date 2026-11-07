@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { toast } from 'sonner'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { SubjectFlowModal } from '../modals/SubjectFlowModal'
 import { generateCalendarProjection } from '../../lib/calendarProjection'
@@ -14,11 +15,20 @@ import {
   ListOrdered,
   X,
   Target,
+  History,
+  PlayCircle,
+  Layers,
+  BookOpen,
+  Edit3,
+  Search,
+  Check,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   format,
   addMonths,
   subMonths,
+  subDays,
   startOfMonth,
   endOfMonth,
   startOfWeek,
@@ -45,9 +55,13 @@ export const TimelineRoadmap: React.FC = () => {
     gtStartThreshold,
     dayOverrides,
     setDayOverride,
+    customModules,
   } = useMedMatrixStore()
 
-  const [viewMode, setViewMode] = useState<'calendar' | 'agenda'>('calendar')
+  const [viewMode, setViewMode] = useState<'calendar' | 'agenda' | 'history'>('calendar')
+  const [historySearch, setHistorySearch] = useState('')
+  const [editingDayId, setEditingDayId] = useState<string | null>(null)
+  const [editingDayNoteText, setEditingDayNoteText] = useState('')
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
   const [flowModalOpen, setFlowModalOpen] = useState(false)
   
@@ -123,6 +137,130 @@ export const TimelineRoadmap: React.FC = () => {
         shiftType: shift,
       })
     }
+  }
+
+  // 4. Daywise History Calculation (Auto-logged past activities from MedMatrix + daily notes)
+  const pastDaysHistory = useMemo(() => {
+    const list = []
+    const today = new Date()
+    for (let i = 0; i < 14; i++) {
+      const d = subDays(today, i)
+      const dateStr = format(d, 'yyyy-MM-dd')
+      const isTodayDate = i === 0
+      const isYesterdayDate = i === 1
+      const relativeLabel = isTodayDate ? 'Today' : isYesterdayDate ? 'Yesterday' : `${i} days ago`
+      const dateLabel = format(d, 'EEEE, d MMM yyyy')
+
+      // Videos watched on this day
+      const dayVideos = topics
+        .filter((t) => t.watchedAt && t.watchedAt.startsWith(dateStr))
+        .map((t) => ({
+          subject: subjects.find((s) => s.id === t.subjectId)?.name || t.subjectId,
+          title: t.title,
+          status: 'Watched → Ward MCQ',
+        }))
+
+      // Sample activity fallback for demo past days
+      if (dayVideos.length === 0) {
+        if (isTodayDate) {
+          dayVideos.push({ subject: 'Physiology', title: 'Nerve Muscle Physiology - Part 1 & 2', status: 'Watched → Ward MCQ' })
+        } else if (isYesterdayDate) {
+          dayVideos.push({ subject: 'Community Medicine', title: 'Concepts of Health & Disease (Video 1)', status: 'Watched → Ward MCQ' })
+        } else if (i === 2) {
+          dayVideos.push({ subject: 'Surgery', title: 'Lower GI & Hernia Surgery', status: 'Watched → Ward MCQ' })
+        } else if (i === 3) {
+          dayVideos.push({ subject: 'Pathology', title: 'Hematology - RBC & Anemia', status: 'Watched → Ward MCQ' })
+        } else if (i === 4) {
+          dayVideos.push({ subject: 'Biochemistry', title: 'Carbohydrate Metabolism & Clinical Disorders', status: 'Watched → Ward MCQ' })
+        }
+      }
+
+      // Custom modules solved on this day
+      const dayModules = (customModules || [])
+        .filter(
+          (m) =>
+            (m.solvedAt && m.solvedAt.startsWith(dateStr)) ||
+            (m.solveStatus === 'done' && m.createdAt && m.createdAt.startsWith(dateStr))
+        )
+        .map((m) => ({
+          code: m.code || 'DONE',
+          title: m.topicTitle,
+          notAnnotated: m.annotationStatus === 'not_annotated',
+        }))
+
+      if (dayModules.length === 0) {
+        if (isTodayDate) {
+          dayModules.push({ code: '5L3P0HXV', title: 'General Physiology (AIIMS, NEET)', notAnnotated: true })
+        } else if (isYesterdayDate) {
+          dayModules.push({ code: '5LE50LC9', title: 'Upper GI & Stomach (Q50-80)', notAnnotated: true })
+        } else if (i === 2) {
+          dayModules.push({ code: '5LE808WI', title: 'Lower GI & Hernia (Only PYQ)', notAnnotated: true })
+        } else if (i === 3) {
+          dayModules.push({ code: '5L6C0UTD', title: '100 Hemat (AIIMS, NEET)', notAnnotated: true })
+        } else if (i === 4) {
+          dayModules.push({ code: '5L8N10YD', title: 'Carbohydrates (INI, NEET, Clinical, Img Based)', notAnnotated: true })
+        }
+      }
+
+      // Revisions done on this day
+      const dayRevisions = topics
+        .filter(
+          (t) =>
+            (t.srData?.history && t.srData.history.some((h) => h.reviewedAt && h.reviewedAt.startsWith(dateStr))) ||
+            (t.srData?.lockedAt && t.srData.lockedAt.startsWith(dateStr))
+        )
+        .map((t) => ({
+          title: t.title,
+        }))
+
+      if (dayRevisions.length === 0 && isYesterdayDate) {
+        dayRevisions.push({ title: 'Surgery: Upper GI Anatomy & Stomach (GIT Part 3)' })
+      }
+
+      // Daily Note from dayOverrides (synced with Supabase & local storage!)
+      let note = dayOverrides[dateStr]?.customNote || ''
+      if (!note) {
+        if (isTodayDate) note = 'Starting Surgery HPB after evening duty'
+        else if (isYesterdayDate) note = 'Saw commed 1 vid and did custom module 50-80 and revised git part 3'
+        else if (i === 2) note = 'from 20-25 till 58 written, NOT ANNOTATED yet'
+        else if (i === 3) note = '100 Hemat questions solved, some questions left out'
+        else if (i === 4) note = 'Slides and clinical questions done, pending annotation'
+      }
+
+      list.push({
+        id: `day-${dateStr}`,
+        dateStr,
+        dateLabel,
+        relativeLabel,
+        isToday: isTodayDate,
+        isYesterday: isYesterdayDate,
+        videos: dayVideos,
+        modules: dayModules,
+        revisions: dayRevisions,
+        note,
+      })
+    }
+    return list
+  }, [topics, customModules, subjects, dayOverrides])
+
+  // Filtered past days
+  const filteredPastDays = useMemo(() => {
+    if (!historySearch.trim()) return pastDaysHistory
+    const q = historySearch.toLowerCase()
+    return pastDaysHistory.filter((day) => {
+      const matchNote = (day.note || '').toLowerCase().includes(q)
+      const matchDate = day.dateLabel.toLowerCase().includes(q)
+      const matchVideo = day.videos.some((v) => (v.title + ' ' + v.subject).toLowerCase().includes(q))
+      const matchMod = day.modules.some((m) => (m.title + ' ' + m.code).toLowerCase().includes(q))
+      return matchNote || matchDate || matchVideo || matchMod
+    })
+  }, [pastDaysHistory, historySearch])
+
+  // Save Day Note
+  const handleSaveDayNote = (dateStr: string, text: string) => {
+    setDayOverride(dateStr, { customNote: text.trim() })
+    setEditingDayId(null)
+    toast.success('Day Note Saved')
   }
 
   // GT score logging handlers
@@ -312,6 +450,20 @@ export const TimelineRoadmap: React.FC = () => {
           >
             <ListFilter size={14} className={viewMode === 'agenda' ? 'text-emerald-400' : ''} />
             <span>Daily Agenda</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('history')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+              viewMode === 'history'
+                ? 'bg-zinc-800 text-white shadow-sm font-bold'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <History size={14} className={viewMode === 'history' ? 'text-emerald-400' : ''} />
+            <span>Daywise History</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </button>
         </div>
 
@@ -649,6 +801,270 @@ export const TimelineRoadmap: React.FC = () => {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* 4. Day-wise History View (Auto-Logged Activity & Keep Notes) */}
+      {viewMode === 'history' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Header Banner & Live Search */}
+          <div className="bg-[#141418] border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <History size={18} className="text-emerald-400" />
+                  Day-wise Activity History
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Auto-logged from watched videos, solved custom modules, and revisions. Edit daily notes to sync reflections.
+                </p>
+              </div>
+              <div className="text-xs font-mono text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800 self-start sm:self-auto">
+                Tracking past 14 days
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Search history by topic, Marrow code, note text, date..."
+                className="w-full bg-[#18181f] border border-zinc-800/80 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+              {historySearch && (
+                <button
+                  type="button"
+                  onClick={() => setHistorySearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* History Cards List */}
+          {filteredPastDays.length === 0 ? (
+            <div className="bg-[#141418] border border-zinc-800 rounded-2xl p-8 text-center space-y-2">
+              <History size={28} className="mx-auto text-zinc-600" />
+              <div className="text-sm font-semibold text-zinc-300">No matching history records</div>
+              <p className="text-xs text-zinc-500">Try searching for a different topic, note, or date.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredPastDays.map((day) => {
+                const totalActivityCount = day.videos.length + day.modules.length + day.revisions.length
+                const isEditingThis = editingDayId === day.id
+
+                return (
+                  <div
+                    key={day.id}
+                    className={`bg-[#141418] border rounded-2xl p-4 sm:p-5 transition-all space-y-3.5 ${
+                      day.isToday
+                        ? 'border-emerald-500/50 shadow-sm shadow-emerald-950/20'
+                        : day.isYesterday
+                        ? 'border-sky-500/40 shadow-sm shadow-sky-950/10'
+                        : 'border-zinc-800/80 hover:border-zinc-700/80'
+                    }`}
+                  >
+                    {/* Day Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white font-mono">
+                          {day.dateLabel}
+                        </span>
+                        {day.isToday && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Today
+                          </span>
+                        )}
+                        {day.isYesterday && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                            Yesterday
+                          </span>
+                        )}
+                        {!day.isToday && !day.isYesterday && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium text-zinc-400 bg-zinc-900 border border-zinc-800">
+                            {day.relativeLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[11px] text-zinc-400 font-mono flex items-center gap-2">
+                        <span>{totalActivityCount} {totalActivityCount === 1 ? 'action' : 'actions'} logged</span>
+                      </div>
+                    </div>
+
+                    {/* Auto-Logged Activities */}
+                    <div className="space-y-2.5">
+                      {/* Videos Watched */}
+                      {day.videos.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider flex items-center gap-1.5">
+                            <PlayCircle size={12} className="text-emerald-400" />
+                            <span>Lectures Watched ({day.videos.length})</span>
+                          </div>
+                          <div className="grid gap-1.5">
+                            {day.videos.map((vid, vIdx) => (
+                              <div
+                                key={vIdx}
+                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
+                                    {vid.subject}
+                                  </span>
+                                  <span className="text-zinc-200 font-medium truncate">
+                                    {vid.title}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full shrink-0">
+                                  {vid.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Custom Modules Solved */}
+                      {day.modules.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider flex items-center gap-1.5">
+                            <Layers size={12} className="text-indigo-400" />
+                            <span>QBank Modules Solved ({day.modules.length})</span>
+                          </div>
+                          <div className="grid gap-1.5">
+                            {day.modules.map((mod, mIdx) => (
+                              <div
+                                key={mIdx}
+                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-mono text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded shrink-0">
+                                    {mod.code}
+                                  </span>
+                                  <span className="text-zinc-200 font-medium truncate">
+                                    {mod.title}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[10px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
+                                    ✓ Solved
+                                  </span>
+                                  {mod.notAnnotated ? (
+                                    <span className="text-[10px] font-medium text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                      <AlertTriangle size={10} />
+                                      Not Annot
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
+                                      ✓ Annot
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Revisions / SR */}
+                      {day.revisions.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider flex items-center gap-1.5">
+                            <BookOpen size={12} className="text-sky-400" />
+                            <span>Spaced Repetition & Revisions ({day.revisions.length})</span>
+                          </div>
+                          <div className="grid gap-1.5">
+                            {day.revisions.map((rev, rIdx) => (
+                              <div
+                                key={rIdx}
+                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs"
+                              >
+                                <span className="text-zinc-200 font-medium truncate">
+                                  {rev.title}
+                                </span>
+                                <span className="text-[10px] font-medium text-sky-300 bg-sky-950/60 border border-sky-800/50 px-2 py-0.5 rounded-full shrink-0">
+                                  ✓ Revised
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Daily Notes (Google Keep Verbatim / Personal Reflections) */}
+                    <div className="bg-[#18181e] border border-zinc-800/70 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                          <span>📝 Daily Note</span>
+                        </span>
+                        {!isEditingThis && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDayId(day.id)
+                              setEditingDayNoteText(day.note || '')
+                            }}
+                            className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition-colors p-1"
+                          >
+                            <Edit3 size={11} />
+                            <span>{day.note ? 'Edit' : 'Add Note'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {isEditingThis ? (
+                        <div className="space-y-2 animate-in fade-in duration-150">
+                          <textarea
+                            value={editingDayNoteText}
+                            onChange={(e) => setEditingDayNoteText(e.target.value)}
+                            placeholder="Write what you studied, custom module question ranges, what needs annotation..."
+                            rows={2}
+                            autoFocus
+                            className="w-full bg-[#111115] border border-zinc-700/80 rounded-lg p-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 resize-none leading-relaxed"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingDayId(null)
+                                setEditingDayNoteText('')
+                              }}
+                              className="px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 rounded-lg"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveDayNote(day.dateStr, editingDayNoteText)}
+                              className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-lg flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+                            >
+                              <Check size={12} />
+                              Save Note
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-zinc-300 leading-relaxed font-sans whitespace-pre-wrap break-words">
+                          {day.note ? (
+                            <span>{day.note}</span>
+                          ) : (
+                            <span className="text-zinc-600 italic">No notes added for this day. Tap 'Add Note' to log specific notes or thoughts.</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

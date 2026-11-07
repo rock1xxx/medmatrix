@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOverride, SRData } from '../types'
+import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOverride, SRData, CustomModule } from '../types'
 import { INITIAL_SUBJECTS, INITIAL_TOPICS, seedSampleSRCards } from '../data/initialSubjects'
+import { INITIAL_CUSTOM_MODULES } from '../data/initialCustomModules'
 import { advanceTopicSR, createInitialSRData, DEFAULT_EBBINGHAUS_INTERVALS, DEFAULT_POSTPONE_DAYS } from '../lib/srEngine'
 import { triggerLockCelebration, triggerMasteredCelebration } from '../lib/confetti'
 import { saveSyncConfigToDevice } from '../lib/widgetBridge'
@@ -234,6 +235,14 @@ interface MedMatrixState {
   hasLastGoodState: () => boolean
   adoptBackup: (payload: unknown, label?: string) => boolean
 
+  // QBank Custom Modules
+  customModules: CustomModule[]
+  addCustomModule: (module: Omit<CustomModule, 'id' | 'createdAt'>) => void
+  updateCustomModule: (id: string, updates: Partial<CustomModule>) => void
+  deleteCustomModule: (id: string) => void
+  cycleCustomModuleAnnotation: (id: string) => void
+  cycleCustomModuleSolve: (id: string) => void
+
   // Persistence & Data Management
   resetToInitialSeed: () => void
   exportDataJSON: () => string
@@ -254,6 +263,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       subjectOrder: ['micro', ...INITIAL_SUBJECTS.map((s) => s.id).filter((id) => id !== 'micro')],
       gtStartThreshold: 7, // GTs start after completing 7 subjects as per topper strategy
       dayOverrides: {},
+      customModules: INITIAL_CUSTOM_MODULES,
 
       activeTab: 'ward',
       currentShift: 'WARD_DAY',
@@ -825,6 +835,65 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         set({ lastModified: Date.now() })
       },
 
+      addCustomModule: (moduleData) => {
+        const newModule: CustomModule = {
+          ...moduleData,
+          id: `cm-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          solvedAt: moduleData.solveStatus === 'done' ? new Date().toISOString() : undefined,
+        }
+        const updated = [newModule, ...get().customModules]
+        set({ customModules: updated, lastModified: Date.now() })
+        toast.success(`Added module: ${newModule.topicTitle}`)
+      },
+
+      updateCustomModule: (id, updates) => {
+        const updated = get().customModules.map((m) => {
+          if (m.id !== id) return m
+          const next = { ...m, ...updates }
+          if (updates.solveStatus === 'done' && !next.solvedAt) {
+            next.solvedAt = new Date().toISOString()
+          }
+          return next
+        })
+        set({ customModules: updated, lastModified: Date.now() })
+        toast.success('Module updated')
+      },
+
+      deleteCustomModule: (id) => {
+        const updated = get().customModules.filter((m) => m.id !== id)
+        set({ customModules: updated, lastModified: Date.now() })
+        toast.info('Module deleted')
+      },
+
+      cycleCustomModuleAnnotation: (id) => {
+        const updated = get().customModules.map((m) => {
+          if (m.id !== id) return m
+          let nextStatus: CustomModule['annotationStatus'] = 'not_annotated'
+          if (m.annotationStatus === 'not_annotated') nextStatus = 'partial'
+          else if (m.annotationStatus === 'partial') nextStatus = 'annotated'
+          else nextStatus = 'not_annotated'
+          return { ...m, annotationStatus: nextStatus }
+        })
+        set({ customModules: updated, lastModified: Date.now() })
+      },
+
+      cycleCustomModuleSolve: (id) => {
+        const updated = get().customModules.map((m) => {
+          if (m.id !== id) return m
+          let nextStatus: CustomModule['solveStatus'] = 'done'
+          if (m.solveStatus === 'done') nextStatus = 'solving'
+          else if (m.solveStatus === 'solving') nextStatus = 'not_done'
+          else nextStatus = 'done'
+          return {
+            ...m,
+            solveStatus: nextStatus,
+            solvedAt: nextStatus === 'done' ? m.solvedAt || new Date().toISOString() : undefined,
+          }
+        })
+        set({ customModules: updated, lastModified: Date.now() })
+      },
+
       loadExternalSyncData: (incoming, options) => {
         const current = get()
         if (!isUsableStudyData(incoming)) return false
@@ -857,6 +926,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           stretchTopicIds: incoming.stretchTopicIds || current.stretchTopicIds,
           ebbinghausIntervals: incoming.ebbinghausIntervals || current.ebbinghausIntervals,
           postponeIntervalDays: incoming.postponeIntervalDays ?? current.postponeIntervalDays,
+          customModules: (incoming as any).customModules || current.customModules || INITIAL_CUSTOM_MODULES,
           // A user-driven rescue must out-rank whatever was just written, otherwise
           // the next pull would re-adopt the copy it was undoing.
           lastModified: options?.bumpClock ? Date.now() : incoming.lastModified || Date.now(),
@@ -937,6 +1007,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           postponeIntervalDays: s.postponeIntervalDays,
           topics: s.topics,
           subjects: s.subjects,
+          customModules: s.customModules || [],
         }
       },
 
@@ -964,6 +1035,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             subjectOrder: parsed.subjectOrder || get().subjectOrder,
             gtStartThreshold: parsed.gtStartThreshold ?? get().gtStartThreshold,
             dayOverrides: parsed.dayOverrides || {},
+            customModules: parsed.customModules || get().customModules || INITIAL_CUSTOM_MODULES,
             mandatoryTopicIds: parsed.mandatoryTopicIds || [],
             stretchTopicIds: parsed.stretchTopicIds || [],
             ebbinghausIntervals: parsed.ebbinghausIntervals || DEFAULT_EBBINGHAUS_INTERVALS,
@@ -989,6 +1061,10 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {
+          // Initialize customModules for existing users upgrading from previous versions
+          if (!Array.isArray(state.customModules) || state.customModules.length === 0) {
+            state.customModules = INITIAL_CUSTOM_MODULES
+          }
           // Credentials (build-time env, device mirror, or user-entered) are
           // resolved by bootstrapSyncConfig() so they go through a real state
           // update and get persisted, rather than mutating the rehydrated object.

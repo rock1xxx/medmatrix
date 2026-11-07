@@ -7,6 +7,7 @@ import { HostelCommandCenter } from './components/views/HostelCommandCenter'
 import { TimelineRoadmap } from './components/views/TimelineRoadmap'
 import { MasterKanban } from './components/views/MasterKanban'
 import { MasterMatrix } from './components/views/MasterMatrix'
+import { QBankView } from './components/views/QBankView'
 import { StretchQueueDrawer } from './components/modals/StretchQueueDrawer'
 import { TopicDetailsModal } from './components/modals/TopicDetailsModal'
 import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsModal'
@@ -160,6 +161,8 @@ export function App() {
         setActiveTab('kanban')
       } else if (e.key === '6') {
         setActiveTab('analytics')
+      } else if (e.key === '7') {
+        setActiveTab('qbank')
       } else if (e.key === 's' || e.key === 'S') {
         setStretchDrawerOpen(!stretchDrawerOpen)
       } else if (e.key === '?') {
@@ -250,6 +253,7 @@ export function App() {
         {activeTab === 'timeline' && <TimelineRoadmap />}
         {activeTab === 'matrix' && <MasterMatrix />}
         {activeTab === 'kanban' && <MasterKanban />}
+        {activeTab === 'qbank' && <QBankView />}
         {activeTab === 'analytics' && (
           <Suspense
             fallback={

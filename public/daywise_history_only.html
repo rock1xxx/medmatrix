@@ -1,0 +1,2101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>MedMatrix &bull; QBank &amp; Timeline History</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #08080c;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Touch optimizations */
+    * {
+      touch-action: manipulation;
+    }
+    input, textarea, select {
+      touch-action: auto;
+    }
+
+    /* Prevent mobile browser zoom on input focus */
+    @media (max-width: 640px) {
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    }
+
+    /* Safe Area helpers */
+    .safe-top {
+      padding-top: max(env(safe-area-inset-top, 0px), 8px);
+    }
+    .safe-bottom {
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+    }
+
+    /* Master Card */
+    .q-card {
+      background: #111116;
+      border: 1px solid #1e1e28;
+      transition: all 0.12s ease;
+    }
+    .q-card:active {
+      background: #14141c;
+      border-color: #2a2a3a;
+    }
+
+    /* Solved Status Pills */
+    .pill-solved {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .pill-solving {
+      background: rgba(14, 165, 233, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(14, 165, 233, 0.3);
+    }
+    .pill-unsolved {
+      background: rgba(100, 116, 139, 0.1);
+      color: #94a3b8;
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    /* Annotation Status Pills */
+    .pill-not-annotated {
+      background: #3b0a12;
+      color: #ff647c;
+      border: 1px solid #8f1729;
+      font-weight: 800;
+    }
+    .pill-partial-annotated {
+      background: #351f04;
+      color: #fbbf24;
+      border: 1px solid #78470a;
+      font-weight: 800;
+    }
+    .pill-annotated {
+      background: #062616;
+      color: #34d399;
+      border: 1px solid #0d5935;
+      font-weight: 800;
+    }
+
+    /* Verbatim Note Quote Box */
+    .dynamic-note-box {
+      background: #0a0a0f;
+      border-left: 2.5px solid #3b3b4f;
+      transition: border-color 0.12s ease;
+    }
+    .dynamic-note-box:hover {
+      border-left-color: #10b981;
+    }
+
+    /* Modal Height on Mobile */
+    .modal-sheet-container {
+      max-height: 88dvh;
+    }
+    @supports not (height: 100dvh) {
+      .modal-sheet-container {
+        max-height: 88vh;
+      }
+    }
+
+    /* Smooth Toast */
+    #copy-toast {
+      transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-32 text-slate-100 selection:bg-emerald-500 selection:text-black antialiased">
+
+  <!-- ========================================================================= -->
+  <!-- TOP APP BAR -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-30 bg-[#08080c]/95 border-b border-zinc-800/80 backdrop-blur-xl px-4 py-2.5 safe-top select-none">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-extrabold text-xs shrink-0">
+          M
+        </div>
+        <div>
+          <h1 id="top-bar-title" class="text-sm font-extrabold tracking-tight text-white flex items-center gap-2">
+            <span>QBank Modules &amp; Notes</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider">Demo Lab</span>
+          </h1>
+          <p id="top-bar-subtitle" class="text-[10.5px] text-zinc-400 leading-none mt-0.5">Custom Marrow Modules &bull; Verbatim Notes &bull; 19 Subjects</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <!-- Top Action Button: Context-Aware (Add Module or Log Day) -->
+        <button id="top-add-btn" onclick="handleTopAddClick()" class="px-3.5 py-1.5 min-h-[36px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-extrabold text-xs flex items-center gap-1 shadow-md shadow-emerald-500/20 transition-all">
+          <i data-lucide="plus" class="w-4 h-4 stroke-[3]"></i>
+          <span id="top-add-btn-label">Add</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SUB-NAV 1: QBANK SUB-NAV (WALL vs 19 SUBJECTS) -->
+    <div id="qbank-subnav" class="hidden max-w-xl mx-auto mt-2">
+      <div class="p-1 rounded-xl bg-[#121217] border border-zinc-800 flex items-center gap-1">
+        <button id="view-tab-wall" onclick="switchQBankView('wall')" class="flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-zinc-800 text-white shadow-sm active:scale-95">
+          <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+          <span>Modules Wall</span>
+          <span id="badge-total-modules" class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-zinc-700/80 text-zinc-300">21</span>
+        </button>
+        <button id="view-tab-syllabus" onclick="switchQBankView('syllabus')" class="flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-zinc-400 hover:text-white active:scale-95">
+          <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+          <span>Subjects &amp; Topics (19)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SUB-NAV 2: TIMELINE SUB-NAV (MONTH GRID vs DAILY AGENDA vs DAYWISE HISTORY) -->
+    <div id="timeline-subnav" class="max-w-xl mx-auto mt-2">
+      <div class="p-1 rounded-xl bg-[#121217] border border-zinc-800 flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <!-- Tab 1: Month Grid -->
+        <button id="timeline-tab-calendar" onclick="switchTimelineView('calendar')" class="flex-1 min-h-[38px] py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-zinc-400 hover:text-white active:scale-95 shrink-0">
+          <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+          <span>Month Grid</span>
+        </button>
+
+        <!-- Tab 2: Daily Agenda -->
+        <button id="timeline-tab-agenda" onclick="switchTimelineView('agenda')" class="flex-1 min-h-[38px] py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-zinc-400 hover:text-white active:scale-95 shrink-0">
+          <i data-lucide="list-filter" class="w-3.5 h-3.5"></i>
+          <span>Daily Agenda</span>
+        </button>
+
+        <!-- Tab 3: DAYWISE HISTORY (THE NEW REQUESTED TAB!) -->
+        <button id="timeline-tab-history" onclick="switchTimelineView('history')" class="flex-1 min-h-[38px] py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 bg-zinc-800 text-white shadow-sm active:scale-95 shrink-0">
+          <i data-lucide="history" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>Daywise History</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- ROOT CONTAINER 1: QBANK SECTION -->
+  <!-- ========================================================================= -->
+  <main id="root-qbank-container" class="hidden max-w-xl mx-auto px-3.5 sm:px-4 pt-3 space-y-3.5">
+    
+    <!-- SUB-VIEW 1: MODULES WALL -->
+    <div id="section-wall" class="space-y-3.5">
+      <!-- BIG HERO BANNER: ADD CUSTOM MODULE -->
+      <div onclick="openNewModuleModal()" class="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#13131b] to-[#161622] border border-emerald-500/30 hover:border-emerald-500/60 active:scale-[0.98] cursor-pointer transition-all flex items-center justify-between gap-3 group shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500 text-black flex items-center justify-center font-black shadow-md shadow-emerald-500/30 group-hover:scale-105 transition-transform shrink-0">
+            <i data-lucide="layers" class="w-5 h-5 stroke-[2.5]"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+              <span>+ Add Custom Module</span>
+              <span class="text-[9.5px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold uppercase tracking-wider">Topic Picker</span>
+            </h3>
+            <p class="text-[11px] text-zinc-400 mt-0.5 leading-snug">Select Subject &bull; Tick Topic(s) &bull; Choose PYQs &bull; Paste Code</p>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center gap-1 group-hover:bg-emerald-500 group-hover:text-black transition-all shrink-0">
+          <span>Create</span>
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </div>
+      </div>
+
+      <!-- Quick Filter Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 select-none pt-0.5">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          <button onclick="setFilter('all')" id="btn-filter-all" class="px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-zinc-200 text-black active:scale-95 transition-all shrink-0">
+            All (21)
+          </button>
+          <button onclick="setFilter('not_annotated')" id="btn-filter-not_annotated" class="px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-rose-950/40 text-rose-300 border border-rose-800/60 hover:bg-rose-900/40 flex items-center gap-1.5 active:scale-95 transition-all shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            <span>⚠️ Not Annotated (<span id="unannotated-count">0</span>)</span>
+          </button>
+          <button onclick="setFilter('annotated')" id="btn-filter-annotated" class="px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white active:scale-95 transition-all shrink-0">
+            ✓ Annotated
+          </button>
+        </div>
+
+        <div class="relative w-full sm:w-44">
+          <input
+            type="text"
+            id="quick-search"
+            placeholder="Filter notes..."
+            oninput="handleSearch(this.value)"
+            class="w-full bg-[#121217] border border-zinc-800 pl-8 pr-3 py-1.5 min-h-[34px] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+          />
+          <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+        </div>
+      </div>
+
+      <!-- Cards Container -->
+      <div id="wall-container" class="space-y-4"></div>
+    </div>
+
+    <!-- SUB-VIEW 2: 19 SUBJECTS & TOPICS COVERAGE -->
+    <div id="section-syllabus" class="hidden space-y-3.5">
+      <div class="p-3 rounded-2xl bg-[#111116] border border-zinc-800 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xs font-extrabold text-white flex items-center gap-1.5">
+            <span>Official Syllabus Coverage</span>
+            <span class="text-[10px] font-mono text-emerald-400 font-bold" id="syllabus-covered-summary">6 / 19 subjects touched</span>
+          </h2>
+          <p class="text-[11px] text-zinc-400 mt-0.5">Check topics solved vs untouched. Tap + Module to create &amp; link.</p>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="toggleAllSubjects(true)" class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-[11px] font-bold text-zinc-300">
+            Expand All
+          </button>
+          <button onclick="toggleAllSubjects(false)" class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-[11px] font-bold text-zinc-300">
+            Collapse
+          </button>
+        </div>
+      </div>
+
+      <div class="relative">
+        <input
+          type="text"
+          id="syllabus-search"
+          placeholder="Search any subject or topic (e.g. Upper GI, Amino Acids, Embryo)..."
+          oninput="handleSyllabusSearch(this.value)"
+          class="w-full bg-[#121217] border border-zinc-800 pl-8 pr-3 py-2 min-h-[40px] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+        />
+        <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      </div>
+
+      <div id="syllabus-list-container" class="space-y-3"></div>
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+    <!-- ========================================================================= -->
+  <!-- ROOT CONTAINER 2: TIMELINE SECTION (WITH DAYWISE HISTORY) -->
+  <!-- ========================================================================= -->
+  <main id="root-timeline-container" class="max-w-xl mx-auto px-3.5 sm:px-4 pt-3 space-y-3.5">
+    
+    <!-- SUB-VIEW A: DAYWISE HISTORY (PAST ACTIVITIES AUTOMATICALLY PULLED FROM MEDMATRIX!) -->
+    <div id="timeline-view-history" class="space-y-3.5">
+      
+      <!-- Top Overview Header -->
+      <div class="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800 flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
+            <span>Day-wise History</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider">Auto-Logged</span>
+          </h2>
+          <p class="text-[11px] text-zinc-400 mt-0.5">Shows videos watched, custom modules solved, and your daily notes</p>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] text-zinc-500 block">Past 5 Days</span>
+          <span class="text-xs font-mono font-bold text-emerald-400">Activity Synced</span>
+        </div>
+      </div>
+
+      <!-- Search History Notes -->
+      <div class="relative">
+        <input
+          type="text"
+          id="history-search"
+          placeholder="Search past days, topics, or notes..."
+          oninput="handleHistorySearch(this.value)"
+          class="w-full bg-[#121217] border border-zinc-800 pl-8 pr-3 py-2 min-h-[38px] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+        />
+        <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      </div>
+
+      <!-- Past Days Cards Feed (Injected by JS) -->
+      <div id="history-feed-container" class="space-y-3">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- SUB-VIEW B: MONTH GRID (CALENDAR VIEW) -->
+    <div id="timeline-view-calendar" class="hidden space-y-3.5">
+      <div class="p-4 rounded-2xl bg-[#111116] border border-zinc-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Month Grid &bull; Target Projection</h3>
+            <p class="text-[11px] text-zinc-400 mt-0.5">First Read Estimated: <strong>23 Feb 2027</strong> (108 days remaining)</p>
+          </div>
+          <div class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+            Pace: 3 vids/day
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-zinc-800">
+          <button class="px-3 py-1.5 rounded-lg bg-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white flex items-center gap-1">
+            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Oct 2026
+          </button>
+          <span class="text-xs font-bold text-white">November 2026</span>
+          <button class="px-3 py-1.5 rounded-lg bg-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white flex items-center gap-1">
+            Dec 2026 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- 30 Days Mini Grid -->
+        <div id="calendar-grid-container" class="grid grid-cols-5 sm:grid-cols-6 gap-1.5 pt-2"></div>
+      </div>
+    </div>
+
+    <!-- SUB-VIEW C: DAILY AGENDA (LINEAR SCHEDULE VIEW) -->
+    <div id="timeline-view-agenda" class="hidden space-y-3.5">
+      <div class="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800 flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Daily Agenda &bull; Next 7 Days</h3>
+          <p class="text-[11px] text-zinc-400 mt-0.5">Upcoming lectures and target revision blocks</p>
+        </div>
+        <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+          Forward Projection
+        </span>
+      </div>
+
+      <div id="agenda-list-container" class="space-y-2.5"></div>
+    </div>
+  </main>
+<!-- ========================================================================= -->
+  <!-- ADD CUSTOM MODULE MODAL -->
+  <!-- ========================================================================= -->
+  <div id="new-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="modal-sheet-container w-full max-w-lg bg-[#111117] border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200 overflow-y-auto no-scrollbar relative flex flex-col">
+      <div class="w-12 h-1.5 rounded-full bg-zinc-700/80 mx-auto -mt-1 mb-1 sm:hidden"></div>
+
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between border-b border-zinc-800/80 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+            <i data-lucide="layers" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-extrabold text-white">Add Custom Module</h3>
+            <p class="text-[11px] text-zinc-400 leading-tight">Pick Subject &bull; Select Topic(s) &bull; Marrow PYQs</p>
+          </div>
+        </div>
+        <button onclick="closeNewModal()" class="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs flex-1">
+        <!-- 1. CHOOSE SUBJECT -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>1. Choose Subject</span>
+              <span id="new-subject-indicator-dot" class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            </label>
+            <span class="text-[10.5px] text-zinc-500 font-mono">19 Official Subjects</span>
+          </div>
+
+          <div class="relative">
+            <select
+              id="new-subject-select"
+              onchange="onNewSubjectChanged(this.value)"
+              class="w-full bg-[#181824] border border-zinc-700/80 px-3.5 py-2.5 min-h-[44px] rounded-xl text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none"
+            ></select>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          </div>
+
+          <div id="new-subject-chips" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2"></div>
+        </div>
+
+        <!-- 2. SELECT TOPIC(S) -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>2. Select Topic(s)</span>
+              <span class="text-zinc-500 font-normal">(Tick to bundle)</span>
+            </label>
+            <span id="new-topics-count-badge" class="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-zinc-800 text-zinc-400 font-mono">
+              0 selected
+            </span>
+          </div>
+
+          <div id="new-bundle-indicator" class="hidden p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-[11px] text-emerald-300 font-medium flex items-center gap-2">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
+            <span id="new-bundle-text" class="truncate font-semibold">Bundling 2 topics</span>
+          </div>
+
+          <div id="new-topics-checklist" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-52 overflow-y-auto no-scrollbar p-1.5 bg-[#0e0e14] border border-zinc-800/80 rounded-xl"></div>
+        </div>
+
+        <!-- 3. QUESTION TAGS -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>3. Question Tags</span>
+              <span class="text-emerald-400 font-bold">(Target PYQs)</span>
+            </label>
+            <span class="text-[10px] text-zinc-500">Tap to toggle</span>
+          </div>
+
+          <div id="new-tag-pills" class="flex flex-wrap items-center gap-1.5"></div>
+
+          <input
+            id="new-custom-tag-input"
+            type="text"
+            placeholder="+ Custom tag (e.g. 100 Hemat, Slides, Clinical)..."
+            class="w-full bg-[#181824] border border-zinc-800 px-3 py-2 min-h-[38px] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-emerald-500 placeholder-zinc-600 mt-1"
+          />
+        </div>
+
+        <!-- 4. CODE -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block">
+            4. Marrow Module Code
+          </label>
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+              <input
+                id="new-code-input"
+                type="text"
+                autocapitalize="characters"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="e.g. 5LE50LC9"
+                class="w-full bg-[#181824] border border-zinc-700/80 pl-3.5 pr-3.5 py-2.5 min-h-[44px] rounded-xl font-mono text-sm sm:text-base text-emerald-400 font-bold uppercase tracking-wider focus:outline-none focus:border-emerald-500 placeholder-zinc-600"
+              />
+            </div>
+            <button
+              type="button"
+              onclick="pasteCodeToInput()"
+              class="px-4 py-2.5 min-h-[44px] rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-xs font-bold text-zinc-200 flex items-center gap-1.5 shrink-0 border border-zinc-700 transition-all shadow-sm"
+            >
+              <i data-lucide="clipboard-paste" class="w-4 h-4 text-emerald-400"></i>
+              <span>Paste</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 5. STATUS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="text-[10.5px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Solve Status:</label>
+            <div class="grid grid-cols-3 gap-1">
+              <button type="button" onclick="setNewSolveStatus('not_done')" id="new-solve-btn-not" class="py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] border border-zinc-800 bg-[#161622] text-zinc-400 active:scale-95">
+                ⚪ Unsolved
+              </button>
+              <button type="button" onclick="setNewSolveStatus('solving')" id="new-solve-btn-solving" class="py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] border border-zinc-800 bg-[#161622] text-zinc-400 active:scale-95">
+                ⏳ Solving
+              </button>
+              <button type="button" onclick="setNewSolveStatus('done')" id="new-solve-btn-done" class="py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] bg-emerald-500 text-black border border-emerald-400 active:scale-95">
+                ✓ Solved
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10.5px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Annotation Status:</label>
+            <div class="grid grid-cols-3 gap-1">
+              <button type="button" onclick="setNewAnnotStatus('not_annotated')" id="new-annot-btn-not" class="py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] bg-rose-500 text-black border border-rose-400 active:scale-95">
+                ⚠️ Not Annot
+              </button>
+              <button type="button" onclick="setNewAnnotStatus('partial')" id="new-annot-btn-partial" class="py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] border border-zinc-800 bg-[#161622] text-zinc-400 active:scale-95">
+                ◐ Partial
+              </button>
+              <button type="button" onclick="setNewAnnotStatus('annotated')" id="new-annot-btn-done" class="py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] border border-zinc-800 bg-[#161622] text-zinc-400 active:scale-95">
+                ✓ Annot
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. VERBATIM NOTES -->
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block">
+            6. Verbatim Notes &amp; Bookmarks (Optional)
+          </label>
+          <textarea
+            id="new-notes-input"
+            rows="3"
+            placeholder="e.g. till 28 not annotated but afterwards annotated... except bookmarks"
+            class="w-full bg-[#181824] border border-zinc-700/80 p-3 rounded-xl text-xs sm:text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-sans leading-relaxed"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div class="sticky bottom-0 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 p-3 sm:p-4 bg-[#111117]/95 backdrop-blur-md border-t border-zinc-800/80 flex items-center justify-end gap-2 z-10">
+        <button type="button" onclick="closeNewModal()" class="px-4 py-2.5 min-h-[44px] rounded-xl text-zinc-400 hover:text-white font-semibold text-xs active:scale-95">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onclick="saveNewModule()"
+          class="flex-1 sm:flex-none px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-extrabold text-xs shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 transition-all"
+        >
+          <i data-lucide="check" class="w-4 h-4 stroke-[3]"></i>
+          <span>Save Custom Module</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- INLINE NOTE / STATUS EDITOR SHEET -->
+  <!-- ========================================================================= -->
+  <div id="edit-sheet" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="modal-sheet-container w-full max-w-md bg-[#13131b] border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200 overflow-y-auto no-scrollbar relative flex flex-col">
+      <div class="w-12 h-1.5 rounded-full bg-zinc-700/80 mx-auto -mt-1 mb-1 sm:hidden"></div>
+
+      <div class="flex items-start justify-between border-b border-zinc-800/80 pb-3">
+        <div class="flex-1 pr-2">
+          <div class="flex items-center gap-2">
+            <span id="sheet-subject-label" class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">SURGERY</span>
+            <span id="sheet-code-badge" class="font-mono text-[11px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.2 rounded">5LE50LC9</span>
+          </div>
+          <h3 id="sheet-topic-title" class="text-base font-bold text-white leading-tight mt-1">Upper GI Surgery</h3>
+        </div>
+        <button onclick="closeEditSheet()" class="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 flex-1">
+        <div>
+          <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Annotation in Notes:</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button onclick="selectAnnotationState('not_annotated')" id="sheet-annot-not" class="py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs border text-center transition-all active:scale-95">
+              ⚠️ Not Annot
+            </button>
+            <button onclick="selectAnnotationState('partial')" id="sheet-annot-partial" class="py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs border text-center transition-all active:scale-95">
+              ◐ Partial Note
+            </button>
+            <button onclick="selectAnnotationState('annotated')" id="sheet-annot-done" class="py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs border text-center transition-all active:scale-95">
+              ✓ Annotated
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Solve Status:</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button onclick="selectSolveState('not_done')" id="sheet-solve-not" class="py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs border text-center transition-all active:scale-95">
+              ⚪ Unsolved
+            </button>
+            <button onclick="selectSolveState('solving')" id="sheet-solve-solving" class="py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs border text-center transition-all active:scale-95">
+              ⏳ Solving
+            </button>
+            <button onclick="selectSolveState('done')" id="sheet-solve-done" class="py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs border text-center transition-all active:scale-95">
+              ✓ Solved
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-bold text-zinc-400 block mb-1">Module Code</label>
+            <input id="sheet-code-input" type="text" autocapitalize="characters" class="w-full bg-[#181822] border border-zinc-700/80 px-3 py-2 min-h-[40px] rounded-xl font-mono text-xs sm:text-sm text-emerald-400 font-bold uppercase focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-zinc-400 block mb-1">Tags (comma-separated)</label>
+            <input id="sheet-tags-input" type="text" class="w-full bg-[#181822] border border-zinc-700/80 px-3 py-2 min-h-[40px] rounded-xl text-xs sm:text-sm text-zinc-200 focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Verbatim Notes &amp; Bookmarks:</label>
+          <textarea
+            id="sheet-notes-textarea"
+            rows="4"
+            class="w-full bg-[#181822] border border-zinc-700/80 rounded-xl p-3 text-xs sm:text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-sans leading-relaxed"
+            placeholder="Write question numbers, bookmarks, notes to annotate..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="sticky bottom-0 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 p-3 sm:p-4 bg-[#13131b]/95 backdrop-blur-md border-t border-zinc-800/80 flex items-center justify-between z-10">
+        <button onclick="deleteModule()" class="min-h-[42px] px-3 rounded-xl text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1.5 active:scale-95">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          <span>Delete</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeEditSheet()" class="px-3.5 py-2 min-h-[42px] rounded-xl text-xs font-semibold text-zinc-400 hover:text-white active:scale-95">Cancel</button>
+          <button onclick="saveSheetChanges()" class="px-5 py-2 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-extrabold text-xs shadow-md shadow-emerald-500/20">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- REALISTIC MEDMATRIX BOTTOM NAVIGATION DOCK -->
+  <!-- ========================================================================= -->
+  <div class="fixed bottom-0 left-0 right-0 z-40 bg-[#101014]/95 backdrop-blur-xl border-t border-[#222226] safe-bottom select-none">
+    <nav class="max-w-md lg:max-w-2xl mx-auto flex items-center justify-between px-1.5 py-1">
+      <!-- 1. Ward -->
+      <button type="button" onclick="handleBottomTabClick('ward')" id="nav-btn-ward" class="relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300">
+        <i data-lucide="sun" class="w-[19px] h-[19px]"></i>
+        <span class="text-[10px] mt-0.5 tracking-tight font-medium">Ward</span>
+      </button>
+
+      <!-- 2. Tonight -->
+      <button type="button" onclick="handleBottomTabClick('hostel')" id="nav-btn-hostel" class="relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300">
+        <i data-lucide="moon" class="w-[19px] h-[19px]"></i>
+        <span class="text-[10px] mt-0.5 tracking-tight font-medium">Tonight</span>
+      </button>
+
+      <!-- 3. Timeline (Features Daywise History!) -->
+      <button type="button" onclick="handleBottomTabClick('timeline')" id="nav-btn-timeline" class="relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300">
+        <div class="relative flex items-center justify-center">
+          <i data-lucide="calendar-days" class="w-[19px] h-[19px]"></i>
+          <span class="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-emerald-400"></span>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-medium">Timeline</span>
+        <span id="dot-timeline" class="hidden w-1 h-1 rounded-full bg-emerald-400 mt-0.5"></span>
+      </button>
+
+      <!-- 4. Syllabus -->
+      <button type="button" onclick="handleBottomTabClick('matrix')" id="nav-btn-matrix" class="relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300">
+        <i data-lucide="book-open" class="w-[19px] h-[19px]"></i>
+        <span class="text-[10px] mt-0.5 tracking-tight font-medium">Syllabus</span>
+      </button>
+
+      <!-- 5. QBank (The Custom Modules Workspace) -->
+      <button type="button" onclick="handleBottomTabClick('qbank')" id="nav-btn-qbank" class="relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-white font-semibold">
+        <div class="relative flex items-center justify-center">
+          <i data-lucide="layers" class="w-[19px] h-[19px] text-emerald-400"></i>
+          <span id="nav-qbank-badge" class="absolute -top-1.5 -right-2 px-1 py-0.2 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center shadow-sm">
+            15
+          </span>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-bold text-white">QBank</span>
+        <span id="dot-qbank" class="w-1 h-1 rounded-full bg-emerald-400 mt-0.5"></span>
+      </button>
+
+      <!-- 6. Stats -->
+      <button type="button" onclick="handleBottomTabClick('analytics')" id="nav-btn-analytics" class="relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300">
+        <i data-lucide="trending-up" class="w-[19px] h-[19px]"></i>
+        <span class="text-[10px] mt-0.5 tracking-tight font-medium">Stats</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="copy-toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 translate-y-2 bg-emerald-500 text-black px-3.5 py-1.5 rounded-full font-bold text-xs shadow-xl flex items-center gap-1.5">
+    <i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>
+    <span id="toast-text">Copied</span>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC -->
+  <!-- ========================================================================= -->
+  <script>
+    const SUBJECT_MAP = {
+      physio: {
+        name: 'Physiology', color: '#3b82f6', order: 1,
+        topics: ['General Physiology', 'Nerve Muscle Physiology', 'Central Nervous System', 'The Respiratory System', 'The Cardiovascular System', 'The Gastrointestinal Tract', 'Renal Physiology', 'Endocrine Physiology', 'Reproductive Physiology', 'Exercise Physiology']
+      },
+      path: {
+        name: 'Pathology', color: '#ef4444', order: 2,
+        topics: ['General Pathology', 'Hematology', 'Cardiovascular System', 'Genitourinary System', 'Gastrointestinal System', 'Respiratory System', 'Endocrine System and Breast', 'Skin and Musculoskeletal System', 'Nervous System']
+      },
+      biochem: {
+        name: 'Biochemistry', color: '#10b981', order: 3,
+        topics: ['Carbohydrates', 'Amino Acids and Proteins', 'Lipids', 'Enzymes and Porphyrins', 'Clinical Biochemistry & Nutrition', 'Genetics']
+      },
+      micro: {
+        name: 'Microbiology', color: '#06b6d4', order: 4,
+        topics: ['General Microbiology', 'Bacteriology', 'Virology', 'Mycology', 'Parasitology', 'Applied Microbiology', 'Immunology']
+      },
+      surg: {
+        name: 'Surgery', color: '#8b5cf6', order: 5,
+        topics: ['General Surgery', 'Breast', 'Endocrine System', 'Upper GI Surgery', 'Lower GI & Hernia Surgery', 'Hepato-Biliary Surgery', 'Spleen & Pancreatic Surgery', 'Urology', 'Neurosurgery', 'Head and Neck', 'Plastic Surgery', 'Cardiothoracic & Vascular Surgery', 'Skin']
+      },
+      obg: {
+        name: 'Obstetrics & Gynaecology', color: '#ec4899', order: 6,
+        topics: ['Fundamentals of Reproduction', 'Normal Pregnancy and Antenatal Care', 'Labor and Puerperium', 'Obstetric Complications', 'Medical and Surgical Complications', 'General Gynaecology', 'Gynaecologic Infections', 'Infertility and Menopause', 'Gynaecologic Oncology', 'Instruments']
+      },
+      anat: {
+        name: 'Anatomy', color: '#f59e0b', order: 7,
+        topics: ['Embryology', 'Histology', 'Abdomen and Pelvis', 'General Anatomy', 'Head, Neck and Face', 'Neuroanatomy', 'Upper Limb', 'Lower Limb', 'Thorax', 'Back']
+      },
+      pharm: {
+        name: 'Pharmacology', color: '#14b8a6', order: 8,
+        topics: ['General Pharmacology', 'Autonomic Nervous System', 'Cardiovascular System', 'Central and Peripheral Nervous System', 'Antimicrobials', 'Endocrine System', 'Autacoids', 'Hematology', 'Respiratory System', 'Gastrointestinal Drugs', 'Anti-Neoplastic Agents']
+      },
+      psm: {
+        name: 'Community Medicine', color: '#6366f1', order: 9,
+        topics: ['History of Medicine', 'Concepts of Health and Disease', 'Epidemiology', 'Screening', 'Epidemiology of Communicable Diseases', 'Epidemiology of Non-Communicable Diseases', 'Indian Health Programmes', 'Demography and Family Planning', 'Preventive Obstetrics, Paediatrics and Geriatrics', 'Nutrition and Health', 'Medicine and Social Sciences', 'Environment and Health', 'Biomedical Waste Management', 'Disaster Management', 'Occupational Health', 'Communication for Health Education', 'Healthcare of the Community', 'International Health', 'Biostatistics', 'Mental Health and Genetics']
+      },
+      fmt: {
+        name: 'Forensic Medicine', color: '#a855f7', order: 10,
+        topics: ['Identification', 'Medical Jurisprudence', 'Death, PM Changes', 'Medico Legal Autopsy', 'Injuries', 'Asphyxia', 'Sexual Offences and Abortion', 'Childhood Violence, Infanticide', 'Toxicology']
+      },
+      opht: {
+        name: 'Ophthalmology', color: '#22c55e', order: 11,
+        topics: ['Basics of Ophthalmology', 'Errors in Optics', 'Conjunctiva', 'Sclera', 'Cornea', 'Retina and Vitreous', 'Lens', 'Glaucoma', 'Uveal Tract', 'Lid and Lacrimal Apparatus', 'Orbit', 'Specific Disorders of the Eye', 'Practical Ophthalmology', 'Systemic Ophthalmology', 'Community Ophthalmology', 'Instruments']
+      },
+      ent: {
+        name: 'ENT', color: '#eab308', order: 12,
+        topics: ['Ear', 'Nose', 'Pharynx', 'Larynx', 'Instruments']
+      },
+      anaesth: {
+        name: 'Anaesthesia', color: '#f43f5e', order: 13,
+        topics: ['Preoperative Evaluation and Management', 'Airway Management and Resuscitation', 'Muscle Relaxants', 'General Anaesthesia', 'Local and Regional Anaesthesia', 'Anaesthesia in Specific Conditions', 'Complications of Anaesthesia']
+      },
+      derm: {
+        name: 'Dermatology', color: '#fb7185', order: 14,
+        topics: ['The Skin', 'Clinical Dermatology', 'Adnexa and Appendages', 'Hair and Nails', 'Skin Pigmentation', 'Allergic Disorders & Dermatitis', 'Papulosquamous Disorders', 'Vesiculobullous Disorders', 'Skin Infections & Infestations', 'Sexually Transmitted Infections', 'Genodermatoses & Nutritional Disorders', 'Connective Tissue Disorders', 'Skin Malignancies', 'Skin in Systemic Disorders']
+      },
+      psych: {
+        name: 'Psychiatry', color: '#c084fc', order: 15,
+        topics: ['Facets of Psychiatry', 'Clinical Psychiatry', 'Neuropsychiatry', 'Psychotic Disorders', 'Neurocognitive Disorders', 'Mood Disorders', 'Substance-Related Disorders', 'Neurosis', 'Personality Disorders', 'Specific Psychiatric Conditions', 'Psychiatric Emergencies', 'Sexuality', 'Child Psychiatry', 'Forensic Psychiatry']
+      },
+      rad: {
+        name: 'Radiology', color: '#38bdf8', order: 16,
+        topics: ['Fundamentals of Radiology', 'Diagnostic Radiology', 'Radionuclide Imaging and Radiotherapy', 'Emergency and Interventional Radiology']
+      },
+      med: {
+        name: 'Medicine', color: '#0284c7', order: 17,
+        topics: ['General', 'Endocrine System', 'Gastrointestinal System', 'Rheumatology and Immunology', 'Respiratory System', 'Renal System', 'Cardiovascular System', 'Nervous System', 'Blood Disorders', 'Infectious Diseases', 'Covid 19']
+      },
+      ortho: {
+        name: 'Orthopaedics', color: '#f97316', order: 18,
+        topics: ['Fracture and Its Complications', 'Neck', 'Upper Limb', 'Lower Limb', 'Spine & Pelvis', 'Bone and Joint Infections', 'Paediatric Orthopaedics', 'Metabolic Bone Diseases', 'Arthritis & Other Joint Disorders', 'Nerve Injuries', 'Bone Tumors', 'Instruments in Orthopaedics', 'Advanced Orthopaedics & Management']
+      },
+      paed: {
+        name: 'Paediatrics', color: '#fb923c', order: 19,
+        topics: ['Neonatology', 'Growth and Development', 'Nutrition', 'Fluids and Electrolytes', 'Genetic Disorders', 'Metabolic Disorders', 'Childhood Infections', 'Gastrointestinal System', 'Respiratory System', 'Cardiovascular System', 'Genito-Urinary System', 'Neurology', 'Endocrine System', 'Childhood Malignancies', 'Musculoskeletal System', 'Paediatric Rheumatology', 'Hematology']
+      }
+    };
+
+    // User's Google Keep items with 100% VERBATIM notes preserved
+
+    const RAW_KEEP_DATA = [
+      { id: 'c1', subjectId: 'physio', topicTitle: 'General Physiology', selectedTopics: ['General Physiology'], code: '5L3P0HXV', tags: ['AIIMS', 'NEET'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5L3P0HXV - Gen physio - AIIMS,NEET ( not annotated i think )' },
+      { id: 'c2', subjectId: 'physio', topicTitle: 'Nerve Muscle Physiology', selectedTopics: ['Nerve Muscle Physiology'], code: '5L5X1XBQ', tags: ['INI', 'Neet', 'Clinical'], solveStatus: 'done', annotationStatus: 'annotated', notes: '5L5X1XBQ - Nv Ms physiology - INI,Neet,clinical' },
+      { id: 'c3', subjectId: 'path', topicTitle: 'Hematology', selectedTopics: ['Hematology'], code: '5L6C0UTD', tags: ['AIIMS', 'NEET'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5L6C0UTD - 100 Hemat - AIIMS,NEET\n(some qs may be left out)' },
+      { id: 'c4', subjectId: 'biochem', topicTitle: 'Carbohydrates', selectedTopics: ['Carbohydrates'], code: '5L8N10YD', tags: ['INI', 'NEET', 'Clinical', 'Img Based', 'Slides'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5L8N10YD - Carbs - INI,NEET,Clinical,Img Based,Slides - NOT ANNOTATED' },
+      { id: 'c5', subjectId: 'biochem', topicTitle: 'Amino Acids and Proteins', selectedTopics: ['Amino Acids and Proteins'], code: '5L8U293L', tags: ['INI', 'NEET', 'ImageBased', 'Clinical'], solveStatus: 'done', annotationStatus: 'annotated', notes: '5L8U293L - AminoAcids - INI,NEET,ImageBased,Clinical ( Annotated )' },
+      { id: 'c6', subjectId: 'biochem', topicTitle: 'Lipids', selectedTopics: ['Lipids'], code: '5L910EQP', tags: ['INI', 'NEET', 'Clinical', 'Img Based', 'Slides'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5L910EQP - Lipids - INI,NEET,Clinical,Img Based,Slides - NOT ANNOTATED\n(Read all bookmarks) - PG synthesis and first step is hydrolase' },
+      { id: 'c7', subjectId: 'micro', topicTitle: 'Bacteriology', selectedTopics: ['Bacteriology'], code: '5L9B01W2', tags: ['5 tags'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5L9B01W2 - Bacteriology - 5 tags - Not Annotated' },
+      { id: 'c8', subjectId: 'surg', topicTitle: 'Breast', selectedTopics: ['Breast'], code: '5LBV04OV', tags: ['6 tags'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5LBV04OV - Breast - 6 tags - Not Annotated' },
+      { id: 'c9', subjectId: 'surg', topicTitle: 'Endocrine System', selectedTopics: ['Endocrine System'], code: '5LC00DNJ', tags: ['5 tags'], solveStatus: 'done', annotationStatus: 'partial', notes: '5LC00DNJ - Endocrine - 5 tags -\nFrom 33 to 50 - annotated' },
+      { id: 'c10', subjectId: 'surg', topicTitle: 'Upper GI Surgery & Stomach + Bariatric', selectedTopics: ['Upper GI Surgery'], code: '5LE50LC9', tags: ['Only PYQ'], solveStatus: 'done', annotationStatus: 'partial', notes: '5LE50LC9- (GIT PART 1) UPPER GI AND STOMACH and Bariatric - Only PYQ tags - till 28 not annotated but afterwards annotated....except BOOKMARKED/LAST 10 QN - NOT ANNOTATED AND READ' },
+      { id: 'c11', subjectId: 'surg', topicTitle: 'Lower GI & Hernia Surgery', selectedTopics: ['Lower GI & Hernia Surgery'], code: '5LE808WI', tags: ['Only PYQ'], solveStatus: 'solving', annotationStatus: 'not_annotated', notes: '5LE808WI - LOWER GI AND HERNIA - only PYQ\nfrom 20-25 till 58 written\nNOT ANNOTATED\nAlso 100 module made but there might be more questions' },
+      { id: 'c12', subjectId: 'surg', topicTitle: 'Hepato-Biliary Surgery (HPB)', selectedTopics: ['Hepato-Biliary Surgery'], code: '5LEA095Z', tags: ['Only PYQ'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '- HPB 5LEA095Z only PYQ\n- HPB needs to be done from main notes\n- and annotate HPB in main notes\n- do main modules of hpb...pancreas qn are less asked' },
+      { id: 'c13', subjectId: 'surg', topicTitle: 'Spleen & Pancreatic Surgery', selectedTopics: ['Spleen & Pancreatic Surgery'], code: '5LEI09H0', tags: ['Only PYQ'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: 'Spleen and Pancreatic - seems like spleena dn pancreas also needs to be done from main notes\n5LEI09H0 - only PYQ' },
+      { id: 'c14', subjectId: 'surg', topicTitle: 'Spleen & Pancreatic Surgery', selectedTopics: ['Spleen & Pancreatic Surgery'], code: '5LEI09HF', tags: ['INI', 'NEET', 'Clinical', 'Image-Based'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5LEI09HF - INI,NEET, CLINICAL,IMAGE BASED' },
+      { id: 'c15', subjectId: 'surg', topicTitle: 'Urology', selectedTopics: ['Urology'], code: '5LEL0JSH', tags: ['Only PYQ'], solveStatus: 'not_done', annotationStatus: 'not_annotated', notes: 'UROLOGY\n5LEL0JSH - PYQ only (not done)' },
+      { id: 'c16', subjectId: 'obg', topicTitle: 'Gynaecologic Oncology', selectedTopics: ['Gynaecologic Oncology'], code: 'GynRev 7', tags: ['Oncology'], solveStatus: 'not_done', annotationStatus: 'not_annotated', notes: 'GynRev 7 - Oncology\nTreatment and staging for ca ovary and all\nGyn Onco Not Done' },
+      { id: 'c17', subjectId: 'obg', topicTitle: 'General Gynaecology', selectedTopics: ['General Gynaecology'], code: 'MAIN-MOD', tags: ['Main Modules'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: 'General Gynae - Main modules Done - Not Annotated' },
+      { id: 'c18', subjectId: 'obg', topicTitle: 'Infertility and Menopause', selectedTopics: ['Infertility and Menopause'], code: '5LEJ0C9X', tags: ['Only PYQ'], solveStatus: 'done', annotationStatus: 'annotated', notes: '5LEJ0C9X - PYQ only- Infertility and Menopause\nDone and Annotated' },
+      { id: 'c19', subjectId: 'obg', topicTitle: 'Gynaecologic Infections', selectedTopics: ['Gynaecologic Infections'], code: 'INFECTIONS', tags: ['Infections'], solveStatus: 'done', annotationStatus: 'annotated', notes: 'Gyn Infections Done\nSTI do from Derma and Micro' },
+      { id: 'c20', subjectId: 'obg', topicTitle: 'Normal Pregnancy and Antenatal Care', selectedTopics: ['Normal Pregnancy and Antenatal Care'], code: '5LEO08ND', tags: ['Only PYQ'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5LEO08ND - normal pregnancy and antenatal care PYQ - done NOT ANNOTATED' },
+      { id: 'c21', subjectId: 'obg', topicTitle: 'Medical & Surgical Complications in Pregnancy', selectedTopics: ['Medical and Surgical Complications'], code: '5LGU0C8I', tags: ['Only PYQ'], solveStatus: 'done', annotationStatus: 'not_annotated', notes: '5LGU0C8I - PYQ - Medical and Surgical Complications in Pregnancy\nDone and Not Annotated' }
+    ];
+
+    // INITIAL PAST HISTORY DATA (INCLUDING USER'S EXACT EXAMPLE!)
+
+    const RAW_DAYS_HISTORY = [
+      {
+        id: 'd_today',
+        dateStr: '2026-11-07',
+        dateLabel: 'Saturday, 7 Nov 2026',
+        relativeLabel: 'Today',
+        isToday: true,
+        videos: [
+          { subject: 'Physiology', title: 'Nerve Muscle Physiology - Part 1 & 2', status: 'Watched → Ward MCQ' }
+        ],
+        modules: [
+          { code: '5L3P0HXV', title: 'General Physiology (AIIMS, NEET)', notAnnotated: true }
+        ],
+        revisions: [],
+        notes: 'Starting Surgery HPB after evening duty',
+        isEditing: false
+      },
+      {
+        id: 'd_yesterday',
+        dateStr: '2026-11-06',
+        dateLabel: 'Friday, 6 Nov 2026',
+        relativeLabel: 'Yesterday',
+        isYesterday: true,
+        videos: [
+          { subject: 'Community Medicine', title: 'Concepts of Health & Disease (Video 1)', status: 'Watched → Ward MCQ' }
+        ],
+        modules: [
+          { code: '5LE50LC9', title: 'Upper GI & Stomach (Q50-80)', notAnnotated: true }
+        ],
+        revisions: [
+          { title: 'Surgery: Upper GI Anatomy & Stomach (GIT Part 3)' }
+        ],
+        notes: 'Saw commed 1 vid and did custom module 50-80 and revised git part 3',
+        isEditing: false
+      },
+      {
+        id: 'd_thu',
+        dateStr: '2026-11-05',
+        dateLabel: 'Thursday, 5 Nov 2026',
+        relativeLabel: '2 days ago',
+        videos: [
+          { subject: 'Surgery', title: 'Lower GI & Hernia Surgery', status: 'Watched → Ward MCQ' }
+        ],
+        modules: [
+          { code: '5LE808WI', title: 'Lower GI & Hernia (Only PYQ)', notAnnotated: true }
+        ],
+        revisions: [],
+        notes: 'from 20-25 till 58 written, NOT ANNOTATED yet',
+        isEditing: false
+      },
+      {
+        id: 'd_wed',
+        dateStr: '2026-11-04',
+        dateLabel: 'Wednesday, 4 Nov 2026',
+        relativeLabel: '3 days ago',
+        videos: [
+          { subject: 'Pathology', title: 'Hematology - RBC & Anemia', status: 'Watched → Ward MCQ' }
+        ],
+        modules: [
+          { code: '5L6C0UTD', title: '100 Hemat (AIIMS, NEET)', notAnnotated: true }
+        ],
+        revisions: [],
+        notes: '100 Hemat questions solved, some questions left out',
+        isEditing: false
+      },
+      {
+        id: 'd_tue',
+        dateStr: '2026-11-03',
+        dateLabel: 'Tuesday, 3 Nov 2026',
+        relativeLabel: '4 days ago',
+        videos: [
+          { subject: 'Biochemistry', title: 'Carbohydrate Metabolism & Clinical Disorders', status: 'Watched → Ward MCQ' }
+        ],
+        modules: [
+          { code: '5L8N10YD', title: 'Carbohydrates (INI, NEET, Clinical, Img Based)', notAnnotated: true }
+        ],
+        revisions: [],
+        notes: 'Slides and clinical questions done, pending annotation',
+        isEditing: false
+      }
+    ];
+
+    const DEFAULT_TAG_OPTIONS = ['Only PYQ', 'AIIMS', 'NEET', 'INI-CET', 'Clinical', 'Image-Based', 'Slides', 'Main Modules'];
+
+    // State
+    let activeRootTab = 'timeline';
+    let qbankView = 'wall'; // 'wall' | 'syllabus'
+    let timelineView = 'history'; // 'history' | 'calendar' | 'agenda'
+    
+    let items = [];
+    let dayHistory = [];
+    let activeFilter = 'all';
+    let searchFilter = '';
+    let syllabusSearchFilter = '';
+    let historySearchFilter = '';
+    let expandedSubjects = { physio: true, path: true, biochem: true, micro: true, surg: true, obg: true };
+
+    let newModuleState = {
+      subjectId: 'obg',
+      selectedTopics: [],
+      tags: ['Only PYQ', 'NEET', 'AIIMS'],
+      solveStatus: 'done',
+      annotationStatus: 'not_annotated'
+    };
+
+    let currentEditId = null;
+    let editAnnotation = 'not_annotated';
+    let editSolve = 'done';
+
+    function init() {
+      try {
+        const stored = localStorage.getItem('medmatrix_card_lab_v8');
+        items = stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(RAW_KEEP_DATA));
+      } catch {
+        items = JSON.parse(JSON.stringify(RAW_KEEP_DATA));
+      }
+
+      try {
+        const storedHistory = localStorage.getItem('medmatrix_auto_history_v2');
+        dayHistory = storedHistory ? JSON.parse(storedHistory) : JSON.parse(JSON.stringify(RAW_DAYS_HISTORY));
+      } catch {
+        dayHistory = JSON.parse(JSON.stringify(RAW_DAYS_HISTORY));
+      }
+
+      updateCounts();
+      renderAppView();
+    }
+
+    function save() {
+      try {
+        localStorage.setItem('medmatrix_card_lab_v8', JSON.stringify(items));
+      } catch {}
+      updateCounts();
+      renderQBankView();
+    }
+
+    function saveDaysHistory() {
+      try {
+        localStorage.setItem('medmatrix_auto_history_v2', JSON.stringify(dayHistory));
+      } catch {}
+      renderHistoryFeed();
+    }
+
+    function updateCounts() {
+      const notAnnotCount = items.filter(i => i.annotationStatus === 'not_annotated').length;
+      document.getElementById('unannotated-count').innerText = notAnnotCount;
+      document.getElementById('badge-total-modules').innerText = items.length;
+      const navBadge = document.getElementById('nav-qbank-badge');
+      if (navBadge) {
+        navBadge.innerText = notAnnotCount;
+        navBadge.style.display = notAnnotCount > 0 ? 'flex' : 'none';
+      }
+
+      const uniqueSubjects = new Set(items.map(i => i.subjectId)).size;
+      const summaryEl = document.getElementById('syllabus-covered-summary');
+      if (summaryEl) {
+        summaryEl.innerText = `${uniqueSubjects} / 19 subjects touched`;
+      }
+    }
+
+    // =========================================================================
+    // ROOT NAVIGATION: SWITCH BETWEEN QBANK AND TIMELINE (BOTTOM DOCK)
+    // =========================================================================
+    function handleBottomTabClick(tab) {
+      if (tab === 'qbank') {
+        activeRootTab = 'qbank';
+      } else if (tab === 'timeline') {
+        activeRootTab = 'timeline';
+        timelineView = 'history'; // default to requested Daywise History
+      } else {
+        showToast(`MedMatrix Tab: ${tab.toUpperCase()} (Demo features QBank & Timeline)`);
+        return;
+      }
+      renderAppView();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderAppView() {
+      const isQBank = activeRootTab === 'qbank';
+      
+      document.getElementById('root-qbank-container').classList.toggle('hidden', !isQBank);
+      document.getElementById('root-timeline-container').classList.toggle('hidden', isQBank);
+
+      document.getElementById('qbank-subnav').classList.toggle('hidden', !isQBank);
+      document.getElementById('timeline-subnav').classList.toggle('hidden', isQBank);
+
+      const topBtn = document.getElementById('top-add-btn');
+
+      if (isQBank) {
+        document.getElementById('top-bar-title').innerHTML = `
+          <span>QBank Modules &amp; Notes</span>
+          <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider">Demo Lab</span>
+        `;
+        document.getElementById('top-bar-subtitle').innerText = 'Custom Marrow Modules • Verbatim Notes • 19 Subjects';
+        topBtn.classList.remove('hidden');
+      } else {
+        document.getElementById('top-bar-title').innerHTML = `
+          <span>Timeline &amp; Day History</span>
+          <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-400 font-bold uppercase tracking-wider">Timeline</span>
+        `;
+        document.getElementById('top-bar-subtitle').innerText = 'Auto-logged MedMatrix activity • Daily glance notes';
+        topBtn.classList.add('hidden');
+      }
+
+      document.getElementById('dot-qbank').classList.toggle('hidden', !isQBank);
+      document.getElementById('dot-timeline').classList.toggle('hidden', isQBank);
+      document.getElementById('nav-btn-qbank').className = isQBank
+        ? 'relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-white font-semibold'
+        : 'relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300';
+      document.getElementById('nav-btn-timeline').className = !isQBank
+        ? 'relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-white font-semibold'
+        : 'relative flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 px-0.5 rounded-xl transition-all active:scale-90 text-zinc-500 hover:text-zinc-300';
+
+      if (isQBank) {
+        renderQBankView();
+      } else {
+        renderTimelineView();
+      }
+      lucide.createIcons();
+    }
+
+    function handleTopAddClick() {
+      if (activeRootTab === 'qbank') {
+        openNewModuleModal();
+      } else {
+        openDayLogModal();
+      }
+    }
+
+    // =========================================================================
+    // QBANK VIEWS (WALL vs 19 SUBJECTS)
+    // =========================================================================
+    function switchQBankView(view) {
+      qbankView = view;
+      document.getElementById('view-tab-wall').className = view === 'wall'
+        ? 'flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-zinc-800 text-white shadow-sm active:scale-95'
+        : 'flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-zinc-400 hover:text-white active:scale-95';
+
+      document.getElementById('view-tab-syllabus').className = view === 'syllabus'
+        ? 'flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-zinc-800 text-white shadow-sm active:scale-95'
+        : 'flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-zinc-400 hover:text-white active:scale-95';
+
+      document.getElementById('section-wall').classList.toggle('hidden', view !== 'wall');
+      document.getElementById('section-syllabus').classList.toggle('hidden', view !== 'syllabus');
+
+      renderQBankView();
+    }
+
+    function renderQBankView() {
+      if (qbankView === 'wall') renderWall();
+      else renderSyllabus();
+    }
+
+    function setFilter(f) {
+      activeFilter = f;
+      ['all', 'not_annotated', 'annotated'].forEach(id => {
+        const btn = document.getElementById(`btn-filter-${id}`);
+        if (!btn) return;
+        if (id === f) {
+          btn.className = id === 'not_annotated'
+            ? 'px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-rose-500 text-black border border-rose-400 shrink-0 active:scale-95'
+            : 'px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-zinc-200 text-black shrink-0 active:scale-95';
+        } else {
+          btn.className = id === 'not_annotated'
+            ? 'px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-rose-950/40 text-rose-300 border border-rose-800/60 hover:bg-rose-900/40 shrink-0 active:scale-95'
+            : 'px-3 py-1.5 min-h-[34px] rounded-lg text-xs font-bold bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white shrink-0 active:scale-95';
+        }
+      });
+      renderWall();
+    }
+
+    function handleSearch(val) {
+      searchFilter = val.trim().toLowerCase();
+      renderWall();
+    }
+
+    function handleSyllabusSearch(val) {
+      syllabusSearchFilter = val.trim().toLowerCase();
+      renderSyllabus();
+    }
+
+    function renderWall() {
+      const container = document.getElementById('wall-container');
+
+      let visible = items.filter(item => {
+        if (activeFilter === 'not_annotated' && item.annotationStatus !== 'not_annotated') return false;
+        if (activeFilter === 'annotated' && item.annotationStatus !== 'annotated') return false;
+
+        if (searchFilter) {
+          const matchTopic = item.topicTitle.toLowerCase().includes(searchFilter);
+          const matchNotes = (item.notes || '').toLowerCase().includes(searchFilter);
+          const matchCode = (item.code || '').toLowerCase().includes(searchFilter);
+          if (!matchTopic && !matchNotes && !matchCode) return false;
+        }
+        return true;
+      });
+
+      const subjectKeys = Object.keys(SUBJECT_MAP).sort((a, b) => SUBJECT_MAP[a].order - SUBJECT_MAP[b].order);
+      const activeSubjects = subjectKeys.filter(subId => visible.some(i => i.subjectId === subId));
+
+      if (activeSubjects.length === 0) {
+        container.innerHTML = `
+          <div class="py-16 text-center text-zinc-500 text-xs">
+            <i data-lucide="inbox" class="w-8 h-8 mx-auto text-zinc-600 mb-2"></i>
+            <p class="font-bold text-zinc-400">No modules match this filter.</p>
+            <button onclick="setFilter('all')" class="text-emerald-400 font-bold underline mt-2 p-1">Clear filter</button>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = activeSubjects.map(subId => {
+        const sub = SUBJECT_MAP[subId];
+        const subItems = visible.filter(i => i.subjectId === subId);
+
+        return `
+          <section class="space-y-2">
+            <div class="flex items-center justify-between border-b border-zinc-800/80 pb-1 px-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${sub.color}"></span>
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-zinc-300">${sub.name}</h2>
+                <span class="text-[11px] font-mono text-zinc-500">(${subItems.length})</span>
+              </div>
+              <button onclick="openNewModuleModal('${subId}')" class="text-[11px] text-zinc-400 hover:text-emerald-400 font-bold flex items-center gap-1 transition-colors p-1 active:scale-95">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Module</span>
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              ${subItems.map(item => renderDynamicCard(item, sub)).join('')}
+            </div>
+          </section>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function renderDynamicCard(item, sub) {
+      const hasCode = item.code && item.code.trim();
+      const codePill = hasCode ? `
+        <button onclick="event.stopPropagation(); copyCode('${item.code}')" title="Tap to copy code" class="px-2.5 py-1 min-h-[28px] rounded-lg bg-[#161622] border border-[#272738] hover:border-emerald-500 font-mono text-[11px] font-bold text-emerald-400 flex items-center gap-1 transition-all active:scale-95 shrink-0">
+          <span>${item.code}</span>
+          <i data-lucide="copy" class="w-3 h-3 text-zinc-500"></i>
+        </button>
+      ` : '';
+
+      let annotPill = '';
+      if (item.annotationStatus === 'not_annotated') {
+        annotPill = `<button onclick="event.stopPropagation(); cycleAnnotation('${item.id}')" title="Tap to toggle annotation status" class="pill-not-annotated px-2.5 py-1 min-h-[28px] rounded-lg text-[10.5px] flex items-center gap-1 shrink-0 active:scale-95 transition-transform">
+          <i data-lucide="alert-circle" class="w-3.5 h-3.5 stroke-[3]"></i>
+          <span>NOT ANNOTATED</span>
+        </button>`;
+      } else if (item.annotationStatus === 'partial') {
+        annotPill = `<button onclick="event.stopPropagation(); cycleAnnotation('${item.id}')" title="Tap to toggle annotation status" class="pill-partial-annotated px-2.5 py-1 min-h-[28px] rounded-lg text-[10.5px] flex items-center gap-1 shrink-0 active:scale-95 transition-transform">
+          <i data-lucide="clock" class="w-3.5 h-3.5 stroke-[3]"></i>
+          <span>PARTIAL</span>
+        </button>`;
+      } else {
+        annotPill = `<button onclick="event.stopPropagation(); cycleAnnotation('${item.id}')" title="Tap to toggle annotation status" class="pill-annotated px-2.5 py-1 min-h-[28px] rounded-lg text-[10.5px] flex items-center gap-1 shrink-0 active:scale-95 transition-transform">
+          <i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>
+          <span>ANNOTATED</span>
+        </button>`;
+      }
+
+      let solvePill = '';
+      if (item.solveStatus === 'done') {
+        solvePill = `<button onclick="event.stopPropagation(); cycleSolve('${item.id}')" title="Tap to toggle solve status" class="pill-solved px-2.5 py-1 min-h-[28px] rounded-lg text-[10.5px] font-bold uppercase shrink-0 active:scale-95 transition-transform">
+          ✓ Solved
+        </button>`;
+      } else if (item.solveStatus === 'solving') {
+        solvePill = `<button onclick="event.stopPropagation(); cycleSolve('${item.id}')" title="Tap to toggle solve status" class="pill-solving px-2.5 py-1 min-h-[28px] rounded-lg text-[10.5px] font-bold uppercase shrink-0 active:scale-95 transition-transform">
+          ⏳ Solving
+        </button>`;
+      } else {
+        solvePill = `<button onclick="event.stopPropagation(); cycleSolve('${item.id}')" title="Tap to toggle solve status" class="pill-unsolved px-2.5 py-1 min-h-[28px] rounded-lg text-[10.5px] font-bold uppercase shrink-0 active:scale-95 transition-transform">
+          ⚪ Unsolved
+        </button>`;
+      }
+
+      const tagsHtml = (item.tags || []).map(t => 
+        `<span class="px-2 py-0.5 rounded-md bg-[#161622] border border-[#232334] text-[10px] font-semibold text-zinc-400">${t}</span>`
+      ).join(' ');
+
+      const hasNote = item.notes && item.notes.trim();
+      const notesClean = hasNote ? item.notes.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+      
+      const noteHtml = hasNote ? `
+        <div class="dynamic-note-box rounded-r-lg px-2.5 py-1.5 text-xs text-zinc-200 font-sans leading-relaxed whitespace-pre-wrap select-text">
+          ${notesClean}
+        </div>
+      ` : `
+        <button onclick="event.stopPropagation(); openEditSheet('${item.id}')" class="text-[11px] text-zinc-600 hover:text-zinc-400 font-medium transition-colors flex items-center gap-1 pt-0.5 p-1 active:scale-95">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>Add notes / bookmarks...</span>
+        </button>
+      `;
+
+      return `
+        <div class="q-card rounded-2xl p-3 sm:p-3.5 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 onclick="openEditSheet('${item.id}')" class="text-sm sm:text-base font-bold text-white tracking-tight leading-snug flex-1 cursor-pointer hover:text-emerald-300 transition-colors">
+              ${item.topicTitle}
+            </h3>
+            
+            <div class="flex items-center gap-1 shrink-0">
+              ${codePill}
+              <button onclick="openEditSheet('${item.id}')" title="Edit this module &amp; notes" class="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-90 transition-all">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+            <div class="flex flex-wrap items-center gap-1">
+              ${tagsHtml}
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              ${solvePill}
+              ${annotPill}
+            </div>
+          </div>
+
+          ${noteHtml}
+        </div>
+      `;
+    }
+
+    function renderSyllabus() {
+      const container = document.getElementById('syllabus-list-container');
+      const subjectKeys = Object.keys(SUBJECT_MAP).sort((a, b) => SUBJECT_MAP[a].order - SUBJECT_MAP[b].order);
+
+      const filteredKeys = subjectKeys.filter(subId => {
+        if (!syllabusSearchFilter) return true;
+        const sub = SUBJECT_MAP[subId];
+        const matchSub = sub.name.toLowerCase().includes(syllabusSearchFilter);
+        const matchTopic = sub.topics.some(t => t.toLowerCase().includes(syllabusSearchFilter));
+        return matchSub || matchTopic;
+      });
+
+      if (filteredKeys.length === 0) {
+        container.innerHTML = `
+          <div class="py-16 text-center text-zinc-500 text-xs">
+            <p>No subjects or topics match "${syllabusSearchFilter}".</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filteredKeys.map(subId => {
+        const sub = SUBJECT_MAP[subId];
+        const subItems = items.filter(i => i.subjectId === subId);
+        
+        const coveredTopicsCount = sub.topics.filter(topic => 
+          subItems.some(i => {
+            if (i.selectedTopics && i.selectedTopics.length > 0) {
+              return i.selectedTopics.some(t => t.toLowerCase() === topic.toLowerCase() || topic.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(topic.toLowerCase()));
+            }
+            return i.topicTitle.toLowerCase().includes(topic.toLowerCase()) || topic.toLowerCase().includes(i.topicTitle.toLowerCase());
+          })
+        ).length;
+
+        const isExpanded = expandedSubjects[subId] || syllabusSearchFilter.length > 0;
+
+        return `
+          <div class="rounded-2xl bg-[#111116] border border-zinc-800/80 overflow-hidden transition-all">
+            <div onclick="toggleSubject('${subId}')" class="p-3.5 min-h-[52px] flex items-center justify-between gap-3 cursor-pointer hover:bg-zinc-800/40 active:bg-zinc-800/60 select-none">
+              <div class="flex items-center gap-2.5">
+                <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${sub.color}"></span>
+                <div>
+                  <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+                    <span>${sub.order}. ${sub.name}</span>
+                    <span class="text-[11px] font-mono font-normal text-zinc-500">(${sub.topics.length})</span>
+                  </h3>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="px-2.5 py-1 rounded-full text-[10.5px] font-bold ${
+                  coveredTopicsCount > 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-500'
+                }">
+                  ${coveredTopicsCount} / ${sub.topics.length} covered
+                </span>
+
+                <i data-lucide="${isExpanded ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4 text-zinc-400"></i>
+              </div>
+            </div>
+
+            ${isExpanded ? `
+              <div class="border-t border-zinc-800/60 p-3 pt-2 space-y-2 bg-[#0d0d12]">
+                <div class="divide-y divide-zinc-800/40 text-xs">
+                  ${sub.topics.map(topic => {
+                    if (syllabusSearchFilter && !topic.toLowerCase().includes(syllabusSearchFilter) && !sub.name.toLowerCase().includes(syllabusSearchFilter)) {
+                      return '';
+                    }
+
+                    const matched = subItems.filter(i => {
+                      if (i.selectedTopics && i.selectedTopics.length > 0) {
+                        return i.selectedTopics.some(t => t.toLowerCase() === topic.toLowerCase() || topic.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(topic.toLowerCase()));
+                      }
+                      return i.topicTitle.toLowerCase().includes(topic.toLowerCase()) || topic.toLowerCase().includes(i.topicTitle.toLowerCase());
+                    });
+                    const hasModule = matched.length > 0;
+
+                    return `
+                      <div class="py-2.5 flex items-start justify-between gap-3">
+                        <div class="space-y-1 flex-1 min-w-0">
+                          <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${hasModule ? 'bg-emerald-400' : 'bg-zinc-600'} shrink-0"></span>
+                            <span class="font-bold text-xs ${hasModule ? 'text-white' : 'text-zinc-400'} leading-tight">${topic}</span>
+                          </div>
+
+                          ${hasModule ? `
+                            <div class="flex flex-wrap items-center gap-1.5 pl-3.5 pt-0.5">
+                              ${matched.map(m => {
+                                const isNotAnnot = m.annotationStatus === 'not_annotated';
+                                return `
+                                  <button onclick="openEditSheet('${m.id}')" class="px-2 py-0.5 min-h-[26px] rounded-md font-mono text-[10.5px] font-bold flex items-center gap-1.5 transition-all active:scale-95 ${
+                                    isNotAnnot ? 'bg-rose-950/60 text-rose-300 border border-rose-800/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'
+                                  }">
+                                    <span>${m.code || 'MOD'}</span>
+                                    <span class="text-[9.5px] font-sans font-semibold">${isNotAnnot ? '⚠️ NOT ANNOTATED' : '✓ ANNOTATED'}</span>
+                                  </button>
+                                `;
+                              }).join('')}
+                            </div>
+                          ` : `
+                            <p class="text-[10.5px] text-zinc-600 pl-3.5">Untouched &bull; No custom module done</p>
+                          `}
+                        </div>
+
+                        <button onclick="openNewModuleModal('${subId}', '${topic.replace(/'/g, "\\'")}')" class="px-2.5 py-1.5 min-h-[32px] rounded-xl bg-zinc-800/80 hover:bg-zinc-700 active:scale-95 text-zinc-300 font-bold text-[11px] flex items-center gap-1 shrink-0 border border-zinc-700/60">
+                          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                          <span>Module</span>
+                        </button>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function toggleSubject(subId) {
+      expandedSubjects[subId] = !expandedSubjects[subId];
+      renderSyllabus();
+    }
+
+    function toggleAllSubjects(expand) {
+      Object.keys(SUBJECT_MAP).forEach(k => {
+        expandedSubjects[k] = expand;
+      });
+      renderSyllabus();
+    }
+
+    // =========================================================================
+    // TIMELINE VIEWS: (DAYWISE HISTORY vs MONTH GRID vs DAILY AGENDA)
+    // =========================================================================
+
+    // =========================================================================
+    // TIMELINE: DAYWISE HISTORY (AUTO LOGGED FROM MEDMATRIX + INLINE NOTES)
+    // =========================================================================
+    function switchTimelineView(view) {
+      timelineView = view;
+      ['history', 'calendar', 'agenda'].forEach(v => {
+        const btn = document.getElementById(`timeline-tab-${v}`);
+        if (!btn) return;
+        if (v === view) {
+          btn.className = 'flex-1 min-h-[38px] py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 bg-zinc-800 text-white shadow-sm active:scale-95 shrink-0';
+        } else {
+          btn.className = 'flex-1 min-h-[38px] py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-zinc-400 hover:text-white active:scale-95 shrink-0';
+        }
+      });
+
+      document.getElementById('timeline-view-history').classList.toggle('hidden', view !== 'history');
+      document.getElementById('timeline-view-calendar').classList.toggle('hidden', view !== 'calendar');
+      document.getElementById('timeline-view-agenda').classList.toggle('hidden', view !== 'agenda');
+
+      renderTimelineView();
+    }
+
+    function renderTimelineView() {
+      if (timelineView === 'history') {
+        renderHistoryFeed();
+      } else if (timelineView === 'calendar') {
+        renderMiniCalendar();
+      } else {
+        renderMiniAgenda();
+      }
+    }
+
+    // THE PURE, NON-OVERCOMPLICATED DAYWISE HISTORY FEED
+    function renderHistoryFeed() {
+      const container = document.getElementById('history-feed-container');
+
+      let visible = dayHistory.filter(h => {
+        if (!historySearchFilter) return true;
+        const matchNotes = (h.notes || '').toLowerCase().includes(historySearchFilter);
+        const matchDate = (h.dateLabel || '').toLowerCase().includes(historySearchFilter);
+        const matchVideos = (h.videos || []).some(v => (v.title + ' ' + v.subject).toLowerCase().includes(historySearchFilter));
+        const matchMods = (h.modules || []).some(m => (m.title + ' ' + m.code).toLowerCase().includes(historySearchFilter));
+        return matchNotes || matchDate || matchVideos || matchMods;
+      });
+
+      if (visible.length === 0) {
+        container.innerHTML = `
+          <div class="py-16 text-center text-zinc-500 text-xs">
+            <p>No days match "${historySearchFilter}".</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = visible.map(day => {
+        const isToday = day.isToday;
+        const isYesterday = day.isYesterday;
+
+        const totalActions = (day.videos?.length || 0) + (day.modules?.length || 0) + (day.revisions?.length || 0);
+
+        return `
+          <div class="q-card rounded-2xl p-3.5 sm:p-4 space-y-3">
+            <!-- Day Header -->
+            <div class="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase font-mono tracking-wider ${
+                  isToday
+                    ? 'bg-emerald-500 text-black'
+                    : isYesterday
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    : 'bg-zinc-800 text-zinc-400'
+                }">
+                  ${day.relativeLabel}
+                </span>
+                <h3 class="text-sm font-bold text-white tracking-tight">${day.dateLabel}</h3>
+              </div>
+              <span class="text-[11px] font-mono text-zinc-400">${totalActions} logged in MedMatrix</span>
+            </div>
+
+            <!-- Auto-Logged MedMatrix Activity List -->
+            <div class="space-y-1.5">
+              <!-- Videos Watched / Moved to Ward MCQ -->
+              ${(day.videos || []).map(v => `
+                <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#14141c] border border-zinc-800/60 text-xs">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i data-lucide="play-circle" class="w-4 h-4 text-sky-400 shrink-0"></i>
+                    <span class="font-semibold text-zinc-200 truncate">
+                      <span class="text-sky-300 font-bold">${v.subject}:</span> ${v.title}
+                    </span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0">
+                    Watched → Ward
+                  </span>
+                </div>
+              `).join('')}
+
+              <!-- Custom Modules Solved in QBank -->
+              ${(day.modules || []).map(m => `
+                <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#14141c] border border-zinc-800/60 text-xs">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i data-lucide="layers" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                    <span class="font-semibold text-zinc-200 truncate">${m.title}</span>
+                    <span class="font-mono text-[10.5px] text-emerald-400 font-bold bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800 shrink-0">${m.code}</span>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      ✓ Solved
+                    </span>
+                    ${m.notAnnotated ? `
+                      <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-rose-950/60 text-rose-300 border border-rose-800/60">
+                        ⚠️ Not Annot
+                      </span>
+                    ` : `
+                      <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">
+                        ✓ Annot
+                      </span>
+                    `}
+                  </div>
+                </div>
+              `).join('')}
+
+              <!-- Revisions / Locked in SR -->
+              ${(day.revisions || []).map(r => `
+                <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#14141c] border border-zinc-800/60 text-xs">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i data-lucide="book-open" class="w-4 h-4 text-purple-400 shrink-0"></i>
+                    <span class="font-semibold text-zinc-200 truncate">${r.title}</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 shrink-0">
+                    Revised in SR
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Small Notes Section (Directly on the card, editable inline!) -->
+            <div class="pt-1.5 border-t border-zinc-800/60">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[10.5px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Day Notes &amp; Reflections:</span>
+                </span>
+                <button
+                  type="button"
+                  onclick="toggleDayNoteEdit('${day.id}')"
+                  class="text-[11px] text-zinc-400 hover:text-emerald-400 font-bold p-1 flex items-center gap-1 active:scale-95 transition-colors"
+                >
+                  <i data-lucide="edit-3" class="w-3 h-3"></i>
+                  <span>${day.isEditing ? 'Cancel' : 'Edit note'}</span>
+                </button>
+              </div>
+
+              <!-- Inline Editable Textarea or Snug Quote Box -->
+              ${day.isEditing ? `
+                <div class="space-y-1.5 pt-0.5">
+                  <textarea
+                    id="input-note-${day.id}"
+                    rows="2"
+                    class="w-full bg-[#181824] border border-zinc-700/80 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-sans leading-relaxed"
+                    placeholder="Write quick note for this day..."
+                  >${day.notes || ''}</textarea>
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button type="button" onclick="toggleDayNoteEdit('${day.id}', false)" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">
+                      Cancel
+                    </button>
+                    <button type="button" onclick="saveDayNoteInline('${day.id}')" class="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black text-xs font-extrabold shadow-sm">
+                      Save Note
+                    </button>
+                  </div>
+                </div>
+              ` : `
+                <div
+                  onclick="toggleDayNoteEdit('${day.id}', true)"
+                  class="dynamic-note-box rounded-r-lg px-2.5 py-1.5 text-xs text-zinc-200 font-sans leading-relaxed cursor-pointer select-text"
+                  title="Click to edit notes"
+                >
+                  ${day.notes ? day.notes.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '<span class="text-zinc-600 italic">+ Tap to add note for this day...</span>'}
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function toggleDayNoteEdit(dayId, forceState) {
+      const day = dayHistory.find(d => d.id === dayId);
+      if (!day) return;
+      day.isEditing = forceState !== undefined ? forceState : !day.isEditing;
+      renderHistoryFeed();
+    }
+
+    function saveDayNoteInline(dayId) {
+      const day = dayHistory.find(d => d.id === dayId);
+      if (!day) return;
+      const textarea = document.getElementById(`input-note-${dayId}`);
+      if (textarea) {
+        day.notes = textarea.value.trim();
+      }
+      day.isEditing = false;
+      saveDaysHistory();
+      showToast('Day Note Saved');
+    }
+
+    function handleHistorySearch(val) {
+      historySearchFilter = val.trim().toLowerCase();
+      renderHistoryFeed();
+    }
+
+    function renderMiniCalendar() {
+      const container = document.getElementById('calendar-grid-container');
+      const days = [
+        { d: 1, s: 'done', label: 'Sur 1-3' }, { d: 2, s: 'done', label: 'Sur 4-6' }, { d: 3, s: 'done', label: 'Sur 7-9' },
+        { d: 4, s: 'done', label: 'Path Hem' }, { d: 5, s: 'done', label: 'Low GI' }, { d: 6, s: 'done', label: 'Up GI 50-80' },
+        { d: 7, s: 'today', label: 'Physio Gen' }, { d: 8, s: 'sched', label: 'HPB 1-3' }, { d: 9, s: 'sched', label: 'HPB 4-6' },
+        { d: 10, s: 'sched', label: 'Spleen 1' }, { d: 11, s: 'sched', label: 'Uro 1-3' }, { d: 12, s: 'sched', label: 'Uro 4-6' },
+        { d: 13, s: 'sched', label: 'Neuro 1-3' }, { d: 14, s: 'sched', label: 'Head 1-2' }, { d: 15, s: 'sched', label: 'Thoracic' },
+        { d: 16, s: 'sched', label: 'Plastics' }, { d: 17, s: 'sched', label: 'Trauma' }, { d: 18, s: 'sched', label: 'Ortho 1-3' },
+        { d: 19, s: 'sched', label: 'Ortho 4-6' }, { d: 20, s: 'sched', label: 'Ortho 7-9' }, { d: 21, s: 'sched', label: 'Ortho Rev' },
+        { d: 22, s: 'sched', label: 'Peds 1-3' }, { d: 23, s: 'sched', label: 'Peds 4-6' }, { d: 24, s: 'sched', label: 'OBG 1-3' },
+        { d: 25, s: 'sched', label: 'OBG 4-6' }, { d: 26, s: 'sched', label: 'OBG 7-9' }, { d: 27, s: 'sched', label: 'OBG 10-12' },
+        { d: 28, s: 'sched', label: 'OBG 13-15' }, { d: 29, s: 'sched', label: 'OBG 16-18' }, { d: 30, s: 'sched', label: 'Buffer' }
+      ];
+
+      container.innerHTML = days.map(day => {
+        let style = 'bg-[#14141c] border-zinc-800/80 text-zinc-400';
+        let badge = '';
+        if (day.s === 'today') {
+          style = 'bg-emerald-500/20 border-emerald-500 text-white shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500';
+          badge = '<span class="text-[9px] font-extrabold text-emerald-400">TODAY</span>';
+        } else if (day.s === 'done') {
+          style = 'bg-zinc-900 border-zinc-800 text-zinc-300';
+          badge = '<span class="text-[9px] text-zinc-400">✓ Done</span>';
+        } else {
+          style = 'bg-[#101016] border-zinc-800/50 text-zinc-500';
+          badge = `<span class="text-[9px] text-zinc-500 truncate">${day.label}</span>`;
+        }
+
+        return `
+          <div class="p-2 rounded-xl border ${style} flex flex-col justify-between min-h-[58px]">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold">${day.d}</span>
+              ${day.s === 'today' ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>' : ''}
+            </div>
+            ${badge}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderMiniAgenda() {
+      const container = document.getElementById('agenda-list-container');
+      const agendaDays = [
+        {
+          date: 'Saturday, 7 Nov (Today)',
+          status: 'In Progress',
+          items: [
+            { title: 'Physiology: Nerve Muscle Physiology', time: '1 hr 45 min', state: 'Watched → Ward MCQ' },
+            { title: 'General Physiology (Custom Module 5L3P0HXV)', time: '40 Qs', state: '✓ Solved (Pending Annot)' },
+            { title: 'Surgery: Upper GI Anatomy & Stomach (Part 3)', time: 'SR Review', state: 'Revised in SR' }
+          ]
+        },
+        {
+          date: 'Sunday, 8 Nov (Tomorrow)',
+          status: 'Scheduled',
+          items: [
+            { title: 'Hepato-Biliary Surgery: Gallbladder & Biliary Tree', time: '1 hr 30 min', state: 'Scheduled' },
+            { title: 'Hepato-Biliary Surgery: Liver Tumors & Cysts', time: '1 hr 15 min', state: 'Scheduled' },
+            { title: 'Hepato-Biliary Surgery: Portal Hypertension', time: '1 hr', state: 'Scheduled' }
+          ]
+        },
+        {
+          date: 'Monday, 9 Nov',
+          status: 'Scheduled',
+          items: [
+            { title: 'Spleen & Pancreatic Surgery: Acute & Chronic Pancreatitis', time: '1 hr 20 min', state: 'Scheduled' },
+            { title: 'Spleen & Pancreatic Surgery: Pancreatic Neoplasms', time: '1 hr 10 min', state: 'Scheduled' },
+            { title: 'Spleen & Pancreatic Surgery: Splenectomy & Trauma', time: '55 min', state: 'Scheduled' }
+          ]
+        }
+      ];
+
+      container.innerHTML = agendaDays.map(day => `
+        <div class="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800 space-y-2">
+          <div class="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+            <span class="text-xs font-bold text-white">${day.date}</span>
+            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${day.status === 'In Progress' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-zinc-800 text-zinc-400'}">
+              ${day.status}
+            </span>
+          </div>
+          <div class="space-y-1.5">
+            ${day.items.map(it => `
+              <div class="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-zinc-900/60 border border-zinc-800/50">
+                <span class="text-zinc-200 font-medium truncate pr-2">${it.title}</span>
+                <span class="text-[10px] text-zinc-400 font-mono shrink-0">${it.time}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function openNewModuleModal(prefillSubjectId, prefillTopic) {
+      const subjectId = prefillSubjectId || newModuleState.subjectId || 'obg';
+      newModuleState.subjectId = subjectId;
+
+      if (prefillTopic) {
+        newModuleState.selectedTopics = [prefillTopic];
+      } else {
+        newModuleState.selectedTopics = [];
+      }
+
+      newModuleState.tags = ['Only PYQ', 'NEET', 'AIIMS'];
+      newModuleState.solveStatus = 'done';
+      newModuleState.annotationStatus = 'not_annotated';
+
+      document.getElementById('new-code-input').value = '';
+      document.getElementById('new-custom-tag-input').value = '';
+      document.getElementById('new-notes-input').value = '';
+
+      renderNewModalSubjectDropdown();
+      renderNewModalSubjectChips();
+      renderNewModalTopicChecklist();
+      renderNewModalTagPills();
+      updateNewModalStatusButtons();
+
+      document.getElementById('new-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeNewModal() {
+      document.getElementById('new-modal').classList.add('hidden');
+    }
+
+    function renderNewModalSubjectDropdown() {
+      const select = document.getElementById('new-subject-select');
+      const keys = Object.keys(SUBJECT_MAP).sort((a, b) => SUBJECT_MAP[a].order - SUBJECT_MAP[b].order);
+      select.innerHTML = keys.map(k => {
+        const sub = SUBJECT_MAP[k];
+        const isSel = k === newModuleState.subjectId;
+        return `<option value="${k}" ${isSel ? 'selected' : ''}>${sub.order}. ${sub.name} (${sub.topics.length} topics)</option>`;
+      }).join('');
+
+      const curSub = SUBJECT_MAP[newModuleState.subjectId];
+      if (curSub) {
+        document.getElementById('new-subject-indicator-dot').style.backgroundColor = curSub.color;
+      }
+    }
+
+    function renderNewModalSubjectChips() {
+      const chipsContainer = document.getElementById('new-subject-chips');
+      const keys = Object.keys(SUBJECT_MAP).sort((a, b) => SUBJECT_MAP[a].order - SUBJECT_MAP[b].order);
+      chipsContainer.innerHTML = keys.map(k => {
+        const sub = SUBJECT_MAP[k];
+        const isSel = k === newModuleState.subjectId;
+        return `
+          <button
+            type="button"
+            onclick="onNewSubjectChanged('${k}')"
+            class="px-3 py-1.5 min-h-[32px] rounded-lg text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 active:scale-95 ${
+              isSel
+                ? 'bg-zinc-100 text-black border border-white'
+                : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white'
+            }"
+          >
+            <span class="w-2 h-2 rounded-full" style="background-color: ${sub.color}"></span>
+            <span>${sub.name}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function onNewSubjectChanged(newSubId) {
+      newModuleState.subjectId = newSubId;
+      newModuleState.selectedTopics = [];
+      renderNewModalSubjectDropdown();
+      renderNewModalSubjectChips();
+      renderNewModalTopicChecklist();
+    }
+
+    function renderNewModalTopicChecklist() {
+      const container = document.getElementById('new-topics-checklist');
+      const sub = SUBJECT_MAP[newModuleState.subjectId];
+      if (!sub) return;
+
+      const countBadge = document.getElementById('new-topics-count-badge');
+      const bundleIndicator = document.getElementById('new-bundle-indicator');
+      const bundleText = document.getElementById('new-bundle-text');
+
+      const count = newModuleState.selectedTopics.length;
+      if (count === 0) {
+        countBadge.innerText = '0 selected';
+        countBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-400 font-mono';
+        bundleIndicator.classList.add('hidden');
+      } else if (count === 1) {
+        countBadge.innerText = '1 topic selected';
+        countBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 font-mono';
+        bundleIndicator.classList.add('hidden');
+      } else {
+        countBadge.innerText = `${count} topics bundled`;
+        countBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-black font-mono font-extrabold';
+        bundleIndicator.classList.remove('hidden');
+        bundleText.innerText = `Bundling ${count} Topics: ${newModuleState.selectedTopics.join(' + ')}`;
+      }
+
+      container.innerHTML = sub.topics.map(topic => {
+        const isTicked = newModuleState.selectedTopics.includes(topic);
+        return `
+          <div
+            onclick="toggleNewTopic('${topic.replace(/'/g, "\\'")}')"
+            class="flex items-center justify-between p-2.5 min-h-[44px] rounded-xl border cursor-pointer select-none transition-all active:scale-[0.98] ${
+              isTicked
+                ? 'bg-emerald-950/40 border-emerald-500/80 text-white shadow-sm'
+                : 'bg-[#14141d] border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white'
+            }"
+          >
+            <div class="flex items-center gap-2.5 flex-1 min-w-0 pr-1">
+              <div class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
+                isTicked ? 'bg-emerald-500 border-emerald-400 text-black font-extrabold' : 'border-zinc-600 bg-zinc-900'
+              }">
+                ${isTicked ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3.5]"></i>' : ''}
+              </div>
+              <span class="text-xs sm:text-[13px] font-semibold leading-snug">${topic}</span>
+            </div>
+            ${isTicked ? '<span class="text-[9px] font-extrabold text-emerald-400 uppercase tracking-wider shrink-0 font-mono">Ticked</span>' : ''}
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function toggleNewTopic(topic) {
+      const idx = newModuleState.selectedTopics.indexOf(topic);
+      if (idx >= 0) {
+        newModuleState.selectedTopics.splice(idx, 1);
+      } else {
+        newModuleState.selectedTopics.push(topic);
+      }
+      renderNewModalTopicChecklist();
+    }
+
+    function renderNewModalTagPills() {
+      const container = document.getElementById('new-tag-pills');
+      container.innerHTML = DEFAULT_TAG_OPTIONS.map(tag => {
+        const isSel = newModuleState.tags.includes(tag);
+        return `
+          <button
+            type="button"
+            onclick="toggleNewTag('${tag}')"
+            class="px-3 py-1.5 min-h-[34px] rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
+              isSel
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm'
+                : 'bg-[#181824] text-zinc-400 border border-zinc-800 hover:text-zinc-200'
+            }"
+          >
+            ${isSel ? '<i data-lucide="check" class="w-3 h-3 stroke-[3]"></i>' : ''}
+            <span>${tag}</span>
+          </button>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function toggleNewTag(tag) {
+      const idx = newModuleState.tags.indexOf(tag);
+      if (idx >= 0) {
+        newModuleState.tags.splice(idx, 1);
+      } else {
+        newModuleState.tags.push(tag);
+      }
+      renderNewModalTagPills();
+    }
+
+    async function pasteCodeToInput() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          const clean = text.trim().toUpperCase();
+          document.getElementById('new-code-input').value = clean;
+          showToast(`Pasted ${clean}`);
+        } else {
+          document.getElementById('new-code-input').focus();
+        }
+      } catch (err) {
+        document.getElementById('new-code-input').focus();
+        showToast('Paste code manually');
+      }
+    }
+
+    function setNewSolveStatus(s) {
+      newModuleState.solveStatus = s;
+      updateNewModalStatusButtons();
+    }
+
+    function setNewAnnotStatus(a) {
+      newModuleState.annotationStatus = a;
+      updateNewModalStatusButtons();
+    }
+
+    function updateNewModalStatusButtons() {
+      ['not_done', 'solving', 'done'].forEach(s => {
+        const btnId = s === 'not_done' ? 'new-solve-btn-not' : (s === 'solving' ? 'new-solve-btn-solving' : 'new-solve-btn-done');
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (newModuleState.solveStatus === s) {
+          btn.className = s === 'done'
+            ? 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] bg-emerald-500 text-black border border-emerald-400 active:scale-95'
+            : (s === 'solving' ? 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] bg-sky-500 text-black border border-sky-400 active:scale-95' : 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] bg-zinc-300 text-black border border-zinc-200 active:scale-95');
+        } else {
+          btn.className = 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10.5px] border border-zinc-800 bg-[#161622] text-zinc-400 active:scale-95';
+        }
+      });
+
+      ['not_annotated', 'partial', 'annotated'].forEach(a => {
+        const btnId = a === 'not_annotated' ? 'new-annot-btn-not' : (a === 'partial' ? 'new-annot-btn-partial' : 'new-annot-btn-done');
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (newModuleState.annotationStatus === a) {
+          btn.className = a === 'not_annotated'
+            ? 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] bg-rose-500 text-black border border-rose-400 active:scale-95'
+            : (a === 'partial' ? 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] bg-amber-500 text-black border border-amber-400 active:scale-95' : 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] bg-emerald-500 text-black border border-emerald-400 active:scale-95');
+        } else {
+          btn.className = 'py-2 px-1 min-h-[38px] rounded-lg text-center font-bold text-[10px] border border-zinc-800 bg-[#161622] text-zinc-400 active:scale-95';
+        }
+      });
+    }
+
+    function saveNewModule() {
+      if (newModuleState.selectedTopics.length === 0) {
+        alert('Please tick at least one topic for this custom module!');
+        return;
+      }
+
+      const code = document.getElementById('new-code-input').value.trim().toUpperCase();
+      const customTag = document.getElementById('new-custom-tag-input').value.trim();
+      const allTags = [...newModuleState.tags];
+      if (customTag) {
+        customTag.split(',').forEach(t => {
+          const clean = t.trim();
+          if (clean && !allTags.includes(clean)) allTags.push(clean);
+        });
+      }
+
+      const notes = document.getElementById('new-notes-input').value.trim();
+      const title = newModuleState.selectedTopics.join(' & ');
+
+      const newItem = {
+        id: 'c_' + Date.now(),
+        subjectId: newModuleState.subjectId,
+        topicTitle: title,
+        selectedTopics: [...newModuleState.selectedTopics],
+        code: code || 'CUSTOM',
+        tags: allTags,
+        solveStatus: newModuleState.solveStatus,
+        annotationStatus: newModuleState.annotationStatus,
+        notes: notes
+      };
+
+      items.unshift(newItem);
+      save();
+      closeNewModal();
+      showToast(`Module Added for ${title}`);
+    }
+
+    // =========================================================================
+    // EDIT SHEET MODAL
+    // =========================================================================
+    function openEditSheet(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      currentEditId = id;
+      const sub = SUBJECT_MAP[item.subjectId] || { name: item.subjectId };
+
+      document.getElementById('sheet-subject-label').innerText = sub.name;
+      document.getElementById('sheet-topic-title').innerText = item.topicTitle;
+      document.getElementById('sheet-code-badge').innerText = item.code || 'NO-CODE';
+      document.getElementById('sheet-code-input').value = item.code || '';
+      document.getElementById('sheet-tags-input').value = (item.tags || []).join(', ');
+      document.getElementById('sheet-notes-textarea').value = item.notes || '';
+
+      editAnnotation = item.annotationStatus || 'not_annotated';
+      editSolve = item.solveStatus || 'done';
+
+      updateSheetButtonStyles();
+      document.getElementById('edit-sheet').classList.remove('hidden');
+    }
+
+    function closeEditSheet() {
+      document.getElementById('edit-sheet').classList.add('hidden');
+      currentEditId = null;
+    }
+
+    function selectAnnotationState(state) {
+      editAnnotation = state;
+      updateSheetButtonStyles();
+    }
+
+    function selectSolveState(state) {
+      editSolve = state;
+      updateSheetButtonStyles();
+    }
+
+    function updateSheetButtonStyles() {
+      const bNot = document.getElementById('sheet-annot-not');
+      const bPart = document.getElementById('sheet-annot-partial');
+      const bDone = document.getElementById('sheet-annot-done');
+
+      bNot.className = editAnnotation === 'not_annotated'
+        ? 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-rose-500 text-black border-rose-400 active:scale-95'
+        : 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-[#181822] text-rose-300 border-zinc-700 hover:border-rose-500/50 active:scale-95';
+
+      bPart.className = editAnnotation === 'partial'
+        ? 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-amber-500 text-black border-amber-400 active:scale-95'
+        : 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-[#181822] text-amber-300 border-zinc-700 hover:border-amber-500/50 active:scale-95';
+
+      bDone.className = editAnnotation === 'annotated'
+        ? 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-emerald-500 text-black border-emerald-400 active:scale-95'
+        : 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-[#181822] text-emerald-300 border-zinc-700 hover:border-emerald-500/50 active:scale-95';
+
+      const sNot = document.getElementById('sheet-solve-not');
+      const sSolv = document.getElementById('sheet-solve-solving');
+      const sDone = document.getElementById('sheet-solve-done');
+
+      sNot.className = editSolve === 'not_done'
+        ? 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-zinc-300 text-black border-zinc-200 active:scale-95'
+        : 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-[#181822] text-zinc-400 border-zinc-700 active:scale-95';
+
+      sSolv.className = editSolve === 'solving'
+        ? 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-sky-500 text-black border-sky-400 active:scale-95'
+        : 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-[#181822] text-sky-300 border-zinc-700 active:scale-95';
+
+      sDone.className = editSolve === 'done'
+        ? 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-emerald-500 text-black border-emerald-400 active:scale-95'
+        : 'py-2.5 px-2 min-h-[40px] rounded-xl font-bold text-xs bg-[#181822] text-emerald-300 border-zinc-700 active:scale-95';
+    }
+
+    function saveSheetChanges() {
+      if (!currentEditId) return;
+      const item = items.find(i => i.id === currentEditId);
+      if (!item) return;
+
+      item.annotationStatus = editAnnotation;
+      item.solveStatus = editSolve;
+      item.code = document.getElementById('sheet-code-input').value.trim().toUpperCase();
+      
+      const tagsStr = document.getElementById('sheet-tags-input').value;
+      item.tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+
+      item.notes = document.getElementById('sheet-notes-textarea').value.trim();
+
+      save();
+      closeEditSheet();
+      showToast('Changes Saved');
+    }
+
+    function deleteModule() {
+      if (!currentEditId) return;
+      if (!confirm('Delete this module?')) return;
+      items = items.filter(i => i.id !== currentEditId);
+      save();
+      closeEditSheet();
+      showToast('Module Deleted');
+    }
+
+    function cycleAnnotation(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      if (item.annotationStatus === 'not_annotated') {
+        item.annotationStatus = 'partial';
+        showToast('Status: Partial Note');
+      } else if (item.annotationStatus === 'partial') {
+        item.annotationStatus = 'annotated';
+        showToast('Status: ✓ Annotated');
+      } else {
+        item.annotationStatus = 'not_annotated';
+        showToast('Status: ⚠️ Not Annotated');
+      }
+      save();
+    }
+
+    function cycleSolve(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      if (item.solveStatus === 'done') {
+        item.solveStatus = 'solving';
+        showToast('Status: ⏳ Solving');
+      } else if (item.solveStatus === 'solving') {
+        item.solveStatus = 'not_done';
+        showToast('Status: ⚪ Unsolved');
+      } else {
+        item.solveStatus = 'done';
+        showToast('Status: ✓ Solved');
+      }
+      save();
+    }
+
+    function copyCode(code) {
+      if (!code) return;
+      navigator.clipboard.writeText(code).then(() => {
+        showToast(`Copied ${code}`);
+      }).catch(() => {
+        showToast(`Copied ${code}`);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('copy-toast');
+      const text = document.getElementById('toast-text');
+      text.innerText = msg;
+      toast.classList.remove('opacity-0', 'translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-2');
+      }, 1800);
+    }
+
+    // Initialize on load
+    window.onload = init;
+  </script>
+</body>
+</html>

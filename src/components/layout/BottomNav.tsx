@@ -1,10 +1,10 @@
 import React from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { ViewMode } from '../../types'
-import { Sun, Moon, CalendarDays, BookOpen, Kanban, TrendingUp } from 'lucide-react'
+import { Sun, Moon, CalendarDays, BookOpen, Kanban, TrendingUp, Layers } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, topics, activeSubjectId } = useMedMatrixStore()
+  const { activeTab, setActiveTab, topics, activeSubjectId, customModules } = useMedMatrixStore()
 
   // Ward count (MCQs to solve on duty for active focus subject only)
   const wardCount = topics.filter(
@@ -16,6 +16,11 @@ export const BottomNav: React.FC = () => {
     (t) => t.status === 'STEP_3_ANNOTATING' && t.subjectId === activeSubjectId
   ).length
   const tonightBadgeCount = annotatingCount
+
+  // QBank count (Custom modules not yet annotated into main notes)
+  const unannotatedQBankCount = (customModules || []).filter(
+    (m) => m.annotationStatus === 'not_annotated'
+  ).length
 
   const items: {
     id: ViewMode
@@ -29,6 +34,7 @@ export const BottomNav: React.FC = () => {
     { id: 'hostel', label: 'Tonight', icon: Moon, badge: tonightBadgeCount },
     { id: 'timeline', label: 'Timeline', icon: CalendarDays },
     { id: 'matrix', label: 'Syllabus', icon: BookOpen },
+    { id: 'qbank', label: 'QBank', icon: Layers, badge: unannotatedQBankCount },
     { id: 'kanban', label: 'Board', icon: Kanban, desktopOnly: true },
     { id: 'analytics', label: 'Stats', icon: TrendingUp },
   ]

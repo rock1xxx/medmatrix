@@ -57,7 +57,21 @@ export interface Subject {
   targetHours: number
 }
 
-export type ViewMode = 'ward' | 'hostel' | 'timeline' | 'matrix' | 'kanban' | 'analytics'
+export type ViewMode = 'ward' | 'hostel' | 'timeline' | 'matrix' | 'kanban' | 'analytics' | 'qbank'
+
+export interface CustomModule {
+  id: string
+  subjectId: string
+  topicTitle: string
+  selectedTopics: string[]
+  code: string
+  tags: string[]
+  solveStatus: 'done' | 'solving' | 'not_done'
+  annotationStatus: 'annotated' | 'partial' | 'not_annotated'
+  notes: string
+  createdAt?: string
+  solvedAt?: string
+}
 
 export type DutyShift = 'WARD_DAY' | 'CASUALTY' | 'ICU_ROTATION' | 'POST_DUTY_OFF' | 'NIGHT_SHIFT'
 
