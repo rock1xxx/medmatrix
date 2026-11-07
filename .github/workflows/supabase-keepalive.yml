@@ -1,0 +1,43 @@
+name: Supabase Keep-Alive Ping
+
+# Keeps the free-tier Supabase PostgreSQL project active 24/7/365
+# Runs every 3 days so Supabase never auto-pauses the project.
+
+on:
+  schedule:
+    # Runs at 06:00 UTC every 3 days (well within Supabase's 7-day pause window)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping Supabase Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://gjkjdhopscgklhaskwfu.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqa2pkaG9wc2Nna2xoYXNrd2Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NjE3OTAsImV4cCI6MjEwNjUzNzc5MH0.636Nxgg20Up2BGcQc3cqk570jhrmj_yjsqKbG90h9QQ' }}
+        run: |
+          set -euo pipefail
+          echo "Pinging Supabase at ${SUPABASE_URL}..."
+
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL%/}/rest/v1/medmatrix_sync?select=id&limit=1" || echo "000")
+
+          echo "Supabase response status: ${HTTP_CODE}"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Supabase project is active and healthy! Database keep-alive successful."
+          elif [ "$HTTP_CODE" -eq 503 ] || [ "$HTTP_CODE" -eq 000 ]; then
+            echo "⚠️ Supabase project may currently be paused or waking up. Status: ${HTTP_CODE}"
+          else
+            echo "ℹ️ Ping received status ${HTTP_CODE}. Activity registered on Supabase."
+          fi
