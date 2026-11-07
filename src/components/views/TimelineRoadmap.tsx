@@ -9,6 +9,8 @@ import {
   Calendar as CalendarIcon,
   ListFilter,
   Trophy,
+  Award,
+  Clock,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -60,6 +62,8 @@ export const TimelineRoadmap: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'calendar' | 'agenda' | 'history'>('calendar')
   const [historySearch, setHistorySearch] = useState('')
+  const [historyPeriod, setHistoryPeriod] = useState<string>('last14')
+  const [activeCalendarDate, setActiveCalendarDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [editingDayId, setEditingDayId] = useState<string | null>(null)
   const [editingDayNoteText, setEditingDayNoteText] = useState('')
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
@@ -108,6 +112,16 @@ export const TimelineRoadmap: React.FC = () => {
     return map
   }, [projection.projectedDays])
 
+  // Active selected day projected item (or today or first day)
+  const activeDayProjected = useMemo(() => {
+    return (
+      projectedDayMap.get(activeCalendarDate) ||
+      projectedDayMap.get(format(new Date(), 'yyyy-MM-dd')) ||
+      projection.projectedDays[0] ||
+      null
+    )
+  }, [projectedDayMap, activeCalendarDate, projection.projectedDays])
+
   // 2. Global metrics
   const totalTopics = topics.length
   const lockedCount = topics.filter((t) => t.status === 'LOCKED_IN_SR').length
@@ -143,9 +157,24 @@ export const TimelineRoadmap: React.FC = () => {
   const pastDaysHistory = useMemo(() => {
     const list = []
     const today = new Date()
-    for (let i = 0; i < 14; i++) {
+
+    // Determine scan range based on user selected period
+    let daysToScan = 14
+    if (historyPeriod === 'all') {
+      daysToScan = 120
+    } else if (historyPeriod.includes('-')) {
+      daysToScan = 90
+    }
+
+    for (let i = 0; i < daysToScan; i++) {
       const d = subDays(today, i)
       const dateStr = format(d, 'yyyy-MM-dd')
+
+      // Filter by month if specific month selected (e.g. '2026-11', '2026-10')
+      if (historyPeriod.includes('-') && !dateStr.startsWith(historyPeriod)) {
+        continue
+      }
+
       const isTodayDate = i === 0
       const isYesterdayDate = i === 1
       const relativeLabel = isTodayDate ? 'Today' : isYesterdayDate ? 'Yesterday' : `${i} days ago`
@@ -241,7 +270,7 @@ export const TimelineRoadmap: React.FC = () => {
       })
     }
     return list
-  }, [topics, customModules, subjects, dayOverrides])
+  }, [topics, customModules, subjects, dayOverrides, historyPeriod])
 
   // Filtered past days
   const filteredPastDays = useMemo(() => {
@@ -423,78 +452,94 @@ export const TimelineRoadmap: React.FC = () => {
         )}
       </div>
 
-      {/* 2. View Mode Toggle (Calendar Grid vs Linear Agenda) */}
-      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5 gap-2">
-        <div className="flex gap-1 bg-[#141418] p-1 rounded-xl border border-zinc-800">
+      {/* 2. View Mode Toggle (Calendar Grid vs Linear Agenda vs Daywise History) */}
+      <div className="border-b border-zinc-800/80 pb-2.5">
+        <div className="grid grid-cols-3 gap-1 bg-[#141418] p-1 rounded-xl border border-zinc-800 w-full">
           <button
             type="button"
             onClick={() => setViewMode('calendar')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
               viewMode === 'calendar'
-                ? 'bg-zinc-800 text-white shadow-sm'
+                ? 'bg-zinc-800 text-white shadow-sm font-bold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <CalendarIcon size={14} className={viewMode === 'calendar' ? 'text-emerald-400' : ''} />
-            <span>Month Grid</span>
+            <span className="truncate">Month Grid</span>
           </button>
 
           <button
             type="button"
             onClick={() => setViewMode('agenda')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
               viewMode === 'agenda'
-                ? 'bg-zinc-800 text-white shadow-sm'
+                ? 'bg-zinc-800 text-white shadow-sm font-bold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <ListFilter size={14} className={viewMode === 'agenda' ? 'text-emerald-400' : ''} />
-            <span>Daily Agenda</span>
+            <span className="truncate">Daily Agenda</span>
           </button>
 
           <button
             type="button"
             onClick={() => setViewMode('history')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
               viewMode === 'history'
                 ? 'bg-zinc-800 text-white shadow-sm font-bold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <History size={14} className={viewMode === 'history' ? 'text-emerald-400' : ''} />
-            <span>Daywise History</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="truncate">Daywise History</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           </button>
         </div>
-
-        {viewMode === 'calendar' && (
-          <div className="flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
-              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white active:scale-95 min-w-[32px] min-h-[32px] flex items-center justify-center"
-              aria-label="Previous month"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <span className="text-xs font-bold text-zinc-200 min-w-24 sm:min-w-28 text-center font-mono truncate">
-              {format(currentMonth, 'MMM yyyy')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white active:scale-95 min-w-[32px] min-h-[32px] flex items-center justify-center"
-              aria-label="Next month"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* 3. VIEW A: Month Grid ("Big Calendar View") - Mobile Optimized */}
       {viewMode === 'calendar' && (
-        <div className="bg-[#141418] border border-zinc-800/80 rounded-2xl p-2 sm:p-4 space-y-2 select-none">
+        <div className="bg-[#141418] border border-zinc-800/80 rounded-2xl p-2.5 sm:p-4 space-y-3 select-none">
+          {/* Calendar Header with Integrated Month Switcher */}
+          <div className="flex items-center justify-between px-1 pb-1 border-b border-zinc-800/60">
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-bold text-white tracking-wide">
+                {format(currentMonth, 'MMMM yyyy')}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
+                className="p-1 rounded text-zinc-400 hover:text-white active:scale-95 min-w-[28px] min-h-[28px] flex items-center justify-center"
+                aria-label="Previous month"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date()
+                  setCurrentMonth(now)
+                  setActiveCalendarDate(format(now, 'yyyy-MM-dd'))
+                }}
+                className="text-[10px] font-mono font-semibold px-2 py-0.5 text-zinc-300 hover:text-emerald-400"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                className="p-1 rounded text-zinc-400 hover:text-white active:scale-95 min-w-[28px] min-h-[28px] flex items-center justify-center"
+                aria-label="Next month"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+
           {/* Weekday Headers: Single letter on mobile, 3-letter on desktop */}
           <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-[11px] font-semibold text-zinc-400 pb-1.5 border-b border-zinc-800/60">
             <span><span className="sm:hidden">S</span><span className="hidden sm:inline">Sun</span></span>
@@ -512,12 +557,16 @@ export const TimelineRoadmap: React.FC = () => {
               const dateStr = format(date, 'yyyy-MM-dd')
               const isCurrent = isSameMonth(date, currentMonth)
               const isCurrentDay = isToday(date)
+              const isSelectedDate = dateStr === activeCalendarDate
               const projected = projectedDayMap.get(dateStr)
 
               return (
                 <div
                   key={dateStr}
-                  onClick={() => projected && setSelectedDayItem(projected)}
+                  onClick={() => {
+                    setActiveCalendarDate(dateStr)
+                    if (projected) setSelectedDayItem(projected)
+                  }}
                   className={`min-h-[58px] sm:min-h-[85px] p-1 sm:p-1.5 rounded-xl border transition-all flex flex-col justify-between ${
                     !isCurrent
                       ? 'opacity-20 border-transparent bg-zinc-950/20 pointer-events-none'
@@ -525,7 +574,9 @@ export const TimelineRoadmap: React.FC = () => {
                       ? 'cursor-pointer hover:border-zinc-700 bg-[#16161c] border-zinc-800/80 active:scale-95'
                       : 'border-zinc-900 bg-zinc-950/40 text-zinc-600'
                   } ${
-                    isCurrentDay
+                    isSelectedDate
+                      ? 'ring-2 ring-emerald-400 border-emerald-500 bg-[#191928]'
+                      : isCurrentDay
                       ? 'ring-1 ring-emerald-500/50 bg-[#181822]'
                       : ''
                   }`}
@@ -623,6 +674,154 @@ export const TimelineRoadmap: React.FC = () => {
                 </div>
               )
             })}
+          </div>
+
+          {/* Day Schedule & Timeline Feed under Month Grid */}
+          <div className="pt-3 border-t border-zinc-800/80 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-zinc-200 px-1">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                Schedule for {format(parseISO(activeCalendarDate), 'EEEE, d MMM yyyy')}
+              </span>
+              {activeDayProjected && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDayItem(activeDayProjected)}
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1"
+                >
+                  Adjust Shift &rarr;
+                </button>
+              )}
+            </div>
+
+            {activeDayProjected ? (
+              <div className="bg-[#181822] border border-zinc-800/90 rounded-2xl p-3 sm:p-4 space-y-3 shadow-sm">
+                {/* Subject & Shift */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: activeDayProjected.subjectColor }}
+                    />
+                    <span className="text-xs sm:text-sm font-bold text-white">
+                      Day {activeDayProjected.dayNumber} • {activeDayProjected.subjectName}
+                    </span>
+                  </div>
+                  <span
+                    onClick={() => setSelectedDayItem(activeDayProjected)}
+                    className={`cursor-pointer text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                      activeDayProjected.shiftType === 'HIGH'
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                        : activeDayProjected.shiftType === 'LOW'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                    }`}
+                  >
+                    {activeDayProjected.shiftType} Workload ▾
+                  </span>
+                </div>
+
+                {/* Topics to watch */}
+                {activeDayProjected.topicsToWatch.length > 0 ? (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                      Lectures Scheduled ({activeDayProjected.topicsToWatch.length}):
+                    </div>
+                    <div className="grid gap-1.5">
+                      {activeDayProjected.topicsToWatch.map((topic, tIdx) => (
+                        <div
+                          key={topic.id}
+                          className="flex items-center justify-between text-xs bg-[#121217] px-3 py-2 rounded-xl border border-zinc-800/80 gap-2"
+                        >
+                          <span className="text-zinc-200 font-medium truncate flex-1">
+                            {tIdx + 1}. {topic.title}
+                          </span>
+                          <span className="text-[10.5px] font-mono text-zinc-400 shrink-0">
+                            {topic.durationMinutes} min
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-zinc-400 italic">No video lectures scheduled for this day.</div>
+                )}
+
+                {/* Milestones (SWT / GT) */}
+                {activeDayProjected.isSWTDay && (
+                  <div className="bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-2.5 text-xs text-emerald-300 flex items-center justify-between gap-2">
+                    <span className="font-bold flex items-center gap-1.5">
+                      <Trophy size={14} className="text-emerald-400" />
+                      {activeDayProjected.swtSubjectName} SWT Tonight
+                    </span>
+                    {activeDayProjected.swtSubjectId && (
+                      <button
+                        type="button"
+                        onClick={() => markSWTCompleted(activeDayProjected.swtSubjectId!)}
+                        className="px-2.5 py-1 bg-emerald-500 text-black text-[10px] font-bold rounded-lg shrink-0 active:scale-95 transition-all"
+                      >
+                        Mark Passed
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {activeDayProjected.isGTDay && (
+                  <div className="bg-amber-950/40 border border-amber-800/40 rounded-xl p-2.5 text-xs text-amber-300 flex items-center justify-between gap-2">
+                    <span className="font-bold flex items-center gap-1.5">
+                      <Award size={14} className="text-amber-400" />
+                      {activeDayProjected.gtTitle}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenScoreModal(activeDayProjected.gtId!)}
+                      className="px-2.5 py-1 bg-amber-500 text-black text-[10px] font-bold rounded-lg shrink-0 active:scale-95 transition-all"
+                    >
+                      Log Score
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 text-center text-xs text-zinc-500 bg-[#16161c] rounded-xl border border-zinc-800/60">
+                No curriculum scheduled for this date.
+              </div>
+            )}
+
+            {/* Upcoming Next 5 Days Timeline Preview */}
+            <div className="pt-2 space-y-1.5">
+              <div className="text-[10.5px] font-bold text-zinc-400 uppercase tracking-wider px-1">
+                Upcoming Days Roadmap:
+              </div>
+              <div className="grid gap-1.5">
+                {projection.projectedDays
+                  .filter((d) => d.date > activeCalendarDate)
+                  .slice(0, 5)
+                  .map((nextDay) => (
+                    <div
+                      key={nextDay.date}
+                      onClick={() => setActiveCalendarDate(nextDay.date)}
+                      className="flex items-center justify-between bg-[#16161e] hover:bg-[#1a1a24] cursor-pointer border border-zinc-800/70 rounded-xl px-3 py-2 text-xs transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: nextDay.subjectColor }}
+                        />
+                        <span className="font-mono text-[11px] text-zinc-400 shrink-0">
+                          {format(parseISO(nextDay.date), 'EEE, d MMM')}:
+                        </span>
+                        <span className="font-semibold text-zinc-200 truncate">
+                          Day {nextDay.dayNumber} • {nextDay.subjectName}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                        {nextDay.topicsToWatch.length} lecs
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -819,8 +1018,18 @@ export const TimelineRoadmap: React.FC = () => {
                   Auto-logged from watched videos, solved custom modules, and revisions. Edit daily notes to sync reflections.
                 </p>
               </div>
-              <div className="text-xs font-mono text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800 self-start sm:self-auto">
-                Tracking past 14 days
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                <select
+                  value={historyPeriod}
+                  onChange={(e) => setHistoryPeriod(e.target.value)}
+                  className="bg-[#181822] border border-zinc-700/80 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
+                >
+                  <option value="last14">Tracking Past 14 Days</option>
+                  <option value="2026-11">November 2026</option>
+                  <option value="2026-10">October 2026</option>
+                  <option value="2026-09">September 2026</option>
+                  <option value="all">All Recorded History</option>
+                </select>
               </div>
             </div>
 
@@ -862,7 +1071,7 @@ export const TimelineRoadmap: React.FC = () => {
                 return (
                   <div
                     key={day.id}
-                    className={`bg-[#141418] border rounded-2xl p-4 sm:p-5 transition-all space-y-3.5 ${
+                    className={`bg-[#141418] border rounded-2xl p-3.5 sm:p-5 transition-all space-y-3.5 overflow-hidden w-full max-w-full ${
                       day.isToday
                         ? 'border-emerald-500/50 shadow-sm shadow-emerald-950/20'
                         : day.isYesterday
@@ -911,9 +1120,9 @@ export const TimelineRoadmap: React.FC = () => {
                             {day.videos.map((vid, vIdx) => (
                               <div
                                 key={vIdx}
-                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs"
+                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs overflow-hidden"
                               >
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
                                   <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
                                     {vid.subject}
                                   </span>
@@ -921,7 +1130,7 @@ export const TimelineRoadmap: React.FC = () => {
                                     {vid.title}
                                   </span>
                                 </div>
-                                <span className="text-[10px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full shrink-0">
+                                <span className="text-[10px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
                                   {vid.status}
                                 </span>
                               </div>
@@ -941,9 +1150,9 @@ export const TimelineRoadmap: React.FC = () => {
                             {day.modules.map((mod, mIdx) => (
                               <div
                                 key={mIdx}
-                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs"
+                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs overflow-hidden"
                               >
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
                                   <span className="font-mono text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded shrink-0">
                                     {mod.code}
                                   </span>
@@ -951,7 +1160,7 @@ export const TimelineRoadmap: React.FC = () => {
                                     {mod.title}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto flex-wrap">
                                   <span className="text-[10px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
                                     ✓ Solved
                                   </span>
@@ -983,12 +1192,12 @@ export const TimelineRoadmap: React.FC = () => {
                             {day.revisions.map((rev, rIdx) => (
                               <div
                                 key={rIdx}
-                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs"
+                                className="bg-[#1a1a20] border border-zinc-800/80 rounded-xl px-2.5 sm:px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs overflow-hidden"
                               >
-                                <span className="text-zinc-200 font-medium truncate">
+                                <span className="text-zinc-200 font-medium truncate flex-1">
                                   {rev.title}
                                 </span>
-                                <span className="text-[10px] font-medium text-sky-300 bg-sky-950/60 border border-sky-800/50 px-2 py-0.5 rounded-full shrink-0">
+                                <span className="text-[10px] font-medium text-sky-300 bg-sky-950/60 border border-sky-800/50 px-2 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
                                   ✓ Revised
                                 </span>
                               </div>

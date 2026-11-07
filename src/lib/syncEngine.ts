@@ -245,9 +245,10 @@ export async function pullLatestState(): Promise<boolean> {
 
     setStatus('synced')
     return false
-  } catch (err) {
+  } catch (err: any) {
+    const isNetworkErr = err?.message?.includes('fetch') || err?.message?.includes('network') || (typeof navigator !== 'undefined' && !navigator.onLine)
     console.warn('[SyncEngine] pull failed:', err)
-    setStatus('error')
+    setStatus(isNetworkErr ? 'offline' : 'error')
     return false
   }
 }
@@ -315,9 +316,10 @@ export async function pushLocalState(): Promise<boolean> {
 
     setStatus('synced')
     return true
-  } catch (err) {
+  } catch (err: any) {
+    const isNetworkErr = err?.message?.includes('fetch') || err?.message?.includes('network') || (typeof navigator !== 'undefined' && !navigator.onLine)
     console.warn('[SyncEngine] push failed:', err)
-    setStatus('error')
+    setStatus(isNetworkErr ? 'offline' : 'error')
     return false
   }
 }
@@ -395,8 +397,15 @@ export async function triggerManualSync(showToast = true) {
     if (showToast) toast.success('Initial study progress saved to Supabase cloud!')
     setStatus('synced')
   } catch (e: any) {
-    setStatus('error')
-    if (showToast) toast.error(`Sync failed: ${e?.message || 'Check network'}`)
+    const isFetchErr = e?.message?.includes('fetch') || e?.name === 'TypeError'
+    setStatus(isFetchErr ? 'offline' : 'error')
+    if (showToast) {
+      if (isFetchErr) {
+        toast.error('Could not reach Supabase host. The project may be paused on supabase.com or offline. Local progress is safely preserved.')
+      } else {
+        toast.error(`Sync failed: ${e?.message || 'Check network'}`)
+      }
+    }
   }
 }
 

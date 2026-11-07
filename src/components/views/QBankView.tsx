@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { CustomModule } from '../../types'
+import { QBANK_SUBJECT_TOPICS } from '../../data/qbankTopics'
 import {
   Layers,
   Plus,
@@ -73,18 +74,14 @@ export const QBankView: React.FC = () => {
     return map
   }, [subjects])
 
-  // Topics grouped by subject for the 19-subject checklist
+  // Topics grouped by subject using official Marrow QBank module curriculum
   const curriculumBySubject = useMemo(() => {
     const map = new Map<string, string[]>()
-    allTopics.forEach((t) => {
-      const list = map.get(t.subjectId) || []
-      if (!list.includes(t.title)) {
-        list.push(t.title)
-      }
-      map.set(t.subjectId, list)
+    Object.entries(QBANK_SUBJECT_TOPICS).forEach(([subId, topics]) => {
+      map.set(subId, topics)
     })
     return map
-  }, [allTopics])
+  }, [])
 
   // Summary counts
   const totalCount = customModules.length
