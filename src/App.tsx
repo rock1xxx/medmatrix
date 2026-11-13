@@ -22,6 +22,7 @@ import {
   fetchLatestAppUpdate,
 } from './lib/widgetBridge'
 import { Toaster } from 'sonner'
+import { format } from 'date-fns'
 
 // Charts are heavy and only used here, so keep recharts out of the initial bundle.
 const AnalyticsView = lazy(() =>
@@ -59,7 +60,29 @@ export function App() {
     stretchDrawerOpen,
     setStretchDrawerOpen,
     setSelectedTopicForDetail,
+    reconcileDailyQueue,
   } = useMedMatrixStore()
+
+  // Auto-reconcile today's prescribed queue on startup and on date rollover
+  useEffect(() => {
+    reconcileDailyQueue()
+
+    let lastKnownDate = format(new Date(), 'yyyy-MM-dd')
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const currentDate = format(new Date(), 'yyyy-MM-dd')
+        if (currentDate !== lastKnownDate) {
+          lastKnownDate = currentDate
+          reconcileDailyQueue({ dateStr: currentDate })
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [reconcileDailyQueue])
 
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false)
   const [widgetSettingsOpen, setWidgetSettingsOpen] = useState(() => {

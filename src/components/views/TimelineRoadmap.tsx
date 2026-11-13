@@ -377,6 +377,7 @@ export const TimelineRoadmap: React.FC = () => {
                 { pace: 1, label: '1 / day' },
                 { pace: 2, label: '2 / day' },
                 { pace: 3, label: '3 / day' },
+                { pace: 4, label: '4 / day' },
               ].map(({ pace, label }) => {
                 const isSelected = dailyPaceTopics === pace
                 return (

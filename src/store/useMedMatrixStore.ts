@@ -203,6 +203,12 @@ interface MedMatrixState {
   removeFromStretchQueue: (id: string) => void
   refreshDailyBaseline: () => void
 
+  // Dynamic Daily Video Queue (Hands-Off Calendar-Driven with Agency)
+  reconcileDailyQueue: (options?: { dateStr?: string; forceRefill?: boolean }) => void
+  postponeTopic: (topicId: string, autoRefill?: boolean) => void
+  pullTopicToToday: (topicId: string) => void
+  setTodayPace: (pace: number) => void
+
   // Milestones: SWT and GT actions
   markSWTCompleted: (subjectId: string) => void
   logGTScore: (id: string, score: number, percentile?: number) => void
@@ -334,6 +340,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
 
       setDailyPaceTopics: (dailyPaceTopics) => {
         set({ dailyPaceTopics, lastModified: Date.now() })
+        get().reconcileDailyQueue({ forceRefill: false })
         toast.info(`Pace updated to ${dailyPaceTopics} topics/day`)
       },
 
@@ -658,34 +665,149 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       refreshDailyBaseline: () => {
-        const { topics, activeSubjectId, subjects } = get()
-        // Prioritize the activeSubjectId
-        const activeTopics = topics.filter((t) => t.subjectId === activeSubjectId)
-        const watching = activeTopics.filter((t) => t.status === 'STEP_1_WATCHING')
+        get().reconcileDailyQueue({ forceRefill: true })
+      },
 
-        if (watching.length < 2) {
-          const needed = 2 - watching.length
-          const queued = activeTopics.filter((t) => t.status === 'QUEUED')
-          const selected = queued.slice(0, needed)
+      reconcileDailyQueue: (options) => {
+        const { topics, subjects, subjectOrder, activeSubjectId, dailyPaceTopics, dayOverrides } = get()
+        const todayStr = options?.dateStr || format(new Date(), 'yyyy-MM-dd')
+        const override = dayOverrides[todayStr]
 
-          if (selected.length > 0) {
-            const selectedIds = selected.map((s) => s.id)
-            const updated = topics.map((t) =>
-              selectedIds.includes(t.id)
-                ? { ...t, status: 'STEP_1_WATCHING' as TopicStatus, updatedAt: new Date().toISOString() }
-                : t
-            )
-            set({
-              topics: updated,
-              mandatoryTopicIds: selectedIds,
-              lastModified: Date.now(),
-            })
-            const subName = subjects.find((s) => s.id === activeSubjectId)?.name || 'Subject'
-            toast.info(`Assigned ${selected.length} video(s) for ${subName} tonight!`)
-          } else {
-            toast.info('All chapters in active subject are completed or in progress!')
+        // 1. Calculate Target Capacity for Today
+        let capacity = dailyPaceTopics || 3
+        if (override?.customPace !== undefined) {
+          capacity = override.customPace
+        } else if (override?.shiftType === 'HIGH') {
+          capacity = Math.max(1, (dailyPaceTopics || 3) - 1)
+        } else if (override?.shiftType === 'LOW') {
+          capacity = (dailyPaceTopics || 3) + 1
+        }
+
+        // 2. Count Active Videos in STEP_1_WATCHING (including rolled-over from yesterday)
+        const activeWatching = topics.filter((t) => t.status === 'STEP_1_WATCHING')
+
+        // If we already have capacity or more (e.g. rolled over or manually added extra), do not auto-add unless forceRefill
+        if (activeWatching.length >= capacity && !options?.forceRefill) {
+          return
+        }
+
+        const needed = capacity - activeWatching.length
+        if (needed <= 0) return
+
+        // 3. Find Next Available Topics in Curriculum Order (activeSubject first, then subjectOrder)
+        const validSubjectIds = subjects.map((s) => s.id)
+        const orderedSubIds = [
+          activeSubjectId,
+          ...subjectOrder.filter((id) => id !== activeSubjectId && validSubjectIds.includes(id)),
+          ...validSubjectIds.filter((id) => id !== activeSubjectId && !subjectOrder.includes(id)),
+        ]
+
+        const selectedToPromote: Topic[] = []
+        for (const subId of orderedSubIds) {
+          if (selectedToPromote.length >= needed) break
+          const subQueued = topics
+            .filter((t) => t.subjectId === subId && t.status === 'QUEUED')
+            .sort((a, b) => (a.chapterNumber ?? 0) - (b.chapterNumber ?? 0))
+
+          for (const topic of subQueued) {
+            if (selectedToPromote.length >= needed) break
+            selectedToPromote.push(topic)
           }
         }
+
+        if (selectedToPromote.length === 0) return
+
+        const selectedIds = new Set(selectedToPromote.map((t) => t.id))
+        const nowIso = new Date().toISOString()
+        const updated = topics.map((t) =>
+          selectedIds.has(t.id)
+            ? {
+                ...t,
+                status: 'STEP_1_WATCHING' as TopicStatus,
+                updatedAt: nowIso,
+              }
+            : t
+        )
+
+        const firstPromotedSubId = selectedToPromote[0]?.subjectId
+        const nextActiveSubId =
+          firstPromotedSubId && firstPromotedSubId !== activeSubjectId
+            ? firstPromotedSubId
+            : activeSubjectId
+
+        set({
+          topics: updated,
+          activeSubjectId: nextActiveSubId,
+          mandatoryTopicIds: Array.from(selectedIds),
+          lastModified: Date.now(),
+        })
+      },
+
+      postponeTopic: (topicId, autoRefill = false) => {
+        const { topics, stretchTopicIds } = get()
+        const topic = topics.find((t) => t.id === topicId)
+        if (!topic) return
+
+        const updated = topics.map((t) =>
+          t.id === topicId
+            ? {
+                ...t,
+                status: 'QUEUED' as TopicStatus,
+                inStretchQueue: false,
+                updatedAt: new Date().toISOString(),
+              }
+            : t
+        )
+
+        const newStretchIds = stretchTopicIds.filter((id) => id !== topicId)
+
+        set({
+          topics: updated,
+          stretchTopicIds: newStretchIds,
+          lastModified: Date.now(),
+        })
+
+        toast.info(`Postponed "${topic.title.slice(0, 26)}..." back to Queued.`)
+
+        if (autoRefill) {
+          get().reconcileDailyQueue({ forceRefill: false })
+        }
+      },
+
+      pullTopicToToday: (topicId) => {
+        const { topics, stretchTopicIds } = get()
+        const topic = topics.find((t) => t.id === topicId)
+        if (!topic) return
+
+        const updated = topics.map((t) =>
+          t.id === topicId
+            ? {
+                ...t,
+                status: 'STEP_1_WATCHING' as TopicStatus,
+                inStretchQueue: true,
+                updatedAt: new Date().toISOString(),
+              }
+            : t
+        )
+
+        const newStretchIds = Array.from(new Set([...stretchTopicIds, topicId]))
+
+        set({
+          topics: updated,
+          stretchTopicIds: newStretchIds,
+          lastModified: Date.now(),
+        })
+
+        toast.success(`Added "${topic.title.slice(0, 28)}..." to today's queue!`)
+      },
+
+      setTodayPace: (pace) => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        const currentOverride = get().dayOverrides[todayStr] || {}
+        get().setDayOverride(todayStr, { ...currentOverride, customPace: pace })
+        set({ dailyPaceTopics: pace, lastModified: Date.now() })
+        get().reconcileDailyQueue({ forceRefill: false })
+        toast.success(`Today's Target Pace set to ${pace} videos/day`)
       },
 
       markSWTCompleted: (subjectId) => {
@@ -736,6 +858,9 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           [dateStr]: { ...current, ...override },
         }
         set({ dayOverrides: updated, lastModified: Date.now() })
+        if (dateStr === format(new Date(), 'yyyy-MM-dd')) {
+          get().reconcileDailyQueue({ forceRefill: false })
+        }
         toast.info(`Updated schedule for ${dateStr}`)
       },
 
@@ -1080,6 +1205,12 @@ export const useMedMatrixStore = create<MedMatrixState>()(
               return t
             })
           }
+          // Automatically reconcile today's prescribed queue based on calendar pace and rollover
+          setTimeout(() => {
+            try {
+              useMedMatrixStore.getState().reconcileDailyQueue()
+            } catch {}
+          }, 50)
         }
       },
     }

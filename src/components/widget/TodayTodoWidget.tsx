@@ -70,13 +70,12 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
   // Topics in STEP_1_WATCHING or queued in tonight's mandatory session
   // =========================================================================
   const tonightWatching = topics.filter(
-    (t) => t.status === 'STEP_1_WATCHING' && t.subjectId === activeSubjectId
+    (t) => t.status === 'STEP_1_WATCHING'
   )
 
   const tonightQueued = topics.filter(
     (t) =>
       t.status === 'QUEUED' &&
-      t.subjectId === activeSubjectId &&
       (mandatoryTopicIds.includes(t.id) || stretchTopicIds.includes(t.id))
   )
 
