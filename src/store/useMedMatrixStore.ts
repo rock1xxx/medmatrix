@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOverride, SRData, CustomModule } from '../types'
+import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOverride, SRData, CustomModule, ActivityLogItem } from '../types'
 import { INITIAL_SUBJECTS, INITIAL_TOPICS, seedSampleSRCards } from '../data/initialSubjects'
 import { INITIAL_CUSTOM_MODULES } from '../data/initialCustomModules'
 import { advanceTopicSR, createInitialSRData, DEFAULT_EBBINGHAUS_INTERVALS, DEFAULT_POSTPONE_DAYS } from '../lib/srEngine'
@@ -249,6 +249,10 @@ interface MedMatrixState {
   cycleCustomModuleAnnotation: (id: string) => void
   cycleCustomModuleSolve: (id: string) => void
 
+  // Activity Ledger (Truthful, Append-Only Event Log)
+  activityLog: ActivityLogItem[]
+  logActivity: (action: Omit<ActivityLogItem, 'id' | 'timestamp' | 'dateStr'>) => void
+
   // Persistence & Data Management
   resetToInitialSeed: () => void
   exportDataJSON: () => string
@@ -270,6 +274,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       gtStartThreshold: 7, // GTs start after completing 7 subjects as per topper strategy
       dayOverrides: {},
       customModules: INITIAL_CUSTOM_MODULES,
+      activityLog: [],
 
       activeTab: 'ward',
       currentShift: 'WARD_DAY',
@@ -338,6 +343,20 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         })
       },
 
+      logActivity: (action) => {
+        const now = new Date()
+        const newItem: ActivityLogItem = {
+          ...action,
+          id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          timestamp: now.toISOString(),
+          dateStr: format(now, 'yyyy-MM-dd'),
+        }
+        set((state) => ({
+          activityLog: [newItem, ...(state.activityLog || [])],
+          lastModified: Date.now(),
+        }))
+      },
+
       setDailyPaceTopics: (dailyPaceTopics) => {
         set({ dailyPaceTopics, lastModified: Date.now() })
         get().reconcileDailyQueue({ forceRefill: false })
@@ -382,6 +401,18 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         )
 
         set({ topics: updated, lastModified: Date.now() })
+
+        // Log VIDEO_WATCHED if transitioning to STEP_2_WARD_MCQ or first time entering watched stages
+        if (status === 'STEP_2_WARD_MCQ' && topic.status !== 'STEP_2_WARD_MCQ') {
+          const subObj = get().subjects.find((s) => s.id === topic.subjectId)
+          get().logActivity({
+            type: 'VIDEO_WATCHED',
+            title: topic.title,
+            subjectId: topic.subjectId,
+            subjectName: subObj?.name || topic.subjectId,
+            metadata: { chapterNumber: topic.chapterNumber, durationMinutes: topic.durationMinutes },
+          })
+        }
       },
 
       // One set() for the whole batch: a bulk edit on the desktop table should not
@@ -464,6 +495,14 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         set({ topics: updated, lastModified: Date.now() })
         toast.success(`🎉 Locked into Spaced Repetition! First review tomorrow.`)
 
+        const subObj = subjects.find((s) => s.id === topic.subjectId)
+        get().logActivity({
+          type: 'TOPIC_LOCKED',
+          title: topic.title,
+          subjectId: topic.subjectId,
+          subjectName: subObj?.name || topic.subjectId,
+        })
+
         // Check if all topics of active subject are now locked!
         const activeSubTopics = updated.filter((t) => t.subjectId === topic.subjectId)
         const allLocked = activeSubTopics.every((t) => t.status === 'LOCKED_IN_SR')
@@ -506,6 +545,15 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         )
 
         set({ topics: updated, lastModified: Date.now() })
+
+        const subObj = get().subjects.find((s) => s.id === topic.subjectId)
+        get().logActivity({
+          type: 'REVIEW_COMPLETED',
+          title: topic.title,
+          subjectId: topic.subjectId,
+          subjectName: subObj?.name || topic.subjectId,
+          metadata: { level: updatedSR.level, nextReviewDate: updatedSR.nextReviewDate },
+        })
       },
 
       pullPastTopicToSR: (id) => {
@@ -861,6 +909,13 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         if (dateStr === format(new Date(), 'yyyy-MM-dd')) {
           get().reconcileDailyQueue({ forceRefill: false })
         }
+        if (override.customNote !== undefined && override.customNote !== current.customNote) {
+          get().logActivity({
+            type: 'NOTE_SAVED',
+            title: `Note for ${dateStr}`,
+            metadata: { note: override.customNote, targetDate: dateStr },
+          })
+        }
         toast.info(`Updated schedule for ${dateStr}`)
       },
 
@@ -961,27 +1016,55 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       addCustomModule: (moduleData) => {
+        const now = new Date()
         const newModule: CustomModule = {
           ...moduleData,
           id: `cm-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          solvedAt: moduleData.solveStatus === 'done' ? new Date().toISOString() : undefined,
+          createdAt: now.toISOString(),
+          solvedAt: moduleData.solveStatus === 'done' ? now.toISOString() : undefined,
         }
         const updated = [newModule, ...get().customModules]
         set({ customModules: updated, lastModified: Date.now() })
+
+        if (moduleData.solveStatus === 'done') {
+          const subObj = get().subjects.find((s) => s.id === newModule.subjectId)
+          get().logActivity({
+            type: 'MODULE_SOLVED',
+            title: newModule.topicTitle,
+            subjectId: newModule.subjectId,
+            subjectName: subObj?.name || newModule.subjectId,
+            code: newModule.code,
+            metadata: { annotationStatus: newModule.annotationStatus, tags: newModule.tags },
+          })
+        }
         toast.success(`Added module: ${newModule.topicTitle}`)
       },
 
       updateCustomModule: (id, updates) => {
+        let justSolvedModule: CustomModule | null = null
         const updated = get().customModules.map((m) => {
           if (m.id !== id) return m
           const next = { ...m, ...updates }
-          if (updates.solveStatus === 'done' && !next.solvedAt) {
+          if (updates.solveStatus === 'done' && m.solveStatus !== 'done') {
             next.solvedAt = new Date().toISOString()
+            justSolvedModule = next
           }
           return next
         })
         set({ customModules: updated, lastModified: Date.now() })
+
+        if (justSolvedModule) {
+          const m = justSolvedModule as CustomModule
+          const subObj = get().subjects.find((s) => s.id === m.subjectId)
+          get().logActivity({
+            type: 'MODULE_SOLVED',
+            title: m.topicTitle,
+            subjectId: m.subjectId,
+            subjectName: subObj?.name || m.subjectId,
+            code: m.code,
+            metadata: { annotationStatus: m.annotationStatus },
+          })
+        }
         toast.success('Module updated')
       },
 
@@ -1004,19 +1087,38 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       cycleCustomModuleSolve: (id) => {
+        let justSolvedModule: CustomModule | null = null
         const updated = get().customModules.map((m) => {
           if (m.id !== id) return m
           let nextStatus: CustomModule['solveStatus'] = 'done'
           if (m.solveStatus === 'done') nextStatus = 'solving'
           else if (m.solveStatus === 'solving') nextStatus = 'not_done'
           else nextStatus = 'done'
-          return {
+
+          const next = {
             ...m,
             solveStatus: nextStatus,
             solvedAt: nextStatus === 'done' ? m.solvedAt || new Date().toISOString() : undefined,
           }
+          if (nextStatus === 'done' && m.solveStatus !== 'done') {
+            justSolvedModule = next
+          }
+          return next
         })
         set({ customModules: updated, lastModified: Date.now() })
+
+        if (justSolvedModule) {
+          const m = justSolvedModule as CustomModule
+          const subObj = get().subjects.find((s) => s.id === m.subjectId)
+          get().logActivity({
+            type: 'MODULE_SOLVED',
+            title: m.topicTitle,
+            subjectId: m.subjectId,
+            subjectName: subObj?.name || m.subjectId,
+            code: m.code,
+            metadata: { annotationStatus: m.annotationStatus },
+          })
+        }
       },
 
       loadExternalSyncData: (incoming, options) => {
@@ -1052,6 +1154,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           ebbinghausIntervals: incoming.ebbinghausIntervals || current.ebbinghausIntervals,
           postponeIntervalDays: incoming.postponeIntervalDays ?? current.postponeIntervalDays,
           customModules: (incoming as any).customModules || current.customModules || INITIAL_CUSTOM_MODULES,
+          activityLog: (incoming as any).activityLog || current.activityLog || [],
           // A user-driven rescue must out-rank whatever was just written, otherwise
           // the next pull would re-adopt the copy it was undoing.
           lastModified: options?.bumpClock ? Date.now() : incoming.lastModified || Date.now(),
@@ -1133,6 +1236,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           topics: s.topics,
           subjects: s.subjects,
           customModules: s.customModules || [],
+          activityLog: s.activityLog || [],
         }
       },
 
@@ -1161,6 +1265,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             gtStartThreshold: parsed.gtStartThreshold ?? get().gtStartThreshold,
             dayOverrides: parsed.dayOverrides || {},
             customModules: parsed.customModules || get().customModules || INITIAL_CUSTOM_MODULES,
+            activityLog: parsed.activityLog || get().activityLog || [],
             mandatoryTopicIds: parsed.mandatoryTopicIds || [],
             stretchTopicIds: parsed.stretchTopicIds || [],
             ebbinghausIntervals: parsed.ebbinghausIntervals || DEFAULT_EBBINGHAUS_INTERVALS,
@@ -1189,6 +1294,9 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           // Initialize customModules for existing users upgrading from previous versions
           if (!Array.isArray(state.customModules) || state.customModules.length === 0) {
             state.customModules = INITIAL_CUSTOM_MODULES
+          }
+          if (!Array.isArray(state.activityLog)) {
+            state.activityLog = []
           }
           // Credentials (build-time env, device mirror, or user-entered) are
           // resolved by bootstrapSyncConfig() so they go through a real state

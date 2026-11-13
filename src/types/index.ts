@@ -102,6 +102,25 @@ export interface DayOverride {
   customNote?: string
 }
 
+export type ActivityActionType =
+  | 'VIDEO_WATCHED'
+  | 'MODULE_SOLVED'
+  | 'REVIEW_COMPLETED'
+  | 'TOPIC_LOCKED'
+  | 'NOTE_SAVED'
+
+export interface ActivityLogItem {
+  id: string
+  timestamp: string // ISO string
+  dateStr: string // YYYY-MM-DD
+  type: ActivityActionType
+  title: string
+  subjectId?: string
+  subjectName?: string
+  code?: string // Custom module code
+  metadata?: Record<string, any>
+}
+
 export interface ProjectedDayItem {
   date: string // yyyy-MM-dd
   dayNumber: number

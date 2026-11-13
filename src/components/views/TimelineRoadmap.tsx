@@ -58,6 +58,7 @@ export const TimelineRoadmap: React.FC = () => {
     dayOverrides,
     setDayOverride,
     customModules,
+    activityLog,
   } = useMedMatrixStore()
 
   const [viewMode, setViewMode] = useState<'calendar' | 'agenda' | 'history'>('calendar')
@@ -180,8 +181,8 @@ export const TimelineRoadmap: React.FC = () => {
       const relativeLabel = isTodayDate ? 'Today' : isYesterdayDate ? 'Yesterday' : `${i} days ago`
       const dateLabel = format(d, 'EEEE, d MMM yyyy')
 
-      // Videos watched on this day
-      const dayVideos = topics
+      // 1. Videos watched on this day (Real timestamps from topic.watchedAt + activityLog)
+      const topicVideos = topics
         .filter((t) => t.watchedAt && t.watchedAt.startsWith(dateStr))
         .map((t) => ({
           subject: subjects.find((s) => s.id === t.subjectId)?.name || t.subjectId,
@@ -189,23 +190,24 @@ export const TimelineRoadmap: React.FC = () => {
           status: 'Watched → Ward MCQ',
         }))
 
-      // Sample activity fallback for demo past days
-      if (dayVideos.length === 0) {
-        if (isTodayDate) {
-          dayVideos.push({ subject: 'Physiology', title: 'Nerve Muscle Physiology - Part 1 & 2', status: 'Watched → Ward MCQ' })
-        } else if (isYesterdayDate) {
-          dayVideos.push({ subject: 'Community Medicine', title: 'Concepts of Health & Disease (Video 1)', status: 'Watched → Ward MCQ' })
-        } else if (i === 2) {
-          dayVideos.push({ subject: 'Surgery', title: 'Lower GI & Hernia Surgery', status: 'Watched → Ward MCQ' })
-        } else if (i === 3) {
-          dayVideos.push({ subject: 'Pathology', title: 'Hematology - RBC & Anemia', status: 'Watched → Ward MCQ' })
-        } else if (i === 4) {
-          dayVideos.push({ subject: 'Biochemistry', title: 'Carbohydrate Metabolism & Clinical Disorders', status: 'Watched → Ward MCQ' })
-        }
-      }
+      const loggedVideos = (activityLog || [])
+        .filter((a) => a.dateStr === dateStr && a.type === 'VIDEO_WATCHED')
+        .map((a) => ({
+          subject: a.subjectName || subjects.find((s) => s.id === a.subjectId)?.name || 'Medical',
+          title: a.title,
+          status: 'Watched → Ward MCQ',
+        }))
 
-      // Custom modules solved on this day
-      const dayModules = (customModules || [])
+      // Deduplicate by title
+      const videoMap = new Map<string, { subject: string; title: string; status: string }>()
+      topicVideos.forEach((v) => videoMap.set(v.title, v))
+      loggedVideos.forEach((v) => {
+        if (!videoMap.has(v.title)) videoMap.set(v.title, v)
+      })
+      const dayVideos = Array.from(videoMap.values())
+
+      // 2. Custom modules solved on this day (Real timestamps from customModules + activityLog)
+      const realModules = (customModules || [])
         .filter(
           (m) =>
             (m.solvedAt && m.solvedAt.startsWith(dateStr)) ||
@@ -217,22 +219,24 @@ export const TimelineRoadmap: React.FC = () => {
           notAnnotated: m.annotationStatus === 'not_annotated',
         }))
 
-      if (dayModules.length === 0) {
-        if (isTodayDate) {
-          dayModules.push({ code: '5L3P0HXV', title: 'General Physiology (AIIMS, NEET)', notAnnotated: true })
-        } else if (isYesterdayDate) {
-          dayModules.push({ code: '5LE50LC9', title: 'Upper GI & Stomach (Q50-80)', notAnnotated: true })
-        } else if (i === 2) {
-          dayModules.push({ code: '5LE808WI', title: 'Lower GI & Hernia (Only PYQ)', notAnnotated: true })
-        } else if (i === 3) {
-          dayModules.push({ code: '5L6C0UTD', title: '100 Hemat (AIIMS, NEET)', notAnnotated: true })
-        } else if (i === 4) {
-          dayModules.push({ code: '5L8N10YD', title: 'Carbohydrates (INI, NEET, Clinical, Img Based)', notAnnotated: true })
-        }
-      }
+      const loggedModules = (activityLog || [])
+        .filter((a) => a.dateStr === dateStr && a.type === 'MODULE_SOLVED')
+        .map((a) => ({
+          code: a.code || 'DONE',
+          title: a.title,
+          notAnnotated: a.metadata?.annotationStatus === 'not_annotated',
+        }))
 
-      // Revisions done on this day
-      const dayRevisions = topics
+      const moduleMap = new Map<string, { code: string; title: string; notAnnotated: boolean }>()
+      realModules.forEach((m) => moduleMap.set(m.code + m.title, m))
+      loggedModules.forEach((m) => {
+        const key = m.code + m.title
+        if (!moduleMap.has(key)) moduleMap.set(key, m)
+      })
+      const dayModules = Array.from(moduleMap.values())
+
+      // 3. Revisions done on this day (Real timestamps from srData + activityLog)
+      const topicRevisions = topics
         .filter(
           (t) =>
             (t.srData?.history && t.srData.history.some((h) => h.reviewedAt && h.reviewedAt.startsWith(dateStr))) ||
@@ -242,19 +246,21 @@ export const TimelineRoadmap: React.FC = () => {
           title: t.title,
         }))
 
-      if (dayRevisions.length === 0 && isYesterdayDate) {
-        dayRevisions.push({ title: 'Surgery: Upper GI Anatomy & Stomach (GIT Part 3)' })
-      }
+      const loggedRevisions = (activityLog || [])
+        .filter((a) => a.dateStr === dateStr && (a.type === 'REVIEW_COMPLETED' || a.type === 'TOPIC_LOCKED'))
+        .map((a) => ({
+          title: a.title,
+        }))
 
-      // Daily Note from dayOverrides (synced with Supabase & local storage!)
-      let note = dayOverrides[dateStr]?.customNote || ''
-      if (!note) {
-        if (isTodayDate) note = 'Starting Surgery HPB after evening duty'
-        else if (isYesterdayDate) note = 'Saw commed 1 vid and did custom module 50-80 and revised git part 3'
-        else if (i === 2) note = 'from 20-25 till 58 written, NOT ANNOTATED yet'
-        else if (i === 3) note = '100 Hemat questions solved, some questions left out'
-        else if (i === 4) note = 'Slides and clinical questions done, pending annotation'
-      }
+      const revisionMap = new Map<string, { title: string }>()
+      topicRevisions.forEach((r) => revisionMap.set(r.title, r))
+      loggedRevisions.forEach((r) => {
+        if (!revisionMap.has(r.title)) revisionMap.set(r.title, r)
+      })
+      const dayRevisions = Array.from(revisionMap.values())
+
+      // 4. Daily Note from dayOverrides (Strictly what the user wrote - NO FAKE FALLBACKS)
+      const note = dayOverrides[dateStr]?.customNote || ''
 
       list.push({
         id: `day-${dateStr}`,
@@ -270,7 +276,7 @@ export const TimelineRoadmap: React.FC = () => {
       })
     }
     return list
-  }, [topics, customModules, subjects, dayOverrides, historyPeriod])
+  }, [topics, customModules, subjects, dayOverrides, historyPeriod, activityLog])
 
   // Filtered past days
   const filteredPastDays = useMemo(() => {
@@ -1110,6 +1116,12 @@ export const TimelineRoadmap: React.FC = () => {
 
                     {/* Auto-Logged Activities */}
                     <div className="space-y-2.5">
+                      {totalActivityCount === 0 && (
+                        <div className="py-2.5 px-3 rounded-xl bg-[#16161c] text-center text-xs text-zinc-500">
+                          No lectures, modules, or revisions logged on this day.
+                        </div>
+                      )}
+
                       {/* Videos Watched */}
                       {day.videos.length > 0 && (
                         <div className="space-y-1.5">
