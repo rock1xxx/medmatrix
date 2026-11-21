@@ -19,6 +19,8 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
     { key: '3', description: 'Timeline Roadmap & GT Schedule' },
     { key: '4', description: '19-Subject Syllabus Directory' },
     { key: '5', description: 'Master Kanban Board' },
+    { key: '6', description: 'Stats & Retention Analytics' },
+    { key: '7', description: 'QBank & Custom Modules' },
     { key: 'S', description: 'Toggle Stretch Queue Drawer' },
     { key: '?', description: 'Open / Close Shortcuts Help' },
     { key: 'Esc', description: 'Close any open modal or drawer' },

@@ -4,6 +4,7 @@ import { DutyShift, GTScheduleItem, Subject, Topic, TopicStatus, ViewMode, DayOv
 import { INITIAL_SUBJECTS, INITIAL_TOPICS, seedSampleSRCards } from '../data/initialSubjects'
 import { INITIAL_CUSTOM_MODULES } from '../data/initialCustomModules'
 import { advanceTopicSR, createInitialSRData, DEFAULT_EBBINGHAUS_INTERVALS, DEFAULT_POSTPONE_DAYS } from '../lib/srEngine'
+import { resolveEffectiveDailyPace } from '../lib/dateUtils'
 import { triggerLockCelebration, triggerMasteredCelebration } from '../lib/confetti'
 import { saveSyncConfigToDevice } from '../lib/widgetBridge'
 import { toast } from 'sonner'
@@ -185,6 +186,7 @@ interface MedMatrixState {
 
   // Topic Pipeline Actions
   updateTopicStatus: (id: string, status: TopicStatus) => void
+  restoreTopicSnapshot: (snapshot: Topic) => void
   bulkUpdateTopicStatus: (ids: string[], status: TopicStatus) => number
   cycleTopicStatusNext: (id: string) => void
   lockTopicIntoSR: (id: string) => void
@@ -358,7 +360,18 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       setDailyPaceTopics: (dailyPaceTopics) => {
-        set({ dailyPaceTopics, lastModified: Date.now() })
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        const { dayOverrides } = get()
+        const todayOverride = dayOverrides[todayStr]
+        const nextOverrides =
+          todayOverride?.customPace !== undefined
+            ? {
+                ...dayOverrides,
+                [todayStr]: { ...todayOverride, customPace: undefined },
+              }
+            : dayOverrides
+
+        set({ dailyPaceTopics, dayOverrides: nextOverrides, lastModified: Date.now() })
         get().reconcileDailyQueue({ forceRefill: false })
         toast.info(`Pace updated to ${dailyPaceTopics} topics/day`)
       },
@@ -376,18 +389,22 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       // Entering the ward-MCQ stage means the video is done. Stamp it once so the
       // MCQ backlog can age; moving a chapter around later never resets the clock.
       updateTopicStatus: (id, status) => {
-        const { topics } = get()
+        const { topics, subjects, ebbinghausIntervals } = get()
         const topic = topics.find((t) => t.id === id)
         if (!topic) return
 
+        const nowDate = new Date()
+        const now = nowDate.toISOString()
+        const firstInterval = ebbinghausIntervals[0] ?? DEFAULT_EBBINGHAUS_INTERVALS[0]
+        const wasLocked = topic.status === 'LOCKED_IN_SR'
+
         let srData = topic.srData
         if (status === 'LOCKED_IN_SR' && !srData) {
-          srData = createInitialSRData()
+          srData = createInitialSRData(nowDate, firstInterval)
           triggerLockCelebration()
           toast.success(`Locked "${topic.title.slice(0, 30)}..." into Spaced Repetition!`)
         }
 
-        const now = new Date().toISOString()
         const updated = topics.map((t) =>
           t.id === id
             ? {
@@ -402,9 +419,10 @@ export const useMedMatrixStore = create<MedMatrixState>()(
 
         set({ topics: updated, lastModified: Date.now() })
 
-        // Log VIDEO_WATCHED if transitioning to STEP_2_WARD_MCQ or first time entering watched stages
+        const subObj = subjects.find((s) => s.id === topic.subjectId)
+
+        // Log VIDEO_WATCHED when transitioning to STEP_2_WARD_MCQ
         if (status === 'STEP_2_WARD_MCQ' && topic.status !== 'STEP_2_WARD_MCQ') {
-          const subObj = get().subjects.find((s) => s.id === topic.subjectId)
           get().logActivity({
             type: 'VIDEO_WATCHED',
             title: topic.title,
@@ -413,6 +431,32 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             metadata: { chapterNumber: topic.chapterNumber, durationMinutes: topic.durationMinutes },
           })
         }
+
+        // Log TOPIC_LOCKED & check SWT completion when newly locked into SR
+        if (status === 'LOCKED_IN_SR' && !wasLocked) {
+          get().logActivity({
+            type: 'TOPIC_LOCKED',
+            title: topic.title,
+            subjectId: topic.subjectId,
+            subjectName: subObj?.name || topic.subjectId,
+          })
+
+          const activeSubTopics = updated.filter((t) => t.subjectId === topic.subjectId)
+          if (activeSubTopics.length > 0 && activeSubTopics.every((t) => t.status === 'LOCKED_IN_SR')) {
+            triggerMasteredCelebration()
+            toast.success(
+              `🏆 ${subObj?.name || 'Subject'} FINISHED! Schedule your Subject-Wise Test (SWT)!`,
+              { duration: 6000 }
+            )
+          }
+        }
+      },
+
+      restoreTopicSnapshot: (snapshot) => {
+        const { topics } = get()
+        const updated = topics.map((t) => (t.id === snapshot.id ? { ...snapshot } : t))
+        set({ topics: updated, lastModified: Date.now() })
+        toast.info(`Undid change for "${snapshot.title.slice(0, 26)}${snapshot.title.length > 26 ? '…' : ''}"`)
       },
 
       // One set() for the whole batch: a bulk edit on the desktop table should not
@@ -421,8 +465,10 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         const targets = new Set(ids)
         if (targets.size === 0) return 0
 
-        const { topics } = get()
-        const updatedAt = new Date().toISOString()
+        const { topics, ebbinghausIntervals } = get()
+        const nowDate = new Date()
+        const updatedAt = nowDate.toISOString()
+        const firstInterval = ebbinghausIntervals[0] ?? DEFAULT_EBBINGHAUS_INTERVALS[0]
         let changed = 0
 
         const updated = topics.map((t) => {
@@ -432,7 +478,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           return {
             ...t,
             status,
-            srData: needsSRData ? createInitialSRData() : t.srData,
+            srData: needsSRData ? createInitialSRData(nowDate, firstInterval) : t.srData,
             watchedAt: t.watchedAt ?? (WATCHED_STAGES.has(status) ? updatedAt : undefined),
             updatedAt,
           }
@@ -474,11 +520,15 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       lockTopicIntoSR: (id) => {
-        const { topics, subjects } = get()
+        const { topics, subjects, ebbinghausIntervals } = get()
         const topic = topics.find((t) => t.id === id)
         if (!topic) return
 
-        const srData = createInitialSRData()
+        const previousSnapshot: Topic = { ...topic }
+        const nowDate = new Date()
+        const nowIso = nowDate.toISOString()
+        const firstInterval = ebbinghausIntervals[0] ?? DEFAULT_EBBINGHAUS_INTERVALS[0]
+        const srData = createInitialSRData(nowDate, firstInterval)
         triggerLockCelebration()
 
         const updated = topics.map((t) =>
@@ -487,13 +537,25 @@ export const useMedMatrixStore = create<MedMatrixState>()(
                 ...t,
                 status: 'LOCKED_IN_SR' as TopicStatus,
                 srData,
-                updatedAt: new Date().toISOString(),
+                watchedAt: t.watchedAt ?? nowIso,
+                updatedAt: nowIso,
               }
             : t
         )
 
         set({ topics: updated, lastModified: Date.now() })
-        toast.success(`🎉 Locked into Spaced Repetition! First review tomorrow.`)
+        toast.success(
+          `Locked into Spaced Repetition! First review in ${firstInterval} ${
+            firstInterval === 1 ? 'day' : 'days'
+          }.`,
+          {
+            duration: 5000,
+            action: {
+              label: 'Undo',
+              onClick: () => get().restoreTopicSnapshot(previousSnapshot),
+            },
+          }
+        )
 
         const subObj = subjects.find((s) => s.id === topic.subjectId)
         get().logActivity({
@@ -503,12 +565,11 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           subjectName: subObj?.name || topic.subjectId,
         })
 
-        // Check if all topics of active subject are now locked!
+        // Check if all topics of this subject are now locked!
         const activeSubTopics = updated.filter((t) => t.subjectId === topic.subjectId)
         const allLocked = activeSubTopics.every((t) => t.status === 'LOCKED_IN_SR')
 
         if (allLocked && activeSubTopics.length > 0) {
-          const subObj = subjects.find((s) => s.id === topic.subjectId)
           triggerMasteredCelebration()
           toast.success(
             `🏆 ${subObj?.name || 'Subject'} FINISHED! Schedule your Subject-Wise Test (SWT)!`,
@@ -522,16 +583,30 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         const topic = topics.find((t) => t.id === id)
         if (!topic || !topic.srData) return
 
+        const previousSnapshot: Topic = {
+          ...topic,
+          srData: { ...topic.srData, history: [...topic.srData.history] },
+        }
         const updatedSR = advanceTopicSR(topic.srData, new Date(), ebbinghausIntervals)
         const isMastered = updatedSR.level >= 4
 
         if (isMastered) {
           triggerMasteredCelebration()
-          toast.success(`⭐ MASTERED! "${topic.title.slice(0, 30)}..." permanently retained!`, {
-            duration: 4000,
+          toast.success(`MASTERED! "${topic.title.slice(0, 30)}..." permanently retained!`, {
+            duration: 5000,
+            action: {
+              label: 'Undo',
+              onClick: () => get().restoreTopicSnapshot(previousSnapshot),
+            },
           })
         } else {
-          toast.success(`Advanced to Level ${updatedSR.level}! Next review on ${updatedSR.nextReviewDate}`)
+          toast.success(`Advanced to Level ${updatedSR.level}! Next review on ${updatedSR.nextReviewDate}`, {
+            duration: 5000,
+            action: {
+              label: 'Undo',
+              onClick: () => get().restoreTopicSnapshot(previousSnapshot),
+            },
+          })
         }
 
         const updated = topics.map((t) =>
@@ -595,6 +670,10 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         const topic = topics.find((t) => t.id === id)
         if (!topic || !topic.srData) return
 
+        const previousSnapshot: Topic = {
+          ...topic,
+          srData: { ...topic.srData, history: [...topic.srData.history] },
+        }
         const effectiveDays = days ?? postponeIntervalDays
         const newDate = addDays(new Date(), effectiveDays)
         const newDateStr = format(newDate, 'yyyy-MM-dd')
@@ -615,7 +694,13 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         )
 
         set({ topics: updated, lastModified: Date.now() })
-        toast.info(`💤 Postponed "${topic.title.slice(0, 24)}..." by ${effectiveDays} days`)
+        toast.info(`Postponed "${topic.title.slice(0, 24)}..." by ${effectiveDays} days`, {
+          duration: 5000,
+          action: {
+            label: 'Undo',
+            onClick: () => get().restoreTopicSnapshot(previousSnapshot),
+          },
+        })
       },
 
       setEbbinghausIntervals: (intervals) => {
@@ -721,15 +806,8 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         const todayStr = options?.dateStr || format(new Date(), 'yyyy-MM-dd')
         const override = dayOverrides[todayStr]
 
-        // 1. Calculate Target Capacity for Today
-        let capacity = dailyPaceTopics || 3
-        if (override?.customPace !== undefined) {
-          capacity = override.customPace
-        } else if (override?.shiftType === 'HIGH') {
-          capacity = Math.max(1, (dailyPaceTopics || 3) - 1)
-        } else if (override?.shiftType === 'LOW') {
-          capacity = (dailyPaceTopics || 3) + 1
-        }
+        // 1. Calculate Target Capacity for Today using shared single source of truth
+        const capacity = resolveEffectiveDailyPace(dailyPaceTopics, override)
 
         // 2. Count Active Videos in STEP_1_WATCHING (including rolled-over from yesterday)
         const activeWatching = topics.filter((t) => t.status === 'STEP_1_WATCHING')
@@ -796,6 +874,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
         const topic = topics.find((t) => t.id === topicId)
         if (!topic) return
 
+        const previousSnapshot: Topic = { ...topic }
         const updated = topics.map((t) =>
           t.id === topicId
             ? {
@@ -815,7 +894,13 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           lastModified: Date.now(),
         })
 
-        toast.info(`Postponed "${topic.title.slice(0, 26)}..." back to Queued.`)
+        toast.info(`Postponed "${topic.title.slice(0, 26)}..." back to Queued.`, {
+          duration: 5000,
+          action: {
+            label: 'Undo',
+            onClick: () => get().restoreTopicSnapshot(previousSnapshot),
+          },
+        })
 
         if (autoRefill) {
           get().reconcileDailyQueue({ forceRefill: false })
@@ -851,11 +936,25 @@ export const useMedMatrixStore = create<MedMatrixState>()(
 
       setTodayPace: (pace) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd')
-        const currentOverride = get().dayOverrides[todayStr] || {}
-        get().setDayOverride(todayStr, { ...currentOverride, customPace: pace })
-        set({ dailyPaceTopics: pace, lastModified: Date.now() })
+        const { dayOverrides } = get()
+        const currentOverride = dayOverrides[todayStr] || {}
+        // Clear any stale customPace so base pace & shift adjustment work together cleanly
+        const updatedOverrides = {
+          ...dayOverrides,
+          [todayStr]: { ...currentOverride, customPace: undefined },
+        }
+        set({
+          dailyPaceTopics: pace,
+          dayOverrides: updatedOverrides,
+          lastModified: Date.now(),
+        })
         get().reconcileDailyQueue({ forceRefill: false })
-        toast.success(`Today's Target Pace set to ${pace} videos/day`)
+        const effectiveTarget = resolveEffectiveDailyPace(pace, updatedOverrides[todayStr])
+        toast.success(
+          effectiveTarget === pace
+            ? `Daily base pace set to ${pace} videos/day`
+            : `Base pace set to ${pace}/day (Today's target: ${effectiveTarget} with shift)`
+        )
       },
 
       markSWTCompleted: (subjectId) => {
@@ -901,9 +1000,14 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       setDayOverride: (dateStr, override) => {
         const { dayOverrides } = get()
         const current = dayOverrides[dateStr] || {}
+        const merged: DayOverride = { ...current, ...override }
+        // Changing shift workload should always take effect instead of being shadowed by a stale customPace
+        if (override.shiftType !== undefined && override.customPace === undefined) {
+          delete merged.customPace
+        }
         const updated = {
           ...dayOverrides,
-          [dateStr]: { ...current, ...override },
+          [dateStr]: merged,
         }
         set({ dayOverrides: updated, lastModified: Date.now() })
         if (dateStr === format(new Date(), 'yyyy-MM-dd')) {
@@ -934,6 +1038,12 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           dailyPaceTopics: 2,
           swtCompletedSubjects: [],
           gtSchedule: INITIAL_GTS,
+          subjectOrder: ['micro', ...INITIAL_SUBJECTS.map((s) => s.id).filter((id) => id !== 'micro')],
+          gtStartThreshold: 7,
+          dayOverrides: {},
+          activityLog: [],
+          ebbinghausIntervals: DEFAULT_EBBINGHAUS_INTERVALS,
+          postponeIntervalDays: DEFAULT_POSTPONE_DAYS,
           mandatoryTopicIds: ['lec-54', 'lec-55'],
           stretchTopicIds: [],
           lastModified: Date.now(),
@@ -993,7 +1103,7 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             supabaseAnonKey: '',
             isConnected: false,
           },
-          lastModified: Date.now(),
+          // Disconnecting is not a study edit; do not bump lastModified.
         }))
         void saveSyncConfigToDevice({
           supabaseUrl: '',
@@ -1004,11 +1114,18 @@ export const useMedMatrixStore = create<MedMatrixState>()(
       },
 
       setSyncKey: (syncKey) => {
+        const trimmed = syncKey.trim() || 'dr-med-sync'
         set((state) => ({
-          syncConfig: { ...state.syncConfig, syncKey },
-          lastModified: Date.now(),
+          syncConfig: { ...state.syncConfig, syncKey: trimmed },
+          // Changing sync key is not a study edit; do not bump lastModified.
         }))
-        toast.success(`Sync Key updated: ${syncKey}`)
+        const cfg = get().syncConfig
+        void saveSyncConfigToDevice({
+          supabaseUrl: cfg.supabaseUrl,
+          supabaseAnonKey: cfg.supabaseAnonKey,
+          syncKey: trimmed,
+        })
+        toast.success(`Sync Key updated: ${trimmed}`)
       },
 
       touchLastModified: () => {
@@ -1270,8 +1387,10 @@ export const useMedMatrixStore = create<MedMatrixState>()(
             stretchTopicIds: parsed.stretchTopicIds || [],
             ebbinghausIntervals: parsed.ebbinghausIntervals || DEFAULT_EBBINGHAUS_INTERVALS,
             postponeIntervalDays: parsed.postponeIntervalDays ?? DEFAULT_POSTPONE_DAYS,
-            lastModified: parsed.lastModified || Date.now(),
+            // Bump clock so an explicit JSON restore out-ranks older/newer cloud state until next edit.
+            lastModified: Date.now(),
           })
+          get().reconcileDailyQueue({ forceRefill: false })
           toast.success('Successfully imported MedMatrix study database!', {
             duration: 8000,
             action: {
@@ -1301,18 +1420,6 @@ export const useMedMatrixStore = create<MedMatrixState>()(
           // Credentials (build-time env, device mirror, or user-entered) are
           // resolved by bootstrapSyncConfig() so they go through a real state
           // update and get persisted, rather than mutating the rehydrated object.
-          if (Array.isArray(state.topics)) {
-            // Clean up dummy seed cards (lec-14, lec-16, lec-24) from previous seed
-            state.topics = state.topics.map((t) => {
-              if (
-                (t.id === 'lec-14' || t.id === 'lec-16' || t.id === 'lec-24') &&
-                (!t.srData?.history || t.srData.history.length <= 1)
-              ) {
-                return { ...t, status: 'QUEUED' as TopicStatus, srData: undefined }
-              }
-              return t
-            })
-          }
           // Automatically reconcile today's prescribed queue based on calendar pace and rollover
           setTimeout(() => {
             try {

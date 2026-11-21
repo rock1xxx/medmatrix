@@ -34,6 +34,7 @@ export const DeviceBackupsModal: React.FC<DeviceBackupsModalProps> = ({ isOpen, 
   const [snapshots, setSnapshots] = useState<DeviceDataSnapshot[]>([])
   const [loading, setLoading] = useState(false)
   const [restoring, setRestoring] = useState<string | null>(null)
+  const [pendingName, setPendingName] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -43,15 +44,26 @@ export const DeviceBackupsModal: React.FC<DeviceBackupsModalProps> = ({ isOpen, 
   }
 
   useEffect(() => {
-    if (isOpen) void load()
+    if (isOpen) {
+      setPendingName(null)
+      void load()
+    }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
   const handleRestore = async (snapshot: DeviceDataSnapshot) => {
     const when = formatDay(snapshot.name)
-    if (!confirm(`Replace the current database with the copy from ${when}?`)) return
-
+    setPendingName(null)
     setRestoring(snapshot.name)
     try {
       const raw = await loadDeviceSnapshotByName(snapshot.name)
@@ -123,36 +135,57 @@ export const DeviceBackupsModal: React.FC<DeviceBackupsModalProps> = ({ isOpen, 
 
         {!loading && snapshots.length > 0 && (
           <div className="space-y-1.5">
-            {snapshots.map((snapshot) => (
-              <div
-                key={snapshot.name}
-                className="flex items-center justify-between gap-3 rounded-xl border border-[#232329] bg-[#0f0f13] px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-zinc-200">
-                    {formatDay(snapshot.name)}
-                  </div>
-                  <div className="text-[10px] text-zinc-500 font-mono">
-                    {(snapshot.bytes / 1024).toFixed(0)} KB
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => void handleRestore(snapshot)}
-                  disabled={restoring !== null}
-                  className="px-3 py-2 rounded-lg text-[11px] font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors active:scale-95 disabled:opacity-50 min-h-[36px]"
+            {snapshots.map((snapshot) => {
+              const isPending = pendingName === snapshot.name
+              return (
+                <div
+                  key={snapshot.name}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[#232329] bg-[#0f0f13] px-3 py-2.5"
                 >
-                  {restoring === snapshot.name ? 'Restoring…' : 'Restore'}
-                </button>
-              </div>
-            ))}
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-zinc-200">
+                      {formatDay(snapshot.name)}
+                    </div>
+                    <div className="text-[10px] text-zinc-500 font-mono">
+                      {(snapshot.bytes / 1024).toFixed(0)} KB
+                    </div>
+                  </div>
+
+                  {isPending ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => void handleRestore(snapshot)}
+                        className="px-3 py-2 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-black transition-colors active:scale-95 min-h-[36px]"
+                      >
+                        Confirm?
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingName(null)}
+                        className="px-2.5 py-2 rounded-lg text-[11px] text-zinc-300 bg-zinc-800 hover:bg-zinc-700 min-h-[36px]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPendingName(snapshot.name)}
+                      disabled={restoring !== null}
+                      className="px-3 py-2 rounded-lg text-[11px] font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors active:scale-95 disabled:opacity-50 min-h-[36px]"
+                    >
+                      {restoring === snapshot.name ? 'Restoring…' : 'Restore'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
         <p className="text-[10px] text-zinc-600">
-          Restoring keeps the copy you are replacing, so ⋮ → Restore Previous State can put it
-          back.
+          Restoring keeps the copy you are replacing, so Sync &amp; Backups → Undo Last Overwrite can put it back.
         </p>
       </div>
     </div>

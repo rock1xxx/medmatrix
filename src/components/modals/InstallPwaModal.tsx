@@ -43,14 +43,17 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
       setDeferredPrompt(e as BeforeInstallPromptEvent)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
-    window.addEventListener('appinstalled', () => {
+    const handleAppInstalled = () => {
       setInstalled(true)
       setDeferredPrompt(null)
-    })
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
+    window.addEventListener('appinstalled', handleAppInstalled)
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
+      window.removeEventListener('appinstalled', handleAppInstalled)
     }
   }, [])
 

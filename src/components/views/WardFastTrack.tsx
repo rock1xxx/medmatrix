@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
-import { Check, ArrowRight, CheckCircle2, Sun, Clock3 } from 'lucide-react'
+import { SubjectIcon } from '../common/SubjectIcon'
+import { Check, ArrowRight, CheckCircle2, Sun, Clock3, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
-import { Topic } from '../../types'
+import { Subject, Topic } from '../../types'
 import {
   AGE_VISIBLE_FROM_DAYS,
   ageClass,
@@ -32,35 +33,116 @@ export const WardFastTrack: React.FC = () => {
     subjects,
     activeSubjectId,
     updateTopicStatus,
+    restoreTopicSnapshot,
     setSelectedTopicForDetail,
     setActiveTab,
   } = useMedMatrixStore()
 
+  const [otherExpandedOverride, setOtherExpandedOverride] = useState<boolean | null>(null)
+
   const activeSubject = subjects.find((s) => s.id === activeSubjectId) || subjects[0]
 
-  // Show ONLY topics for the activeSubjectId in STEP_2_WARD_MCQ
-  const activeWardTopics = topics.filter(
-    (t) => t.status === 'STEP_2_WARD_MCQ' && t.subjectId === activeSubjectId
-  )
+  const allWardTopics = topics.filter((t) => t.status === 'STEP_2_WARD_MCQ')
+  const activeWardTopics = allWardTopics.filter((t) => t.subjectId === activeSubjectId)
+  const otherWardTopics = allWardTopics.filter((t) => t.subjectId !== activeSubjectId)
 
-  const waits = activeWardTopics.map((topic) => ({
+  const isOtherExpanded = otherExpandedOverride ?? activeWardTopics.length === 0
+
+  const waits = allWardTopics.map((topic) => ({
     id: topic.id,
     days: watchedDaysAgo(topic) ?? 0,
   }))
   const oldestWait = waits.reduce((max, item) => Math.max(max, item.days), 0)
 
-  const handleMarkDone = (topicId: string, title: string) => {
-    updateTopicStatus(topicId, 'STEP_3_ANNOTATING')
-    toast.success(`MCQs done for "${title.slice(0, 24)}..."`, {
+  const handleMarkDone = (topic: Topic) => {
+    const previousSnapshot: Topic = { ...topic }
+    updateTopicStatus(topic.id, 'STEP_3_ANNOTATING')
+    toast.success(`MCQs done for "${topic.title.slice(0, 24)}..."`, {
       description: 'Sent to tonight\'s hostel annotations.',
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => restoreTopicSnapshot(previousSnapshot),
+      },
     })
   }
+
+  const renderWardCard = (topic: Topic, subjectBadge?: Subject) => (
+    <div
+      key={topic.id}
+      className="bg-[#141418] border border-[#222228] hover:border-zinc-700 rounded-2xl p-4 space-y-3 transition-all"
+    >
+      {/* Lecture info */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex min-w-0 items-center gap-2 flex-wrap">
+          {subjectBadge && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold shrink-0"
+              style={{
+                backgroundColor: `${subjectBadge.color}15`,
+                borderColor: `${subjectBadge.color}35`,
+                color: subjectBadge.color,
+              }}
+            >
+              <SubjectIcon name={subjectBadge.iconName} size={11} />
+              <span>{subjectBadge.name}</span>
+            </span>
+          )}
+          <span className="shrink-0 text-xs font-mono text-zinc-400">
+            Lec {topic.chapterNumber} • {topic.durationMinutes}m video
+          </span>
+
+          <AgeChip topic={topic} />
+        </div>
+
+        {topic.highYield && (
+          <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-800/40 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+            High-Yield
+          </span>
+        )}
+      </div>
+
+      {/* Title */}
+      <h3
+        onClick={() => setSelectedTopicForDetail(topic)}
+        className="font-bold text-base text-zinc-100 hover:text-emerald-400 cursor-pointer transition-colors leading-snug"
+      >
+        {topic.title}
+      </h3>
+
+      {/* High Yield Tags */}
+      {topic.highYieldTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {topic.highYieldTags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[11px] px-2 py-0.5 rounded-md bg-[#0c0c0e] text-zinc-400 border border-[#202026]"
+            >
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Single Clean 1-Tap Action */}
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={() => handleMarkDone(topic)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black transition-all shadow-md shadow-emerald-950/30"
+        >
+          <Check className="w-4 h-4 stroke-[3]" />
+          <span>Done with MCQs</span>
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="max-w-xl mx-auto space-y-4 px-4 pb-28">
       {/* Header with Morning Sun */}
       <div className="pt-2 pb-1">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
               <Sun className="w-5 h-5" />
@@ -70,8 +152,8 @@ export const WardFastTrack: React.FC = () => {
               <span className="text-[11px] text-zinc-400 font-medium">Morning Shift Sprint</span>
             </div>
           </div>
-          <span className="text-xs font-mono font-medium text-zinc-400 bg-[#16161a] border border-[#26262c] px-2.5 py-1 rounded-lg">
-            {activeWardTopics.length} pending
+          <span className="text-xs font-mono font-medium text-zinc-400 bg-[#16161a] border border-[#26262c] px-2.5 py-1 rounded-lg shrink-0">
+            {allWardTopics.length} pending
             {oldestWait >= AGE_VISIBLE_FROM_DAYS ? (
               <span className="ml-1.5 text-zinc-500">· oldest {oldestWait}d</span>
             ) : null}
@@ -80,7 +162,7 @@ export const WardFastTrack: React.FC = () => {
       </div>
 
       {/* MCQs List */}
-      {activeWardTopics.length === 0 ? (
+      {allWardTopics.length === 0 ? (
         <div className="bg-[#141418] border border-[#202026] rounded-2xl p-8 text-center space-y-3 mt-4">
           <div className="w-10 h-10 rounded-full bg-[#181820] text-emerald-400 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-5 h-5" />
@@ -107,64 +189,57 @@ export const WardFastTrack: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {activeWardTopics.map((topic) => (
-            <div
-              key={topic.id}
-              className="bg-[#141418] border border-[#222228] hover:border-zinc-700 rounded-2xl p-4 space-y-3 transition-all"
-            >
-              {/* Lecture info */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 text-xs font-mono text-zinc-400">
-                    Lec {topic.chapterNumber} • {topic.durationMinutes}m video
-                  </span>
-
-                  <AgeChip topic={topic} />
-                </div>
-
-                {topic.highYield && (
-                  <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-800/40 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
-                    High-Yield
-                  </span>
-                )}
-              </div>
-
-              {/* Title */}
-              <h3
-                onClick={() => setSelectedTopicForDetail(topic)}
-                className="font-bold text-base text-zinc-100 hover:text-emerald-400 cursor-pointer transition-colors leading-snug"
-              >
-                {topic.title}
-              </h3>
-
-              {/* High Yield Tags */}
-              {topic.highYieldTags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {topic.highYieldTags.map((tag) => (
+        <div className="space-y-4">
+          {/* Active Focus Subject MCQs */}
+          {activeWardTopics.length > 0 && (
+            <div className="space-y-3">
+              {otherWardTopics.length > 0 && (
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
                     <span
-                      key={tag}
-                      className="text-[11px] px-2 py-0.5 rounded-md bg-[#0c0c0e] text-zinc-400 border border-[#202026]"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: activeSubject.color }}
+                    />
+                    {activeSubject.name} (Active Focus)
+                  </span>
+                  <span className="text-[11px] font-mono text-zinc-500">{activeWardTopics.length}</span>
                 </div>
               )}
-
-              {/* Single Clean 1-Tap Action */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleMarkDone(topic.id, topic.title)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black transition-all shadow-md shadow-emerald-950/30"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Done with MCQs</span>
-                </button>
-              </div>
+              {activeWardTopics.map((topic) => renderWardCard(topic))}
             </div>
-          ))}
+          )}
+
+          {/* Cross-Subject Pending MCQs */}
+          {otherWardTopics.length > 0 && (
+            <div className="space-y-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setOtherExpandedOverride(!isOtherExpanded)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#141418] border border-[#24242c] hover:border-zinc-700 text-xs font-semibold text-zinc-300 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  {isOtherExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-zinc-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-zinc-400" />
+                  )}
+                  <span>Other Subjects ({otherWardTopics.length})</span>
+                </span>
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  {isOtherExpanded ? 'Hide' : 'Show pending MCQs'}
+                </span>
+              </button>
+
+              {isOtherExpanded && (
+                <div className="space-y-3">
+                  {otherWardTopics.map((topic) => {
+                    const sub = subjects.find((s) => s.id === topic.subjectId)
+                    return renderWardCard(topic, sub)
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

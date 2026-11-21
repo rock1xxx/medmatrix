@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { CustomModule } from '../../types'
 import { QBANK_SUBJECT_TOPICS } from '../../data/qbankTopics'
@@ -15,16 +15,27 @@ import {
   ChevronRight,
   Clipboard,
   Trash2,
-  ExternalLink,
   BookOpen,
+  Clock,
+  Circle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+
+const PRESET_QBANK_TAGS = [
+  'Only PYQ',
+  'NEET',
+  'AIIMS',
+  'INI-CET',
+  'Clinical',
+  'Image-Based',
+  'Slides',
+]
 
 export const QBankView: React.FC = () => {
   const {
     customModules,
     subjects,
-    topics: allTopics,
+    activeSubjectId,
     addCustomModule,
     updateCustomModule,
     deleteCustomModule,
@@ -34,7 +45,7 @@ export const QBankView: React.FC = () => {
 
   // View state
   const [qbankView, setQbankView] = useState<'wall' | 'syllabus'>('wall')
-  const [activeFilter, setActiveFilter] = useState<'all' | 'not_annotated' | 'annotated'>('all')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'not_annotated' | 'partial' | 'annotated'>('all')
   const [searchFilter, setSearchFilter] = useState('')
   const [syllabusSearch, setSyllabusSearch] = useState('')
   const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({
@@ -48,8 +59,9 @@ export const QBankView: React.FC = () => {
 
   // Add Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [newSubjectId, setNewSubjectId] = useState('obg')
+  const [newSubjectId, setNewSubjectId] = useState(activeSubjectId || 'obg')
   const [newSelectedTopics, setNewSelectedTopics] = useState<string[]>([])
+  const [topicSearch, setTopicSearch] = useState('')
   const [newTags, setNewTags] = useState<string[]>(['Only PYQ', 'NEET', 'AIIMS'])
   const [newCode, setNewCode] = useState('')
   const [newCustomTag, setNewCustomTag] = useState('')
@@ -64,6 +76,24 @@ export const QBankView: React.FC = () => {
   const [editNotes, setEditNotes] = useState('')
   const [editAnnotation, setEditAnnotation] = useState<CustomModule['annotationStatus']>('not_annotated')
   const [editSolve, setEditSolve] = useState<CustomModule['solveStatus']>('done')
+  const [confirmDeleteEdit, setConfirmDeleteEdit] = useState(false)
+
+  // Close Add or Edit modals on Escape
+  useEffect(() => {
+    if (!isAddModalOpen && !editModuleId) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (editModuleId) {
+          setEditModuleId(null)
+          setConfirmDeleteEdit(false)
+        } else if (isAddModalOpen) {
+          setIsAddModalOpen(false)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isAddModalOpen, editModuleId])
 
   // Subject quick map
   const subjectMap = useMemo(() => {
@@ -73,6 +103,13 @@ export const QBankView: React.FC = () => {
     })
     return map
   }, [subjects])
+
+  // Quick subject chips with Active Focus always first
+  const quickSubjects = useMemo(() => {
+    const active = subjects.find((s) => s.id === activeSubjectId)
+    const rest = subjects.filter((s) => s.id !== activeSubjectId).slice(0, active ? 6 : 7)
+    return active ? [active, ...rest] : rest
+  }, [subjects, activeSubjectId])
 
   // Topics grouped by subject using official Marrow QBank module curriculum
   const curriculumBySubject = useMemo(() => {
@@ -86,12 +123,14 @@ export const QBankView: React.FC = () => {
   // Summary counts
   const totalCount = customModules.length
   const notAnnotCount = customModules.filter((m) => m.annotationStatus === 'not_annotated').length
+  const partialCount = customModules.filter((m) => m.annotationStatus === 'partial').length
   const annotCount = customModules.filter((m) => m.annotationStatus === 'annotated').length
 
   // Filtered wall items
   const filteredModules = useMemo(() => {
     return customModules.filter((item) => {
       if (activeFilter === 'not_annotated' && item.annotationStatus !== 'not_annotated') return false
+      if (activeFilter === 'partial' && item.annotationStatus !== 'partial') return false
       if (activeFilter === 'annotated' && item.annotationStatus !== 'annotated') return false
 
       if (searchFilter.trim()) {
@@ -156,6 +195,7 @@ export const QBankView: React.FC = () => {
     setEditNotes(item.notes || '')
     setEditAnnotation(item.annotationStatus)
     setEditSolve(item.solveStatus)
+    setConfirmDeleteEdit(false)
   }
 
   // Save Edit Sheet
@@ -170,21 +210,32 @@ export const QBankView: React.FC = () => {
       solveStatus: editSolve,
     })
     setEditModuleId(null)
+    setConfirmDeleteEdit(false)
   }
 
-  // Delete module confirmation
-  const handleDeleteModule = (id: string) => {
-    if (window.confirm('Delete this custom module?')) {
-      deleteCustomModule(id)
-      setEditModuleId(null)
+  // Delete module (confirmed via 2-tap UI, zero browser confirm())
+  const handleConfirmDeleteModule = (id: string) => {
+    deleteCustomModule(id)
+    setEditModuleId(null)
+    setConfirmDeleteEdit(false)
+  }
+
+  // Add custom tag handler
+  const handleAddCustomTag = () => {
+    const clean = newCustomTag.trim()
+    if (!clean) return
+    if (!newTags.some((t) => t.toLowerCase() === clean.toLowerCase())) {
+      setNewTags([...newTags, clean])
     }
+    setNewCustomTag('')
   }
 
   // Open Add Modal
   const handleOpenAddModal = (prefillSubId?: string, prefillTopic?: string) => {
-    const subId = prefillSubId || newSubjectId || 'obg'
+    const subId = prefillSubId || activeSubjectId || newSubjectId || 'obg'
     setNewSubjectId(subId)
     setNewSelectedTopics(prefillTopic ? [prefillTopic] : [])
+    setTopicSearch('')
     setNewCode('')
     setNewCustomTag('')
     setNewNotes('')
@@ -300,7 +351,7 @@ export const QBankView: React.FC = () => {
                   : 'bg-[#14141c] text-zinc-400 border border-zinc-800'
               }`}
             >
-              All Modules ({totalCount})
+              All ({totalCount})
             </button>
             <button
               type="button"
@@ -313,6 +364,18 @@ export const QBankView: React.FC = () => {
             >
               <AlertTriangle className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Not Annotated ({notAnnotCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter('partial')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-all flex items-center gap-1 active:scale-95 ${
+                activeFilter === 'partial'
+                  ? 'bg-amber-500 text-black shadow-sm'
+                  : 'bg-[#14141c] text-amber-300 border border-amber-900/40'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Partial ({partialCount})</span>
             </button>
             <button
               type="button"
@@ -436,8 +499,16 @@ export const QBankView: React.FC = () => {
                                   : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                               }`}
                             >
-                              <Check className="w-3 h-3 stroke-[3]" />
-                              <span>{item.solveStatus === 'done' ? '✓ Solved' : item.solveStatus === 'solving' ? '⏳ Solving' : '⚪ Unsolved'}</span>
+                              {item.solveStatus === 'done' && <Check className="w-3 h-3 stroke-[3]" />}
+                              {item.solveStatus === 'solving' && <Clock className="w-3 h-3 stroke-[2.5]" />}
+                              {item.solveStatus === 'not_done' && <Circle className="w-3 h-3 stroke-[2.5]" />}
+                              <span>
+                                {item.solveStatus === 'done'
+                                  ? 'Solved'
+                                  : item.solveStatus === 'solving'
+                                  ? 'Solving'
+                                  : 'Unsolved'}
+                              </span>
                             </button>
 
                             {/* Annotation Status Cycle */}
@@ -453,14 +524,21 @@ export const QBankView: React.FC = () => {
                                   : 'bg-emerald-950/70 text-emerald-300 border border-emerald-800'
                               }`}
                             >
-                              {item.annotationStatus === 'not_annotated' && <AlertTriangle className="w-3 h-3 text-rose-400 stroke-[2.5]" />}
-                              {item.annotationStatus === 'annotated' && <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />}
+                              {item.annotationStatus === 'not_annotated' && (
+                                <AlertTriangle className="w-3 h-3 text-rose-400 stroke-[2.5]" />
+                              )}
+                              {item.annotationStatus === 'partial' && (
+                                <Clock className="w-3 h-3 text-amber-400 stroke-[2.5]" />
+                              )}
+                              {item.annotationStatus === 'annotated' && (
+                                <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+                              )}
                               <span>
                                 {item.annotationStatus === 'not_annotated'
-                                  ? '⚠️ NOT ANNOTATED'
+                                  ? 'Not Annotated'
                                   : item.annotationStatus === 'partial'
-                                  ? '⏳ PARTIAL NOTE'
-                                  : '✓ ANNOTATED'}
+                                  ? 'Partial Note'
+                                  : 'Annotated'}
                               </span>
                             </button>
                           </div>
@@ -650,8 +728,17 @@ export const QBankView: React.FC = () => {
       {/* MODAL 1: ADD CUSTOM MODULE */}
       {/* ========================================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-[#121217] border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto no-scrollbar flex flex-col">
+        <div
+          onClick={() => setIsAddModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Custom Module"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#121217] border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto no-scrollbar flex flex-col"
+          >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2.5">
@@ -667,6 +754,7 @@ export const QBankView: React.FC = () => {
               </div>
               <button
                 type="button"
+                aria-label="Close add custom module modal"
                 onClick={() => setIsAddModalOpen(false)}
                 className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
               >
@@ -684,6 +772,7 @@ export const QBankView: React.FC = () => {
                 onChange={(e) => {
                   setNewSubjectId(e.target.value)
                   setNewSelectedTopics([])
+                  setTopicSearch('')
                 }}
                 className="w-full bg-[#181822] border border-zinc-700/80 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500"
               >
@@ -694,15 +783,16 @@ export const QBankView: React.FC = () => {
                 ))}
               </select>
 
-              {/* Quick Chips */}
+              {/* Quick Chips (Active Focus prioritized first) */}
               <div className="flex flex-wrap gap-1 pt-1">
-                {subjects.slice(0, 7).map((s) => (
+                {quickSubjects.map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => {
                       setNewSubjectId(s.id)
                       setNewSelectedTopics([])
+                      setTopicSearch('')
                     }}
                     className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
                       newSubjectId === s.id
@@ -711,12 +801,13 @@ export const QBankView: React.FC = () => {
                     }`}
                   >
                     {s.name}
+                    {s.id === activeSubjectId ? ' ★' : ''}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Topics Multi-Select Checklist */}
+            {/* Topics Multi-Select Checklist with Inline Search */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
@@ -727,33 +818,108 @@ export const QBankView: React.FC = () => {
                 </span>
               </div>
 
-              <div className="max-h-36 overflow-y-auto rounded-xl bg-[#161622] border border-zinc-800/80 p-2 space-y-1 divide-y divide-zinc-800/50">
-                {(curriculumBySubject.get(newSubjectId) || []).map((t, idx) => {
-                  const isChecked = newSelectedTopics.includes(t)
-                  return (
-                    <label
-                      key={idx}
-                      className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer hover:bg-zinc-800/40 rounded transition-colors text-xs text-zinc-200"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {
-                          if (isChecked) {
-                            setNewSelectedTopics(newSelectedTopics.filter((x) => x !== t))
-                          } else {
-                            setNewSelectedTopics([...newSelectedTopics, t])
-                          }
-                        }}
-                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0"
-                      />
-                      <span className={`truncate ${isChecked ? 'text-white font-bold' : ''}`}>
-                        {t}
-                      </span>
-                    </label>
-                  )
-                })}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={topicSearch}
+                  onChange={(e) => setTopicSearch(e.target.value)}
+                  placeholder="Filter topics in this subject..."
+                  className="w-full bg-[#181822] border border-zinc-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                />
+                {topicSearch && (
+                  <button
+                    type="button"
+                    aria-label="Clear topic filter"
+                    onClick={() => setTopicSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
+
+              {(() => {
+                const subjectTopics = curriculumBySubject.get(newSubjectId) || []
+                const q = topicSearch.trim().toLowerCase()
+                const filteredTopics = q
+                  ? subjectTopics.filter((t) => t.toLowerCase().includes(q))
+                  : subjectTopics
+                const exactExists =
+                  q.length > 0 &&
+                  (subjectTopics.some((t) => t.toLowerCase() === q) ||
+                    newSelectedTopics.some((t) => t.toLowerCase() === q))
+
+                return (
+                  <div className="max-h-36 overflow-y-auto rounded-xl bg-[#161622] border border-zinc-800/80 p-2 space-y-1 divide-y divide-zinc-800/50">
+                    {filteredTopics.map((t, idx) => {
+                      const isChecked = newSelectedTopics.includes(t)
+                      return (
+                        <label
+                          key={idx}
+                          className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer hover:bg-zinc-800/40 rounded transition-colors text-xs text-zinc-200"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setNewSelectedTopics(newSelectedTopics.filter((x) => x !== t))
+                              } else {
+                                setNewSelectedTopics([...newSelectedTopics, t])
+                              }
+                            }}
+                            className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0"
+                          />
+                          <span className={`truncate ${isChecked ? 'text-white font-bold' : ''}`}>
+                            {t}
+                          </span>
+                        </label>
+                      )
+                    })}
+
+                    {/* Any custom added topics not in preset list */}
+                    {newSelectedTopics
+                      .filter((t) => !subjectTopics.includes(t))
+                      .map((t) => (
+                        <label
+                          key={`custom-${t}`}
+                          className="flex items-center gap-2.5 py-1.5 px-1 cursor-pointer hover:bg-zinc-800/40 rounded transition-colors text-xs text-emerald-300"
+                        >
+                          <input
+                            type="checkbox"
+                            checked
+                            onChange={() =>
+                              setNewSelectedTopics(newSelectedTopics.filter((x) => x !== t))
+                            }
+                            className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0"
+                          />
+                          <span className="truncate font-bold">{t}</span>
+                        </label>
+                      ))}
+
+                    {q.length > 0 && !exactExists && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSelectedTopics([...newSelectedTopics, topicSearch.trim()])
+                          setTopicSearch('')
+                        }}
+                        className="w-full text-left py-1.5 px-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add custom topic &quot;{topicSearch.trim()}&quot;</span>
+                      </button>
+                    )}
+
+                    {filteredTopics.length === 0 && !q && (
+                      <div className="py-3 text-center text-[11px] text-zinc-500">
+                        Type above to add a custom topic name.
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Marrow Code Input with Paste */}
@@ -780,37 +946,58 @@ export const QBankView: React.FC = () => {
               </div>
             </div>
 
-            {/* PYQ Tag Chips */}
-            <div className="space-y-1.5">
+            {/* PYQ Tag Chips + Custom Tag Input */}
+            <div className="space-y-2">
               <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
                 4. Tags:
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {['Only PYQ', 'NEET', 'AIIMS', 'INI-CET', 'Clinical', 'Image-Based', 'Slides'].map(
-                  (tag) => {
-                    const isSelected = newTags.includes(tag)
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setNewTags(newTags.filter((t) => t !== tag))
-                          } else {
-                            setNewTags([...newTags, tag])
-                          }
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                          isSelected
-                            ? 'bg-emerald-500 text-black shadow-sm font-bold'
-                            : 'bg-[#181824] text-zinc-400 border border-zinc-800'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    )
-                  }
-                )}
+                {Array.from(new Set([...PRESET_QBANK_TAGS, ...newTags])).map((tag) => {
+                  const isSelected = newTags.includes(tag)
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setNewTags(newTags.filter((t) => t !== tag))
+                        } else {
+                          setNewTags([...newTags, tag])
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500 text-black shadow-sm font-bold'
+                          : 'bg-[#181824] text-zinc-400 border border-zinc-800'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={newCustomTag}
+                  onChange={(e) => setNewCustomTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddCustomTag()
+                    }
+                  }}
+                  placeholder="Add custom tag (e.g. FMGE, GT Review)..."
+                  className="flex-1 bg-[#181822] border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomTag}
+                  disabled={!newCustomTag.trim()}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-xs font-semibold text-zinc-200 transition-colors shrink-0"
+                >
+                  Add Tag
+                </button>
               </div>
             </div>
 
@@ -938,8 +1125,20 @@ export const QBankView: React.FC = () => {
       {/* MODAL 2: EDIT CUSTOM MODULE SHEET */}
       {/* ========================================================================= */}
       {editModuleId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-md bg-[#13131b] border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto no-scrollbar flex flex-col">
+        <div
+          onClick={() => {
+            setEditModuleId(null)
+            setConfirmDeleteEdit(false)
+          }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit Custom Module"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[#13131b] border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto no-scrollbar flex flex-col"
+          >
             {/* Header */}
             <div className="flex items-start justify-between border-b border-zinc-800 pb-3">
               <div>
@@ -952,7 +1151,11 @@ export const QBankView: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setEditModuleId(null)}
+                aria-label="Close edit custom module modal"
+                onClick={() => {
+                  setEditModuleId(null)
+                  setConfirmDeleteEdit(false)
+                }}
                 className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
               >
                 <X className="w-5 h-5" />
@@ -1083,20 +1286,43 @@ export const QBankView: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="pt-2 border-t border-zinc-800 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => handleDeleteModule(editModuleId)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 border border-rose-900/40 flex items-center gap-1 active:scale-95"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete</span>
-              </button>
-
-              <div className="flex items-center gap-2">
+            <div className="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
+              {confirmDeleteEdit ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmDeleteModule(editModuleId)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500 hover:bg-rose-400 text-black flex items-center gap-1 active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirm Delete?</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteEdit(false)}
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-300 bg-zinc-800 hover:bg-zinc-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setEditModuleId(null)}
+                  onClick={() => setConfirmDeleteEdit(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 border border-rose-900/40 flex items-center gap-1 active:scale-95"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditModuleId(null)
+                    setConfirmDeleteEdit(false)
+                  }}
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white"
                 >
                   Cancel

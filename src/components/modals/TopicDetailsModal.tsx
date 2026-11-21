@@ -2,37 +2,44 @@ import React, { useState, useEffect } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { SubjectIcon } from '../common/SubjectIcon'
 import { getTopicSRStatus, getSRStatusMetadata, getLevelDescription } from '../../lib/srEngine'
-import { X, Lock, CheckCircle2, FileEdit } from 'lucide-react'
+import { X, Lock, CheckCircle2, FileEdit, PlayCircle, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 export const TopicDetailsModal: React.FC = () => {
   const {
+    topics,
     selectedTopicForDetail,
     setSelectedTopicForDetail,
     subjects,
+    ebbinghausIntervals,
+    updateTopicStatus,
     lockTopicIntoSR,
     advanceSRLevel,
     updateMarginNotes,
   } = useMedMatrixStore()
 
+  // Always read the live topic from the store so status/SR updates stay fresh
+  const liveTopic = selectedTopicForDetail
+    ? topics.find((t) => t.id === selectedTopicForDetail.id) ?? selectedTopicForDetail
+    : null
+
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
-    if (selectedTopicForDetail) {
-      setNotes(selectedTopicForDetail.marginNotes || '')
+    if (liveTopic) {
+      setNotes(liveTopic.marginNotes || '')
     }
-  }, [selectedTopicForDetail])
+  }, [liveTopic?.id, liveTopic?.marginNotes])
 
-  if (!selectedTopicForDetail) return null
+  if (!liveTopic) return null
 
-  const topic = selectedTopicForDetail
+  const topic = liveTopic
   const subject = subjects.find((s) => s.id === topic.subjectId)
   const srStatus = getTopicSRStatus(topic)
   const meta = getSRStatusMetadata(srStatus)
 
   const handleSaveNotes = () => {
     updateMarginNotes(topic.id, notes)
-    setSelectedTopicForDetail({ ...topic, marginNotes: notes })
     toast.success('Margin note saved!')
   }
 
@@ -45,7 +52,12 @@ export const TopicDetailsModal: React.FC = () => {
       />
 
       {/* Modal Bottom Sheet Dialog */}
-      <div className="relative bg-[#141418] border-t sm:border border-[#26262e] rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl p-5 z-10 space-y-4 max-h-[88vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 safe-bottom">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Topic details for ${topic.title}`}
+        className="relative bg-[#141418] border-t sm:border border-[#26262e] rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl p-5 z-10 space-y-4 max-h-[88vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 safe-bottom"
+      >
         {/* Mobile Drag Indicator */}
         <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-1 sm:hidden" />
 
@@ -64,6 +76,7 @@ export const TopicDetailsModal: React.FC = () => {
 
           <button
             type="button"
+            aria-label="Close topic details"
             onClick={() => setSelectedTopicForDetail(null)}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
@@ -133,7 +146,7 @@ export const TopicDetailsModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Spaced Repetition Action */}
+        {/* Pipeline / Spaced Repetition Action */}
         {topic.status === 'LOCKED_IN_SR' && topic.srData ? (
           <div className="bg-[#0c0c0e] border border-emerald-900/40 rounded-xl p-3.5 space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
@@ -152,29 +165,89 @@ export const TopicDetailsModal: React.FC = () => {
               <div className="flex justify-between">
                 <span>Current Interval:</span>
                 <span className="text-zinc-200 font-mono font-medium">
-                  {getLevelDescription(topic.srData.level)}
+                  {getLevelDescription(topic.srData.level, ebbinghausIntervals)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>Next Review:</span>
-                <span className="text-zinc-200 font-mono font-medium">
-                  {topic.srData.nextReviewDate}
-                </span>
-              </div>
+              {srStatus !== 'MASTERED' && (
+                <div className="flex justify-between">
+                  <span>Next Review:</span>
+                  <span className="text-zinc-200 font-mono font-medium">
+                    {topic.srData.nextReviewDate}
+                  </span>
+                </div>
+              )}
             </div>
 
+            {srStatus !== 'MASTERED' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  advanceSRLevel(topic.id)
+                  setSelectedTopicForDetail(null)
+                }}
+                className="w-full mt-2 py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
+              >
+                <CheckCircle2 size={15} />
+                <span>Mark Reviewed Today</span>
+              </button>
+            ) : (
+              <div className="mt-2 py-2.5 px-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-center font-semibold">
+                All 4 Ebbinghaus cycles completed — permanently mastered.
+              </div>
+            )}
+          </div>
+        ) : topic.status === 'QUEUED' ? (
+          <div className="space-y-2">
             <button
               type="button"
               onClick={() => {
-                advanceSRLevel(topic.id)
+                updateTopicStatus(topic.id, 'STEP_1_WATCHING')
+                toast.success(`Moved "${topic.title.slice(0, 26)}..." to Tonight's Videos`)
                 setSelectedTopicForDetail(null)
               }}
-              className="w-full mt-2 py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-all active:scale-95 flex items-center justify-center gap-1.5 min-h-[44px]"
+              className="w-full py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[46px]"
             >
-              <CheckCircle2 size={15} />
-              <span>Mark Reviewed Today</span>
+              <PlayCircle size={15} />
+              <span>Start Watching Tonight</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                lockTopicIntoSR(topic.id)
+                setSelectedTopicForDetail(null)
+              }}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Lock size={14} />
+              <span>Already Completed &rarr; Lock Directly into SR</span>
             </button>
           </div>
+        ) : topic.status === 'STEP_1_WATCHING' ? (
+          <button
+            type="button"
+            onClick={() => {
+              updateTopicStatus(topic.id, 'STEP_2_WARD_MCQ')
+              toast.success(`Watched! Sent "${topic.title.slice(0, 26)}..." to Ward MCQs`)
+              setSelectedTopicForDetail(null)
+            }}
+            className="w-full py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[46px]"
+          >
+            <ArrowRight size={15} />
+            <span>Watched &rarr; Move to Ward MCQs</span>
+          </button>
+        ) : topic.status === 'STEP_2_WARD_MCQ' ? (
+          <button
+            type="button"
+            onClick={() => {
+              updateTopicStatus(topic.id, 'STEP_3_ANNOTATING')
+              toast.success(`Ward MCQs done! Moved "${topic.title.slice(0, 26)}..." to Annotate`)
+              setSelectedTopicForDetail(null)
+            }}
+            className="w-full py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[46px]"
+          >
+            <ArrowRight size={15} />
+            <span>MCQs Done &rarr; Move to Annotating</span>
+          </button>
         ) : (
           <button
             type="button"

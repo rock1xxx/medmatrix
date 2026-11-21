@@ -163,11 +163,18 @@ export function App() {
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
+      // Never hijack browser/OS modifier shortcuts (e.g. Cmd+S, Ctrl+S, Alt+1)
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return
+      }
+
+      const target = e.target as HTMLElement | null
       if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT'
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
       ) {
         return
       }
@@ -193,6 +200,7 @@ export function App() {
       } else if (e.key === 'Escape') {
         setStretchDrawerOpen(false)
         setShortcutsModalOpen(false)
+        setWidgetSettingsOpen(false)
         setSelectedTopicForDetail(null)
       }
     }

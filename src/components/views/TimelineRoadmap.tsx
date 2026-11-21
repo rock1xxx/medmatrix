@@ -3,6 +3,8 @@ import { toast } from 'sonner'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { SubjectFlowModal } from '../modals/SubjectFlowModal'
 import { generateCalendarProjection } from '../../lib/calendarProjection'
+import { toLocalDateKey } from '../../lib/dateUtils'
+import { buildDaywiseHistory } from '../../lib/historyIndex'
 import { ProjectedDayItem, DayShiftTag } from '../../types'
 import {
   CalendarDays,
@@ -30,7 +32,6 @@ import {
   format,
   addMonths,
   subMonths,
-  subDays,
   startOfMonth,
   endOfMonth,
   startOfWeek,
@@ -59,6 +60,7 @@ export const TimelineRoadmap: React.FC = () => {
     setDayOverride,
     customModules,
     activityLog,
+    setSelectedTopicForDetail,
   } = useMedMatrixStore()
 
   const [viewMode, setViewMode] = useState<'calendar' | 'agenda' | 'history'>('calendar')
@@ -69,9 +71,10 @@ export const TimelineRoadmap: React.FC = () => {
   const [editingDayNoteText, setEditingDayNoteText] = useState('')
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
   const [flowModalOpen, setFlowModalOpen] = useState(false)
-  
-  // Selected day for detailed inspector modal
-  const [selectedDayItem, setSelectedDayItem] = useState<ProjectedDayItem | null>(null)
+  const [agendaLimit, setAgendaLimit] = useState(45)
+
+  // Selected day date for detailed inspector modal (derived live from projection so shift edits refresh immediately)
+  const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null)
   
   // GT Score Modal State
   const [selectedGTForScore, setSelectedGTForScore] = useState<string | null>(null)
@@ -123,10 +126,16 @@ export const TimelineRoadmap: React.FC = () => {
     )
   }, [projectedDayMap, activeCalendarDate, projection.projectedDays])
 
+  // Live projected day for the detail modal
+  const selectedDayItem = useMemo(() => {
+    if (!selectedDayDate) return null
+    return projectedDayMap.get(selectedDayDate) ?? null
+  }, [selectedDayDate, projectedDayMap])
+
   // 2. Global metrics
   const totalTopics = topics.length
   const lockedCount = topics.filter((t) => t.status === 'LOCKED_IN_SR').length
-  const progressPct = Math.round((lockedCount / totalTopics) * 100)
+  const progressPct = Math.round((lockedCount / Math.max(1, totalTopics)) * 100)
   const remainingHours = Math.round(
     topics
       .filter((t) => t.status !== 'LOCKED_IN_SR')
@@ -146,137 +155,51 @@ export const TimelineRoadmap: React.FC = () => {
   // Save Shift Override handler
   const handleShiftChange = (dateStr: string, shift: DayShiftTag) => {
     setDayOverride(dateStr, { shiftType: shift })
-    if (selectedDayItem && selectedDayItem.date === dateStr) {
-      setSelectedDayItem({
-        ...selectedDayItem,
-        shiftType: shift,
-      })
-    }
   }
 
-  // 4. Daywise History Calculation (Auto-logged past activities from MedMatrix + daily notes)
-  const pastDaysHistory = useMemo(() => {
-    const list = []
+  // Dynamic month options for Daywise History (current + recent 5 months + any month with recorded activity)
+  const historyMonthOptions = useMemo(() => {
+    const monthSet = new Set<string>()
     const today = new Date()
-
-    // Determine scan range based on user selected period
-    let daysToScan = 14
-    if (historyPeriod === 'all') {
-      daysToScan = 120
-    } else if (historyPeriod.includes('-')) {
-      daysToScan = 90
+    for (let i = 0; i < 6; i++) {
+      monthSet.add(format(subMonths(today, i), 'yyyy-MM'))
     }
-
-    for (let i = 0; i < daysToScan; i++) {
-      const d = subDays(today, i)
-      const dateStr = format(d, 'yyyy-MM-dd')
-
-      // Filter by month if specific month selected (e.g. '2026-11', '2026-10')
-      if (historyPeriod.includes('-') && !dateStr.startsWith(historyPeriod)) {
-        continue
-      }
-
-      const isTodayDate = i === 0
-      const isYesterdayDate = i === 1
-      const relativeLabel = isTodayDate ? 'Today' : isYesterdayDate ? 'Yesterday' : `${i} days ago`
-      const dateLabel = format(d, 'EEEE, d MMM yyyy')
-
-      // 1. Videos watched on this day (Real timestamps from topic.watchedAt + activityLog)
-      const topicVideos = topics
-        .filter((t) => t.watchedAt && t.watchedAt.startsWith(dateStr))
-        .map((t) => ({
-          subject: subjects.find((s) => s.id === t.subjectId)?.name || t.subjectId,
-          title: t.title,
-          status: 'Watched → Ward MCQ',
-        }))
-
-      const loggedVideos = (activityLog || [])
-        .filter((a) => a.dateStr === dateStr && a.type === 'VIDEO_WATCHED')
-        .map((a) => ({
-          subject: a.subjectName || subjects.find((s) => s.id === a.subjectId)?.name || 'Medical',
-          title: a.title,
-          status: 'Watched → Ward MCQ',
-        }))
-
-      // Deduplicate by title
-      const videoMap = new Map<string, { subject: string; title: string; status: string }>()
-      topicVideos.forEach((v) => videoMap.set(v.title, v))
-      loggedVideos.forEach((v) => {
-        if (!videoMap.has(v.title)) videoMap.set(v.title, v)
-      })
-      const dayVideos = Array.from(videoMap.values())
-
-      // 2. Custom modules solved on this day (Real timestamps from customModules + activityLog)
-      const realModules = (customModules || [])
-        .filter(
-          (m) =>
-            (m.solvedAt && m.solvedAt.startsWith(dateStr)) ||
-            (m.solveStatus === 'done' && m.createdAt && m.createdAt.startsWith(dateStr))
-        )
-        .map((m) => ({
-          code: m.code || 'DONE',
-          title: m.topicTitle,
-          notAnnotated: m.annotationStatus === 'not_annotated',
-        }))
-
-      const loggedModules = (activityLog || [])
-        .filter((a) => a.dateStr === dateStr && a.type === 'MODULE_SOLVED')
-        .map((a) => ({
-          code: a.code || 'DONE',
-          title: a.title,
-          notAnnotated: a.metadata?.annotationStatus === 'not_annotated',
-        }))
-
-      const moduleMap = new Map<string, { code: string; title: string; notAnnotated: boolean }>()
-      realModules.forEach((m) => moduleMap.set(m.code + m.title, m))
-      loggedModules.forEach((m) => {
-        const key = m.code + m.title
-        if (!moduleMap.has(key)) moduleMap.set(key, m)
-      })
-      const dayModules = Array.from(moduleMap.values())
-
-      // 3. Revisions done on this day (Real timestamps from srData + activityLog)
-      const topicRevisions = topics
-        .filter(
-          (t) =>
-            (t.srData?.history && t.srData.history.some((h) => h.reviewedAt && h.reviewedAt.startsWith(dateStr))) ||
-            (t.srData?.lockedAt && t.srData.lockedAt.startsWith(dateStr))
-        )
-        .map((t) => ({
-          title: t.title,
-        }))
-
-      const loggedRevisions = (activityLog || [])
-        .filter((a) => a.dateStr === dateStr && (a.type === 'REVIEW_COMPLETED' || a.type === 'TOPIC_LOCKED'))
-        .map((a) => ({
-          title: a.title,
-        }))
-
-      const revisionMap = new Map<string, { title: string }>()
-      topicRevisions.forEach((r) => revisionMap.set(r.title, r))
-      loggedRevisions.forEach((r) => {
-        if (!revisionMap.has(r.title)) revisionMap.set(r.title, r)
-      })
-      const dayRevisions = Array.from(revisionMap.values())
-
-      // 4. Daily Note from dayOverrides (Strictly what the user wrote - NO FAKE FALLBACKS)
-      const note = dayOverrides[dateStr]?.customNote || ''
-
-      list.push({
-        id: `day-${dateStr}`,
-        dateStr,
-        dateLabel,
-        relativeLabel,
-        isToday: isTodayDate,
-        isYesterday: isYesterdayDate,
-        videos: dayVideos,
-        modules: dayModules,
-        revisions: dayRevisions,
-        note,
-      })
+    const collectKey = (val: string | undefined | null) => {
+      const key = toLocalDateKey(val)
+      if (key) monthSet.add(key.slice(0, 7))
     }
-    return list
-  }, [topics, customModules, subjects, dayOverrides, historyPeriod, activityLog])
+    topics.forEach((t) => {
+      collectKey(t.watchedAt)
+      collectKey(t.srData?.lockedAt)
+      t.srData?.history?.forEach((h) => collectKey(h.reviewedAt))
+    })
+    ;(customModules || []).forEach((m) => {
+      collectKey(m.solvedAt)
+      collectKey(m.createdAt)
+    })
+    ;(activityLog || []).forEach((a) => collectKey(a.dateStr))
+
+    return Array.from(monthSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((ym) => ({
+        value: ym,
+        label: format(parseISO(`${ym}-01`), 'MMMM yyyy'),
+      }))
+  }, [topics, customModules, activityLog])
+
+  // 4. Daywise History Calculation (O(N) pre-indexed past activities + daily notes)
+  const pastDaysHistory = useMemo(
+    () =>
+      buildDaywiseHistory({
+        topics,
+        customModules: customModules || [],
+        subjects,
+        dayOverrides,
+        activityLog: activityLog || [],
+        historyPeriod,
+      }),
+    [topics, customModules, subjects, dayOverrides, historyPeriod, activityLog]
+  )
 
   // Filtered past days
   const filteredPastDays = useMemo(() => {
@@ -309,7 +232,7 @@ export const TimelineRoadmap: React.FC = () => {
     if (!selectedGTForScore) return
     const scoreVal = parseInt(scoreInput, 10)
     if (isNaN(scoreVal) || scoreVal < 0 || scoreVal > 800) {
-      alert('Please enter a valid NEET PG score between 0 and 800.')
+      toast.error('Please enter a valid NEET PG score between 0 and 800.')
       return
     }
     const pctVal = percentileInput ? parseFloat(percentileInput) : undefined
@@ -572,7 +495,6 @@ export const TimelineRoadmap: React.FC = () => {
                   key={dateStr}
                   onClick={() => {
                     setActiveCalendarDate(dateStr)
-                    if (projected) setSelectedDayItem(projected)
                   }}
                   className={`min-h-[58px] sm:min-h-[85px] p-1 sm:p-1.5 rounded-xl border transition-all flex flex-col justify-between ${
                     !isCurrent
@@ -693,7 +615,7 @@ export const TimelineRoadmap: React.FC = () => {
               {activeDayProjected && (
                 <button
                   type="button"
-                  onClick={() => setSelectedDayItem(activeDayProjected)}
+                  onClick={() => setSelectedDayDate(activeDayProjected.date)}
                   className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1"
                 >
                   Adjust Shift &rarr;
@@ -714,8 +636,9 @@ export const TimelineRoadmap: React.FC = () => {
                       Day {activeDayProjected.dayNumber} • {activeDayProjected.subjectName}
                     </span>
                   </div>
-                  <span
-                    onClick={() => setSelectedDayItem(activeDayProjected)}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDayDate(activeDayProjected.date)}
                     className={`cursor-pointer text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
                       activeDayProjected.shiftType === 'HIGH'
                         ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
@@ -725,7 +648,7 @@ export const TimelineRoadmap: React.FC = () => {
                     }`}
                   >
                     {activeDayProjected.shiftType} Workload ▾
-                  </span>
+                  </button>
                 </div>
 
                 {/* Topics to watch */}
@@ -736,17 +659,19 @@ export const TimelineRoadmap: React.FC = () => {
                     </div>
                     <div className="grid gap-1.5">
                       {activeDayProjected.topicsToWatch.map((topic, tIdx) => (
-                        <div
+                        <button
                           key={topic.id}
-                          className="flex items-center justify-between text-xs bg-[#121217] px-3 py-2 rounded-xl border border-zinc-800/80 gap-2"
+                          type="button"
+                          onClick={() => setSelectedTopicForDetail(topic)}
+                          className="w-full text-left flex items-center justify-between text-xs bg-[#121217] hover:bg-[#191924] hover:border-emerald-500/40 px-3 py-2 rounded-xl border border-zinc-800/80 gap-2 transition-colors cursor-pointer"
                         >
-                          <span className="text-zinc-200 font-medium truncate flex-1">
+                          <span className="text-zinc-200 hover:text-emerald-300 font-medium truncate flex-1">
                             {tIdx + 1}. {topic.title}
                           </span>
                           <span className="text-[10.5px] font-mono text-zinc-400 shrink-0">
                             {topic.durationMinutes} min
                           </span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -841,7 +766,7 @@ export const TimelineRoadmap: React.FC = () => {
             <span>Tap shift tag to adjust load</span>
           </div>
 
-          {projection.projectedDays.slice(0, 45).map((day) => {
+          {projection.projectedDays.slice(0, agendaLimit).map((day) => {
             const parsedDate = parseISO(day.date)
             const isTodayDate = isToday(parsedDate)
 
@@ -948,9 +873,11 @@ export const TimelineRoadmap: React.FC = () => {
 
                       <div className="space-y-1 pl-3 border-l border-zinc-800/80">
                         {day.topicsToWatch.map((topic) => (
-                          <div
+                          <button
                             key={topic.id}
-                            className="text-xs flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-[#101014] border border-[#202026]"
+                            type="button"
+                            onClick={() => setSelectedTopicForDetail(topic)}
+                            className="w-full text-left text-xs flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-[#101014] hover:bg-[#181822] border border-[#202026] hover:border-emerald-500/40 transition-colors cursor-pointer"
                           >
                             <div className="flex items-center gap-2 truncate min-w-0">
                               <span className="text-zinc-400 font-mono text-[11px] shrink-0">
@@ -963,7 +890,7 @@ export const TimelineRoadmap: React.FC = () => {
                             <span className="text-[11px] font-mono text-zinc-400 shrink-0 ml-2">
                               {topic.durationMinutes}m
                             </span>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -1007,6 +934,25 @@ export const TimelineRoadmap: React.FC = () => {
               </div>
             )
           })}
+
+          {projection.projectedDays.length > agendaLimit && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setAgendaLimit((prev) => prev + 45)}
+                className="px-4 py-2 rounded-xl bg-[#141418] hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-200 transition-colors"
+              >
+                Show 45 more days ({projection.projectedDays.length - agendaLimit} remaining)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgendaLimit(projection.projectedDays.length)}
+                className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                Show all
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1029,12 +975,15 @@ export const TimelineRoadmap: React.FC = () => {
                 <select
                   value={historyPeriod}
                   onChange={(e) => setHistoryPeriod(e.target.value)}
+                  aria-label="Filter history period"
                   className="bg-[#181822] border border-zinc-700/80 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
                 >
                   <option value="last14">Tracking Past 14 Days</option>
-                  <option value="2026-11">November 2026</option>
-                  <option value="2026-10">October 2026</option>
-                  <option value="2026-09">September 2026</option>
+                  {historyMonthOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                   <option value="all">All Recorded History</option>
                 </select>
               </div>
@@ -1294,11 +1243,16 @@ export const TimelineRoadmap: React.FC = () => {
       {selectedDayItem && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div
-            onClick={() => setSelectedDayItem(null)}
+            onClick={() => setSelectedDayDate(null)}
             className="fixed inset-0"
           />
 
-          <div className="relative bg-[#141418] border-t sm:border border-zinc-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[85vh] sm:max-h-[80vh] overflow-y-auto z-10 animate-in slide-in-from-bottom duration-200 safe-bottom">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Schedule details for ${selectedDayItem.date}`}
+            className="relative bg-[#141418] border-t sm:border border-zinc-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[85vh] sm:max-h-[80vh] overflow-y-auto z-10 animate-in slide-in-from-bottom duration-200 safe-bottom"
+          >
             {/* Mobile Drag Indicator Handle */}
             <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-1 sm:hidden" />
 
@@ -1314,7 +1268,8 @@ export const TimelineRoadmap: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedDayItem(null)}
+                aria-label="Close day schedule"
+                onClick={() => setSelectedDayDate(null)}
                 className="text-zinc-400 hover:text-white p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center"
               >
                 <X size={18} />
@@ -1390,9 +1345,14 @@ export const TimelineRoadmap: React.FC = () => {
 
                   <div className="space-y-1.5">
                     {selectedDayItem.topicsToWatch.map((topic) => (
-                      <div
+                      <button
                         key={topic.id}
-                        className="p-2.5 bg-[#101014] border border-[#202026] rounded-xl text-xs flex justify-between items-center"
+                        type="button"
+                        onClick={() => {
+                          setSelectedDayDate(null)
+                          setSelectedTopicForDetail(topic)
+                        }}
+                        className="w-full text-left p-2.5 bg-[#101014] hover:bg-[#181822] border border-[#202026] hover:border-emerald-500/40 rounded-xl text-xs flex justify-between items-center transition-colors cursor-pointer"
                       >
                         <span className="truncate text-zinc-200 font-medium">
                           Lec {topic.chapterNumber}: {topic.title}
@@ -1400,7 +1360,7 @@ export const TimelineRoadmap: React.FC = () => {
                         <span className="text-[11px] font-mono text-zinc-400 shrink-0 ml-2">
                           {topic.durationMinutes}m
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1433,7 +1393,7 @@ export const TimelineRoadmap: React.FC = () => {
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => setSelectedDayItem(null)}
+                onClick={() => setSelectedDayDate(null)}
                 className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold active:scale-95 transition-all min-h-[40px]"
               >
                 Done

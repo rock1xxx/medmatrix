@@ -1,5 +1,6 @@
 import { Topic, Subject, GTScheduleItem, ProjectedDayItem, DayOverride, DayShiftTag } from '../types'
 import { addDays, format, differenceInDays } from 'date-fns'
+import { resolveEffectiveDailyPace } from './dateUtils'
 
 export interface SubjectDaySpan {
   subjectId: string
@@ -103,17 +104,8 @@ export function generateCalendarProjection({
     const override = dayOverrides[dateStr]
     const shiftType: DayShiftTag = override?.shiftType || 'MEDIUM'
 
-    // Determine pace for this day
-    let effectivePace = dailyPaceTopics || 2
-    if (override?.customPace !== undefined) {
-      effectivePace = override.customPace
-    } else if (shiftType === 'HIGH') {
-      // High work shift (e.g. casualty/heavy ward duty) -> reduced pace
-      effectivePace = Math.max(1, dailyPaceTopics - 1)
-    } else if (shiftType === 'LOW') {
-      // Low work / light day -> sprint pace
-      effectivePace = dailyPaceTopics + 1
-    }
+    // Determine pace for this day using shared single source of truth
+    const effectivePace = resolveEffectiveDailyPace(dailyPaceTopics, override)
 
     // Check: Is today a GT Day?
     // GTs only begin after completedSubjectCount >= gtStartThreshold

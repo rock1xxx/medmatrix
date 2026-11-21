@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { SubjectIcon } from '../common/SubjectIcon'
 import { getTopicSRStatus } from '../../lib/srEngine'
+import { isSameLocalDateKey, resolveEffectiveDailyPace } from '../../lib/dateUtils'
 import { RevisionPullDrawer } from '../modals/RevisionPullDrawer'
 import {
   Lock,
@@ -14,17 +15,22 @@ import {
   RotateCcw,
   Target,
   Sparkles,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import type { Subject, Topic } from '../../types'
 
 export const HostelCommandCenter: React.FC = () => {
   const {
     topics,
     subjects,
+    subjectOrder,
     activeSubjectId,
     setActiveSubjectId,
     updateTopicStatus,
+    restoreTopicSnapshot,
     lockTopicIntoSR,
     advanceSRLevel,
     snoozeTopicSR,
@@ -42,16 +48,28 @@ export const HostelCommandCenter: React.FC = () => {
     reconcileDailyQueue,
   } = useMedMatrixStore()
 
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(3) // Default to step 3 (Tonight's Videos) if annotations are empty
+  // Smart default: Annotate if any annotations are waiting -> Reviews if any due -> Videos
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(() => {
+    if (topics.some((t) => t.status === 'STEP_3_ANNOTATING')) return 1
+    const hasDueReview = topics.some((t) => {
+      if (t.status !== 'LOCKED_IN_SR' || !t.srData) return false
+      const s = getTopicSRStatus(t)
+      return s === 'DUE_TODAY' || s === 'OVERDUE'
+    })
+    if (hasDueReview) return 2
+    return 3
+  })
   const [speed, setSpeed] = useState<'1x' | '1.5x' | '2x'>('1.5x')
   const [revisionDrawerOpen, setRevisionDrawerOpen] = useState(false)
+  const [otherAnnotExpandedOverride, setOtherAnnotExpandedOverride] = useState<boolean | null>(null)
 
   const activeSubject = subjects.find((s) => s.id === activeSubjectId) || subjects[0]
 
-  // Step 1: Pending Annotations (filter by active subject, but allow seeing other subjects if needed)
-  const activeSubjectAnnotations = topics.filter(
-    (t) => t.status === 'STEP_3_ANNOTATING' && t.subjectId === activeSubjectId
-  )
+  // Step 1: Pending Annotations (Active Focus first + collapsible Other Subjects so nothing is hidden)
+  const allAnnotations = topics.filter((t) => t.status === 'STEP_3_ANNOTATING')
+  const activeSubjectAnnotations = allAnnotations.filter((t) => t.subjectId === activeSubjectId)
+  const otherSubjectAnnotations = allAnnotations.filter((t) => t.subjectId !== activeSubjectId)
+  const isOtherAnnotExpanded = otherAnnotExpandedOverride ?? activeSubjectAnnotations.length === 0
 
   // Step 2: 15-Min Spaced Reviews (Global across all locked subjects)
   const srTopics = topics.filter((t) => t.status === 'LOCKED_IN_SR' && t.srData)
@@ -63,23 +81,14 @@ export const HostelCommandCenter: React.FC = () => {
   // Step 3: Dynamic Date-Driven Video Queue
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const todayOverride = dayOverrides[todayStr]
-
-  let todayTarget = dailyPaceTopics || 3
-  if (todayOverride?.customPace !== undefined) {
-    todayTarget = todayOverride.customPace
-  } else if (todayOverride?.shiftType === 'HIGH') {
-    todayTarget = Math.max(1, (dailyPaceTopics || 3) - 1)
-  } else if (todayOverride?.shiftType === 'LOW') {
-    todayTarget = (dailyPaceTopics || 3) + 1
-  }
+  const basePace = dailyPaceTopics || 2
+  const todayTarget = resolveEffectiveDailyPace(dailyPaceTopics, todayOverride)
 
   // Active queue: all videos in STEP_1_WATCHING (prescribed + rolled-over + voluntary)
   const watchingVideos = topics.filter((t) => t.status === 'STEP_1_WATCHING')
 
-  // Watched today count
-  const watchedTodayCount = topics.filter(
-    (t) => t.watchedAt && t.watchedAt.startsWith(todayStr)
-  ).length
+  // Watched today count (local timezone aware — fixes midnight–5:30 AM IST drift)
+  const watchedTodayCount = topics.filter((t) => isSameLocalDateKey(t.watchedAt, todayStr)).length
 
   const totalMins = watchingVideos.reduce((acc, t) => acc + t.durationMinutes, 0)
   const mult = speed === '1x' ? 1 : speed === '1.5x' ? 1.5 : 2
@@ -91,21 +100,79 @@ export const HostelCommandCenter: React.FC = () => {
     allActiveTopics.length > 0 && allActiveTopics.every((t) => t.status === 'LOCKED_IN_SR')
   const isSWTDone = swtCompletedSubjects.includes(activeSubjectId)
 
+  const renderAnnotationCard = (topic: Topic, subjectBadge?: Subject) => (
+    <div
+      key={topic.id}
+      className="bg-[#141418] border border-[#222228] hover:border-zinc-700 rounded-2xl p-4 space-y-3 transition-all"
+    >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {subjectBadge && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold shrink-0"
+              style={{
+                backgroundColor: `${subjectBadge.color}15`,
+                borderColor: `${subjectBadge.color}35`,
+                color: subjectBadge.color,
+              }}
+            >
+              <SubjectIcon name={subjectBadge.iconName} size={11} />
+              <span>{subjectBadge.name}</span>
+            </span>
+          )}
+          <span className="text-xs font-mono text-zinc-400">
+            Lec {topic.chapterNumber} • {topic.durationMinutes}m video
+          </span>
+        </div>
+        {topic.highYield && (
+          <span className="shrink-0 whitespace-nowrap rounded-md border border-amber-800/40 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+            High-Yield
+          </span>
+        )}
+      </div>
+
+      <h3
+        onClick={() => setSelectedTopicForDetail(topic)}
+        className="font-bold text-base text-zinc-100 hover:text-emerald-400 cursor-pointer transition-colors"
+      >
+        {topic.title}
+      </h3>
+
+      <button
+        type="button"
+        onClick={() => lockTopicIntoSR(topic.id)}
+        className="w-full py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black transition-all flex items-center justify-center gap-2"
+      >
+        <Lock className="w-3.5 h-3.5" />
+        <span>Annotated &rarr; Lock into Spaced Repetition</span>
+      </button>
+    </div>
+  )
+
   return (
     <div className="max-w-xl mx-auto space-y-5 px-4 pb-28">
-      {/* Header with Evening Moon */}
+      {/* Header with Evening Moon & Active Focus Pill */}
       <div className="pt-2 pb-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
               <Moon className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-bold text-zinc-100 tracking-tight leading-none">Tonight&apos;s Session</h1>
               <span className="text-[11px] text-zinc-400 font-medium">Hostel Desk Deep Study</span>
             </div>
           </div>
-          <span className="text-xs text-zinc-400 font-mono">Hostel Desk</span>
+          <span
+            title={`Active Focus Subject: ${activeSubject.name}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-200 bg-[#16161c] border border-[#26262e] px-2.5 py-1 rounded-xl shrink-0"
+          >
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: activeSubject.color }}
+            />
+            <span className="truncate max-w-[115px]">{activeSubject.name}</span>
+          </span>
         </div>
       </div>
 
@@ -120,7 +187,7 @@ export const HostelCommandCenter: React.FC = () => {
               : 'text-zinc-500 hover:text-zinc-300'
           }`}
         >
-          1. Annotate ({activeSubjectAnnotations.length})
+          1. Annotate ({allAnnotations.length})
         </button>
 
         <button
@@ -149,51 +216,75 @@ export const HostelCommandCenter: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* STEP 1: PENDING ANNOTATIONS (ACTIVE SUBJECT) */}
+      {/* STEP 1: PENDING ANNOTATIONS (ACTIVE SUBJECT + OTHER SUBJECTS) */}
       {/* ========================================================================= */}
       {activeStep === 1 && (
         <div className="space-y-3">
           <div className="text-xs text-zinc-400">
-            {activeSubject.name} topics finished in today&apos;s ward. Mark physical book notes and lock into Spaced Repetition:
+            Topics finished in today&apos;s ward. Mark physical book notes and lock into Spaced Repetition:
           </div>
 
-          {activeSubjectAnnotations.length === 0 ? (
+          {allAnnotations.length === 0 ? (
             <div className="bg-[#141418] border border-[#202026] rounded-2xl p-8 text-center space-y-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-              <p className="text-sm font-semibold text-zinc-200">No {activeSubject.name} Annotations Pending</p>
+              <p className="text-sm font-semibold text-zinc-200">No Annotations Pending</p>
               <p className="text-xs text-zinc-500">
                 Topics appear here after you tap &quot;Done with MCQs&quot; in the Ward tab.
               </p>
             </div>
           ) : (
-            activeSubjectAnnotations.map((topic) => (
-              <div
-                key={topic.id}
-                className="bg-[#141418] border border-[#222228] hover:border-zinc-700 rounded-2xl p-4 space-y-3 transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-zinc-400">
-                    Lec {topic.chapterNumber} • {topic.durationMinutes}m video
-                  </span>
+            <div className="space-y-4">
+              {activeSubjectAnnotations.length > 0 && (
+                <div className="space-y-3">
+                  {otherSubjectAnnotations.length > 0 && (
+                    <div className="flex items-center justify-between px-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: activeSubject.color }}
+                        />
+                        {activeSubject.name} (Active Focus)
+                      </span>
+                      <span className="text-[11px] font-mono text-zinc-500">
+                        {activeSubjectAnnotations.length}
+                      </span>
+                    </div>
+                  )}
+                  {activeSubjectAnnotations.map((topic) => renderAnnotationCard(topic))}
                 </div>
+              )}
 
-                <h3
-                  onClick={() => setSelectedTopicForDetail(topic)}
-                  className="font-bold text-base text-zinc-100 hover:text-emerald-400 cursor-pointer transition-colors"
-                >
-                  {topic.title}
-                </h3>
+              {otherSubjectAnnotations.length > 0 && (
+                <div className="space-y-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setOtherAnnotExpandedOverride(!isOtherAnnotExpanded)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#141418] border border-[#24242c] hover:border-zinc-700 text-xs font-semibold text-zinc-300 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      {isOtherAnnotExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-zinc-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-zinc-400" />
+                      )}
+                      <span>Other Subjects ({otherSubjectAnnotations.length})</span>
+                    </span>
+                    <span className="text-[11px] text-zinc-500 font-normal">
+                      {isOtherAnnotExpanded ? 'Hide' : 'Show pending annotations'}
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => lockTopicIntoSR(topic.id)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black transition-all flex items-center justify-center gap-2"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Annotated &rarr; Lock into Spaced Repetition</span>
-                </button>
-              </div>
-            ))
+                  {isOtherAnnotExpanded && (
+                    <div className="space-y-3">
+                      {otherSubjectAnnotations.map((topic) => {
+                        const sub = subjects.find((s) => s.id === topic.subjectId)
+                        return renderAnnotationCard(topic, sub)
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -345,9 +436,14 @@ export const HostelCommandCenter: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const currentIndex = subjects.findIndex((s) => s.id === activeSubjectId)
-                    const nextSubject = subjects[(currentIndex + 1) % subjects.length]
-                    setActiveSubjectId(nextSubject.id)
+                    const validIds = subjects.map((s) => s.id)
+                    const ordered = [
+                      ...subjectOrder.filter((id) => validIds.includes(id)),
+                      ...validIds.filter((id) => !subjectOrder.includes(id)),
+                    ]
+                    const currentIndex = ordered.indexOf(activeSubjectId)
+                    const nextSubId = ordered[(currentIndex + 1) % ordered.length] || subjects[0]?.id
+                    if (nextSubId) setActiveSubjectId(nextSubId)
                   }}
                   className="w-full py-2.5 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-all flex items-center justify-center gap-1.5"
                 >
@@ -402,10 +498,10 @@ export const HostelCommandCenter: React.FC = () => {
             {/* Quick Pace Pills & Shift Workload on the Fly */}
             <div className="flex items-center justify-between pt-2 border-t border-[#202026] text-xs">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-zinc-400 font-medium">Daily Pace:</span>
+                <span className="text-[11px] text-zinc-400 font-medium">Base Pace:</span>
                 <div className="inline-flex items-center gap-1">
                   {[1, 2, 3, 4].map((p) => {
-                    const isActive = todayTarget === p
+                    const isActive = basePace === p
                     return (
                       <button
                         key={p}
@@ -416,7 +512,7 @@ export const HostelCommandCenter: React.FC = () => {
                             ? 'bg-emerald-500 text-black shadow-sm'
                             : 'bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                         }`}
-                        title={`Set today's pace to ${p} videos`}
+                        title={`Set daily base pace to ${p} videos`}
                       >
                         {p}
                       </button>
@@ -433,7 +529,7 @@ export const HostelCommandCenter: React.FC = () => {
                     const currentShift = todayOverride?.shiftType || 'MEDIUM'
                     const nextShift =
                       currentShift === 'MEDIUM' ? 'HIGH' : currentShift === 'HIGH' ? 'LOW' : 'MEDIUM'
-                    setDayOverride(todayStr, { ...todayOverride, shiftType: nextShift })
+                    setDayOverride(todayStr, { shiftType: nextShift })
                   }}
                   className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-all ${
                     todayOverride?.shiftType === 'HIGH'
@@ -490,7 +586,7 @@ export const HostelCommandCenter: React.FC = () => {
           ) : (
             watchingVideos.map((topic) => {
               const topicSub = subjects.find((s) => s.id === topic.subjectId) || activeSubject
-              const isRolledOver = topic.updatedAt && !topic.updatedAt.startsWith(todayStr)
+              const isRolledOver = Boolean(topic.updatedAt) && !isSameLocalDateKey(topic.updatedAt, todayStr)
 
               return (
                 <div
@@ -515,8 +611,8 @@ export const HostelCommandCenter: React.FC = () => {
                         </span>
                       )}
                       {topic.highYield && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/20">
-                          High Yield
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-950/40 text-amber-400 border border-amber-800/40">
+                          High-Yield
                         </span>
                       )}
                       <span className="text-[11px] font-mono text-emerald-400">
@@ -536,9 +632,17 @@ export const HostelCommandCenter: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        const previousSnapshot: Topic = { ...topic }
                         updateTopicStatus(topic.id, 'STEP_2_WARD_MCQ')
                         toast.success(
-                          `Watched! Sent "${topic.title.slice(0, 24)}..." to Ward MCQs`
+                          `Watched! Sent "${topic.title.slice(0, 24)}..." to Ward MCQs`,
+                          {
+                            duration: 5000,
+                            action: {
+                              label: 'Undo',
+                              onClick: () => restoreTopicSnapshot(previousSnapshot),
+                            },
+                          }
                         )
                       }}
                       className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/30"

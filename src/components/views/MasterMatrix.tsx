@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
 import { TopicStatus } from '../../types'
 import { SubjectIcon } from '../common/SubjectIcon'
@@ -30,19 +30,34 @@ export const MasterMatrix: React.FC = () => {
     topics,
     activeSubjectId,
     setActiveSubjectId,
+    selectedSubjectFilter,
+    setSelectedSubjectFilter,
     updateTopicStatus,
     bulkUpdateTopicStatus,
     lockTopicIntoSR,
     setSelectedTopicForDetail,
   } = useMedMatrixStore()
 
-  const [expandedSubjectIds, setExpandedSubjectIds] = useState<string[]>(['anat', 'biochem'])
+  const [expandedSubjectIds, setExpandedSubjectIds] = useState<string[]>(() =>
+    selectedSubjectFilter !== 'ALL' ? [selectedSubjectFilter] : [activeSubjectId]
+  )
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'Pre-Clinical' | 'Para-Clinical' | 'Clinical'>('ALL')
   const [search, setSearch] = useState('')
 
-  // Desktop-only workspace state. The phone layout above ignores all of it.
-  const [desktopSubject, setDesktopSubject] = useState<string | 'ALL'>('ALL')
+  // Desktop-only workspace state synced with store's selectedSubjectFilter.
+  const [desktopSubject, setDesktopSubject] = useState<string | 'ALL'>(selectedSubjectFilter)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [pendingBulkStatus, setPendingBulkStatus] = useState<TopicStatus | null>(null)
+
+  // When navigating from Analytics (or another tab) with a specific subject filter, sync both desktop & mobile views.
+  useEffect(() => {
+    setDesktopSubject(selectedSubjectFilter)
+    if (selectedSubjectFilter !== 'ALL') {
+      setExpandedSubjectIds((prev) =>
+        prev.includes(selectedSubjectFilter) ? prev : [...prev, selectedSubjectFilter]
+      )
+    }
+  }, [selectedSubjectFilter])
 
   const toggleSubject = (subjectId: string) => {
     setExpandedSubjectIds((prev) =>
@@ -79,20 +94,19 @@ export const MasterMatrix: React.FC = () => {
     visibleDesktopTopics.length > 0 && visibleDesktopTopics.every((t) => selectedSet.has(t.id))
 
   const toggleSelected = (id: string) => {
+    setPendingBulkStatus(null)
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   const applyBulkStatus = (status: TopicStatus) => {
     if (selectedIds.length === 0) return
-    const label = STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
-    if (
-      selectedIds.length > 3 &&
-      !confirm(`Set ${selectedIds.length} chapters to "${label}"?`)
-    ) {
+    if (selectedIds.length > 3 && pendingBulkStatus !== status) {
+      setPendingBulkStatus(status)
       return
     }
     bulkUpdateTopicStatus(selectedIds, status)
     setSelectedIds([])
+    setPendingBulkStatus(null)
   }
 
   return (
@@ -108,7 +122,7 @@ export const MasterMatrix: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-0.5">
-            19 Medical Subjects • 271 Chapters • Complete NEET PG / INI-CET curriculum.
+            {subjects.length} Medical Subjects • {totalCount} Chapters • Complete NEET PG / INI-CET curriculum.
           </p>
         </div>
 
@@ -281,7 +295,7 @@ export const MasterMatrix: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Syllabus</h1>
             <p className="text-xs text-zinc-500 mt-1">
-              19 subjects · 271 chapters · tick chapters and set a status in one go
+              {subjects.length} subjects · {totalCount} chapters · tick chapters and set a status in one go
             </p>
           </div>
           <div className="flex items-center gap-6">
@@ -316,6 +330,7 @@ export const MasterMatrix: React.FC = () => {
               type="button"
               onClick={() => {
                 setDesktopSubject('ALL')
+                setSelectedSubjectFilter('ALL')
                 setSelectedIds([])
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold border-b border-[#1e1e24] transition-colors ${
@@ -333,37 +348,59 @@ export const MasterMatrix: React.FC = () => {
                 const subjectTopics = topics.filter((t) => t.subjectId === subject.id)
                 const done = subjectTopics.filter((t) => t.status === 'LOCKED_IN_SR').length
                 const pct = Math.round((done / Math.max(1, subjectTopics.length)) * 100)
-                const isActive = desktopSubject === subject.id
+                const isSelected = desktopSubject === subject.id
+                const isFocus = activeSubjectId === subject.id
 
                 return (
-                  <button
+                  <div
                     key={subject.id}
-                    type="button"
-                    onClick={() => {
-                      setDesktopSubject(subject.id)
-                      setActiveSubjectId(subject.id)
-                      setSelectedIds([])
-                    }}
-                    className={`w-full text-left px-3.5 py-2 border-b border-[#191920] transition-colors ${
-                      isActive ? 'bg-emerald-500/10' : 'hover:bg-zinc-800/40'
+                    className={`border-b border-[#191920] transition-colors ${
+                      isSelected ? 'bg-emerald-500/10' : 'hover:bg-zinc-800/40'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={`text-[12px] truncate ${
-                          isActive ? 'text-emerald-300 font-semibold' : 'text-zinc-300'
-                        }`}
-                      >
-                        {subject.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-zinc-500 shrink-0">
-                        {done}/{subjectTopics.length}
-                      </span>
-                    </div>
-                    <div className="mt-1 h-1 rounded-full bg-[#1c1c22] overflow-hidden">
-                      <div className="h-full bg-emerald-500/70" style={{ width: `${pct}%` }} />
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDesktopSubject(subject.id)
+                        setSelectedSubjectFilter(subject.id)
+                        setSelectedIds([])
+                      }}
+                      className="w-full text-left px-3.5 pt-2 pb-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`text-[12px] truncate flex items-center gap-1.5 ${
+                            isSelected ? 'text-emerald-300 font-semibold' : 'text-zinc-300'
+                          }`}
+                        >
+                          <span className="truncate">{subject.name}</span>
+                          {isFocus && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                              title="Active focus subject"
+                            />
+                          )}
+                        </span>
+                        <span className="font-mono text-[10px] text-zinc-500 shrink-0">
+                          {done}/{subjectTopics.length}
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1 rounded-full bg-[#1c1c22] overflow-hidden">
+                        <div className="h-full bg-emerald-500/70" style={{ width: `${pct}%` }} />
+                      </div>
+                    </button>
+                    {isSelected && !isFocus && (
+                      <div className="px-3.5 pb-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSubjectId(subject.id)}
+                          className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          Set as Active Focus &rarr;
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>
@@ -416,32 +453,57 @@ export const MasterMatrix: React.FC = () => {
                 )}
               </span>
 
-              <div className="ml-auto flex items-center gap-1.5">
-                {STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={selectedIds.length === 0}
-                    onClick={() => applyBulkStatus(opt.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${statusChipClass(
-                      opt.value
-                    )} ${
-                      selectedIds.length === 0
-                        ? 'opacity-40 cursor-not-allowed'
-                        : 'hover:brightness-125'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-                {selectedIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedIds([])}
-                    className="px-2.5 py-1.5 rounded-lg text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                  >
-                    Clear
-                  </button>
+              <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                {pendingBulkStatus && selectedIds.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => applyBulkStatus(pendingBulkStatus)}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-black transition-colors"
+                    >
+                      Confirm {selectedIds.length} chapters &rarr;{' '}
+                      {STATUS_OPTIONS.find((o) => o.value === pendingBulkStatus)?.label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingBulkStatus(null)}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {STATUS_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={selectedIds.length === 0}
+                        onClick={() => applyBulkStatus(opt.value)}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${statusChipClass(
+                          opt.value
+                        )} ${
+                          selectedIds.length === 0
+                            ? 'opacity-40 cursor-not-allowed'
+                            : 'hover:brightness-125'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                    {selectedIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedIds([])
+                          setPendingBulkStatus(null)
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

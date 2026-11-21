@@ -104,8 +104,8 @@ export const TodayTodoWidget: React.FC<TodayTodoWidgetProps> = ({
   // Handlers for ticking off tasks directly from widget
   const handleCompleteMCQ = (topicId: string, isSR: boolean) => {
     if (isSR) {
+      // advanceSRLevel already fires the exact level/mastery toast
       advanceSRLevel(topicId)
-      toast.success('🎉 Review completed! Spaced interval advanced.')
     } else {
       updateTopicStatus(topicId, 'STEP_3_ANNOTATING')
       toast.success('✅ Ward MCQs marked done! Queued for evening notes.')

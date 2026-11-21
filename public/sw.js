@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medmatrix-offline-v2'
+const CACHE_NAME = 'medmatrix-offline-v3'
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -33,7 +33,8 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// Offline-first fetch strategy
+// Network-first for HTML navigations so deploys appear immediately;
+// Stale-While-Revalidate for hashed static assets.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
 
@@ -42,7 +43,24 @@ self.addEventListener('fetch', (event) => {
   // Do not intercept non-http(s) or cross-origin requests (e.g., Supabase API calls)
   if (url.origin !== self.location.origin) return
 
-  // Stale-While-Revalidate for same-origin assets
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/index.html', responseToCache)
+            })
+          }
+          return networkResponse
+        })
+        .catch(() => caches.match('/index.html'))
+    )
+    return
+  }
+
+  // Stale-While-Revalidate for static same-origin assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
@@ -55,14 +73,8 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse
         })
-        .catch(() => {
-          // If offline and navigating to any page, fallback to cached index.html
-          if (event.request.mode === 'navigate' || event.request.destination === 'document') {
-            return caches.match('/index.html')
-          }
-        })
+        .catch(() => cachedResponse)
 
-      // Return cached version immediately if available, otherwise wait for network fetch
       return cachedResponse || fetchPromise
     })
   )

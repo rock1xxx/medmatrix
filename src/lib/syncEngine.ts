@@ -22,6 +22,7 @@ const listeners = new Set<SyncListener>()
 let supabaseClient: SupabaseClient | null = null
 let currentUrl = ''
 let currentKey = ''
+let currentSyncKey = ''
 let realtimeChannel: ReturnType<SupabaseClient['channel']> | null = null
 
 // Never upload before we have seen the cloud copy at least once. A fresh install
@@ -30,21 +31,41 @@ let realtimeChannel: ReturnType<SupabaseClient['channel']> | null = null
 // progress sitting in Supabase.
 let hasPulledOnce = false
 
+function teardownRealtimeChannel() {
+  if (supabaseClient && realtimeChannel) {
+    try {
+      supabaseClient.removeChannel(realtimeChannel)
+    } catch {}
+  }
+  realtimeChannel = null
+  currentSyncKey = ''
+}
+
 function getClient(): SupabaseClient | null {
   const { syncConfig } = useMedMatrixStore.getState()
   if (!syncConfig.supabaseUrl || !syncConfig.supabaseAnonKey) {
+    teardownRealtimeChannel()
+    supabaseClient = null
+    currentUrl = ''
+    currentKey = ''
     return null
   }
+
+  const nextSyncKey = syncConfig.syncKey || 'dr-med-sync'
 
   if (
     supabaseClient &&
     currentUrl === syncConfig.supabaseUrl &&
     currentKey === syncConfig.supabaseAnonKey
   ) {
+    if (currentSyncKey !== nextSyncKey) {
+      setupRealtimeSubscription()
+    }
     return supabaseClient
   }
 
   try {
+    teardownRealtimeChannel()
     currentUrl = syncConfig.supabaseUrl
     currentKey = syncConfig.supabaseAnonKey
     supabaseClient = createClient(currentUrl, currentKey, {
@@ -62,6 +83,7 @@ function setupRealtimeSubscription() {
   if (!supabaseClient) return
   const { syncConfig } = useMedMatrixStore.getState()
   const syncKey = syncConfig.syncKey || 'dr-med-sync'
+  currentSyncKey = syncKey
 
   if (realtimeChannel) {
     try {

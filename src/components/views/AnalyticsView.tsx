@@ -28,12 +28,22 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
  * second charting dependency to a phone APK is not worth it for four shapes.
  */
 export const AnalyticsView: React.FC = () => {
-  const { topics, subjects, dailyPaceTopics, setActiveSubjectId, setSelectedSubjectFilter, setActiveTab } =
-    useMedMatrixStore()
+  const {
+    topics,
+    subjects,
+    dailyPaceTopics,
+    ebbinghausIntervals,
+    setSelectedSubjectFilter,
+    setActiveTab,
+  } = useMedMatrixStore()
 
   const snapshot = useMemo(
-    () => buildAnalytics(topics, subjects, { plannedPace: dailyPaceTopics }),
-    [topics, subjects, dailyPaceTopics]
+    () =>
+      buildAnalytics(topics, subjects, {
+        plannedPace: dailyPaceTopics,
+        ebbinghausIntervals,
+      }),
+    [topics, subjects, dailyPaceTopics, ebbinghausIntervals]
   )
 
   const cadence = useMemo(() => weekdayCadence(snapshot.activity.reviewsByDay, new Date()), [
@@ -50,7 +60,6 @@ export const AnalyticsView: React.FC = () => {
     : ''
 
   const openSubject = (subjectId: string) => {
-    setActiveSubjectId(subjectId)
     setSelectedSubjectFilter(subjectId)
     setActiveTab('matrix')
   }

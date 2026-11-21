@@ -1,21 +1,23 @@
 import React from 'react'
 import { useMedMatrixStore } from '../../store/useMedMatrixStore'
+import { getTopicSRStatus } from '../../lib/srEngine'
 import { ViewMode } from '../../types'
 import { Sun, Moon, CalendarDays, BookOpen, Kanban, TrendingUp, Layers } from 'lucide-react'
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, topics, activeSubjectId, customModules } = useMedMatrixStore()
+  const { activeTab, setActiveTab, topics, customModules } = useMedMatrixStore()
 
-  // Ward count (MCQs to solve on duty for active focus subject only)
-  const wardCount = topics.filter(
-    (t) => t.status === 'STEP_2_WARD_MCQ' && t.subjectId === activeSubjectId
-  ).length
+  // Ward count (all pending MCQs across all subjects so cross-subject videos are never hidden)
+  const wardCount = topics.filter((t) => t.status === 'STEP_2_WARD_MCQ').length
 
-  // Tonight count (Pending annotations for active focus subject only)
-  const annotatingCount = topics.filter(
-    (t) => t.status === 'STEP_3_ANNOTATING' && t.subjectId === activeSubjectId
-  ).length
-  const tonightBadgeCount = annotatingCount
+  // Tonight count (all pending annotations + due/overdue spaced repetition reviews)
+  const annotatingCount = topics.filter((t) => t.status === 'STEP_3_ANNOTATING').length
+  const dueReviewsCount = topics.filter((t) => {
+    if (t.status !== 'LOCKED_IN_SR' || !t.srData) return false
+    const srStatus = getTopicSRStatus(t)
+    return srStatus === 'DUE_TODAY' || srStatus === 'OVERDUE'
+  }).length
+  const tonightBadgeCount = annotatingCount + dueReviewsCount
 
   // QBank count (Custom modules not yet annotated into main notes)
   const unannotatedQBankCount = (customModules || []).filter(

@@ -7,7 +7,7 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { Subject, Topic, TopicStatus } from '../types'
-import { getTopicSRStatus } from './srEngine'
+import { DEFAULT_EBBINGHAUS_INTERVALS, getTopicSRStatus } from './srEngine'
 
 /**
  * Everything the Stats tab shows, derived from the study database that already
@@ -292,8 +292,13 @@ function buildHeatmap(
 export function buildAnalytics(
   topics: Topic[],
   subjects: Subject[],
-  options: { today?: Date; plannedPace?: number } = {}
+  options: {
+    today?: Date
+    plannedPace?: number
+    ebbinghausIntervals?: [number, number, number, number]
+  } = {}
 ): AnalyticsSnapshot {
+  const intervals = options.ebbinghausIntervals ?? DEFAULT_EBBINGHAUS_INTERVALS
   const today = startOfDay(options.today ?? new Date())
   const todayKey = dateKey(today)
 
@@ -499,7 +504,7 @@ export function buildAnalytics(
       levels: SR_RUNGS.map((rung) => ({
         level: rung.level,
         label: rung.label,
-        interval: rung.interval,
+        interval: rung.level === 4 ? 'mastered' : `+${intervals[rung.level]}d`,
         color: rung.color,
         count: levelCounts[rung.level] ?? 0,
       })),

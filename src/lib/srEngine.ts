@@ -26,10 +26,11 @@ export const SR_INTERVALS: Record<SRLevel, number | null> = {
  */
 export function createInitialSRData(
   lockDate: Date = new Date(),
-  firstIntervalDays: number = 1
+  firstIntervalDays: number = DEFAULT_EBBINGHAUS_INTERVALS[0]
 ): SRData {
+  const safeInterval = Math.max(1, Math.round(firstIntervalDays || DEFAULT_EBBINGHAUS_INTERVALS[0]))
   const lockedAtStr = lockDate.toISOString()
-  const nextDate = addDays(lockDate, firstIntervalDays)
+  const nextDate = addDays(lockDate, safeInterval)
   const nextReviewDateStr = format(nextDate, 'yyyy-MM-dd')
 
   return {
@@ -42,7 +43,14 @@ export function createInitialSRData(
 }
 
 /**
- * Advances a topic to the next Spaced Repetition level
+ * Advances a topic to the next Spaced Repetition level.
+ *
+ * Interval progression across the 4 Ebbinghaus steps [d0, d1, d2, d3]:
+ *   Lock (L0)       -> waits d0 (+1d)
+ *   Review 1 (L0→L1) -> waits d1 (+5d)
+ *   Review 2 (L1→L2) -> waits d2 (+12d)
+ *   Review 3 (L2→L3) -> waits d3 (+25d)
+ *   Review 4 (L3→L4) -> Mastered (no further reviews)
  */
 export function advanceTopicSR(
   currentSR: SRData,
@@ -52,19 +60,18 @@ export function advanceTopicSR(
   const currentLevel = currentSR.level
   const nextLevel = Math.min(4, currentLevel + 1) as SRLevel
   const reviewDateStr = reviewDate.toISOString()
-  
+
   let nextReviewDateStr = currentSR.nextReviewDate
 
-  // Intervals map: Level 0 -> Level 1 uses customIntervals[0], Level 1 -> 2 uses [1], etc.
   let intervalDays: number | null = null
-  if (nextLevel >= 1 && nextLevel <= 3) {
-    intervalDays = customIntervals[nextLevel - 1] ?? 5
+  if (nextLevel === 1 || nextLevel === 2 || nextLevel === 3) {
+    intervalDays = customIntervals[nextLevel] ?? DEFAULT_EBBINGHAUS_INTERVALS[nextLevel]
   } else if (nextLevel === 4) {
     intervalDays = null // Mastered
   }
 
   if (intervalDays !== null) {
-    const nextDate = addDays(reviewDate, intervalDays)
+    const nextDate = addDays(reviewDate, Math.max(1, Math.round(intervalDays)))
     nextReviewDateStr = format(nextDate, 'yyyy-MM-dd')
   } else {
     // Mastered: keep last review date
@@ -158,16 +165,19 @@ export function getSRStatusMetadata(status: SRStatus | null) {
 /**
  * Gets human description of current SR level interval
  */
-export function getLevelDescription(level: SRLevel): string {
+export function getLevelDescription(
+  level: SRLevel,
+  customIntervals: [number, number, number, number] = DEFAULT_EBBINGHAUS_INTERVALS
+): string {
   switch (level) {
     case 0:
-      return 'Level 0 (+1d interval)'
+      return `Level 0 (+${customIntervals[0]}d interval)`
     case 1:
-      return 'Level 1 (+5d interval)'
+      return `Level 1 (+${customIntervals[1]}d interval)`
     case 2:
-      return 'Level 2 (+12d interval)'
+      return `Level 2 (+${customIntervals[2]}d interval)`
     case 3:
-      return 'Level 3 (+25d interval)'
+      return `Level 3 (+${customIntervals[3]}d interval)`
     case 4:
       return 'Level 4 (Mastered ⭐)'
   }
